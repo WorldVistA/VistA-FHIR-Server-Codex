@@ -27,6 +27,8 @@ BYENC(REQ,OUT) ; Encounter bundle with supporting resources
  SET END=BEG_".24"
  DO GETCOND^C0FHIR(.OUT,DFN,BEG,END,MAX)
  DO GETOBS^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ DO GETALGY^C0FHIR(.OUT,DFN,1410101,4141015,MAX)
+ DO GETMED^C0FHIR(.OUT,DFN,BEG,END,MAX)
  QUIT
  ;
 BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
@@ -49,6 +51,8 @@ BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
  DO ADDRNG(.REQ,.OUT)
  DO GETCOND^C0FHIR(.OUT,DFN,BEG,END,MAX)
  DO GETOBS^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ DO GETALGY^C0FHIR(.OUT,DFN,1410101,4141015,MAX)
+ DO GETMED^C0FHIR(.OUT,DFN,BEG,END,MAX)
  QUIT
  ;
 INIT(OUT,BTYPE) ; Initialize Bundle container

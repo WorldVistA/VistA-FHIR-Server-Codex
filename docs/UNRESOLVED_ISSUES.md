@@ -3,10 +3,10 @@
 Track known issues that are not yet solved.
 
 ## Current Issues
-- Issue: Remaining Phase 1 domains `AllergyIntolerance` and `MedicationRequest` are not yet mapped into bundle output.
-  - Impact: Bundle now includes patient, encounter, condition, and observation content, but allergy and medication coverage is still incomplete for Phase 1.
-  - Affected files/components: `src/C0FHIR.m`, `src/C0FHIRBU.m`, future domain routines (`C0FHIRAL`, `C0FHIRMR`).
-  - Workaround (if any): Use current response for patient/encounter/problem/vitals and add allergy/medication resources in next iterations.
+- Issue: Terminology and profile alignment are still first-pass for newly added `AllergyIntolerance` and `MedicationRequest` mappings.
+  - Impact: Core resources are present, but some coding systems and field-level profile details may need refinement for strict US Core/profile validation.
+  - Affected files/components: `src/C0FHIR.m`, `docs/BUNDLE_REQUIREMENTS.md`.
+  - Workaround (if any): Use current mappings for functional bundle output and iterate terminology/profile conformance in follow-up updates.
   - Owner: George Lilly
   - Target resolution date:
   - Status: Open

@@ -194,6 +194,178 @@ ISNUM(X) ; True if X is numeric
  IF Y?1.N1"."1.N QUIT 1
  QUIT 0
  ;
+GETALGY(RTN,DFN,BEG,END,MAX) ; Add AllergyIntolerance resources
+ NEW CNT,GMRA,GMRAL,ID,REAC
+ DO ENSUREENV
+ SET DFN=+$GET(DFN)
+ IF DFN<1 QUIT
+ SET BEG=+$GET(BEG)
+ IF BEG<1 SET BEG=1410101
+ SET END=+$GET(END)
+ IF END<1 SET END=4141015
+ SET MAX=+$GET(MAX)
+ IF MAX<1 SET MAX=200
+ DO EN1^GMRADPT
+ ; If no allergy entries exist, VPR uses assessment flags; skip for now.
+ IF '$GET(GMRAL) QUIT
+ SET (CNT,ID)=0
+ FOR  SET ID=$ORDER(GMRAL(ID)) Q:ID<1!(CNT'<MAX)  DO
+ . KILL REAC
+ . DO EN1^VPRDGMRA(ID,.REAC)
+ . IF '$DATA(REAC) QUIT
+ . DO SETALGY(.RTN,.REAC,DFN)
+ . SET CNT=CNT+1
+ QUIT
+ ;
+SETALGY(RTN,REAC,DFN) ; Map one VPR allergy entry to FHIR AllergyIntolerance
+ NEW CODE,ID,IDX,SEV,TAG,TYPE
+ SET ID=+$GET(REAC("id"))
+ IF ID<1 QUIT
+ DO ADDRES^C0FHIRBU(.RTN,"AllergyIntolerance","A"_ID,.IDX)
+ SET RTN("entry",IDX,"resource","resourceType")="AllergyIntolerance"
+ SET RTN("entry",IDX,"resource","id")="A"_ID
+ SET RTN("entry",IDX,"resource","patient","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET TYPE=$PIECE($GET(REAC("type")),"^")
+ IF TYPE="D" SET RTN("entry",IDX,"resource","category",1)="medication"
+ IF TYPE="F" SET RTN("entry",IDX,"resource","category",1)="food"
+ IF TYPE'="D",TYPE'="F" SET RTN("entry",IDX,"resource","category",1)="environment"
+ SET RTN("entry",IDX,"resource","type")="allergy"
+ IF $GET(REAC("name"))'="" SET RTN("entry",IDX,"resource","code","text")=$GET(REAC("name"))
+ IF $GET(REAC("vuid"))'="" DO
+ . SET RTN("entry",IDX,"resource","code","coding",1,"system")="urn:va:vuid"
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code")=$GET(REAC("vuid"))
+ IF $GET(REAC("localCode"))'="" DO
+ . SET RTN("entry",IDX,"resource","code","coding",2,"system")="urn:va:allergy-local-code"
+ . SET RTN("entry",IDX,"resource","code","coding",2,"code")=$GET(REAC("localCode"))
+ IF $GET(REAC("removed"))=1 DO
+ . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
+ . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"code")="entered-in-error"
+ IF $GET(REAC("removed"))'=1 DO
+ . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/allergyintolerance-verification"
+ . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"code")="confirmed"
+ . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical"
+ . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="active"
+ SET SEV=$$ALGSEV($GET(REAC("severity")))
+ SET TAG=""
+ IF SEV'="" SET TAG="low"
+ IF SEV="severe" SET TAG="high"
+ IF TAG'="" SET RTN("entry",IDX,"resource","criticality")=TAG
+ IF +$GET(REAC("entered"))>0 SET RTN("entry",IDX,"resource","recordedDate")=$$FM2FHIR^C0FHIRBU($GET(REAC("entered")))
+ DO ALGREAC(.RTN,.REAC,IDX,SEV)
+ DO ALGNOTE(.RTN,.REAC,IDX)
+ QUIT
+ ;
+ALGREAC(RTN,REAC,IDX,SEV) ; Add reaction manifestations
+ NEW I,N,TXT,VUID
+ SET (I,N)=0
+ FOR  SET I=$ORDER(REAC("reaction",I)) Q:I<1  DO
+ . SET TXT=$PIECE($GET(REAC("reaction",I)),"^")
+ . SET VUID=$PIECE($GET(REAC("reaction",I)),"^",2)
+ . SET N=N+1
+ . IF TXT'="" SET RTN("entry",IDX,"resource","reaction",N,"manifestation",1,"text")=TXT
+ . IF VUID'="" DO
+ .. SET RTN("entry",IDX,"resource","reaction",N,"manifestation",1,"coding",1,"system")="urn:va:vuid"
+ .. SET RTN("entry",IDX,"resource","reaction",N,"manifestation",1,"coding",1,"code")=VUID
+ . IF SEV'="" SET RTN("entry",IDX,"resource","reaction",N,"severity")=SEV
+ QUIT
+ ;
+ALGNOTE(RTN,REAC,IDX) ; Add allergy comments as note entries
+ NEW I,N,TXT
+ SET (I,N)=0
+ FOR  SET I=$ORDER(REAC("comment",I)) Q:I<1  DO
+ . SET N=N+1
+ . SET TXT=$PIECE($GET(REAC("comment",I)),"^",4)
+ . IF TXT'="" SET RTN("entry",IDX,"resource","note",N,"text")=TXT
+ . IF +$PIECE($GET(REAC("comment",I)),"^",2)>0 SET RTN("entry",IDX,"resource","note",N,"time")=$$FM2FHIR^C0FHIRBU($PIECE($GET(REAC("comment",I)),"^",2))
+ . IF $PIECE($GET(REAC("comment",I)),"^",1)'="" SET RTN("entry",IDX,"resource","note",N,"authorString")=$PIECE($GET(REAC("comment",I)),"^",1)
+ QUIT
+ ;
+ALGSEV(X) ; Map allergy severity to FHIR reaction severity
+ NEW Y
+ SET Y=$$UPCASE($GET(X))
+ IF Y["SEVERE" QUIT "severe"
+ IF Y["MODERATE" QUIT "moderate"
+ IF Y["MILD" QUIT "mild"
+ QUIT ""
+ ;
+GETMED(RTN,DFN,BEG,END,MAX) ; Add MedicationRequest resources
+ NEW CNT,ID,MED,ORIFN,PS0,VPRN
+ DO ENSUREENV
+ SET DFN=+$GET(DFN)
+ IF DFN<1 QUIT
+ SET BEG=+$GET(BEG)
+ IF BEG<1 SET BEG=1410101
+ SET END=$GET(END)
+ IF END="" SET END=4141015
+ SET MAX=+$GET(MAX)
+ IF MAX<1 SET MAX=200
+ KILL ^TMP("PS",$J),^TMP("VPRPS",$J)
+ DO OCL^PSOORRL(DFN,BEG,END)
+ MERGE ^TMP("VPRPS",$J)=^TMP("PS",$J)
+ SET (CNT,VPRN)=0
+ FOR  SET VPRN=$ORDER(^TMP("VPRPS",$J,VPRN)) Q:VPRN<1!(CNT'<MAX)  DO
+ . SET PS0=$GET(^TMP("VPRPS",$J,VPRN,0))
+ . SET ID=$PIECE(PS0,"^"),ORIFN=+$PIECE(PS0,"^",8)
+ . IF ORIFN<1 QUIT
+ . IF '$DATA(^OR(100,ORIFN,0)) QUIT
+ . KILL MED
+ . DO EN1^VPRDPSOR(ORIFN,.MED)
+ . IF '$DATA(MED) QUIT
+ . DO SETMED(.RTN,.MED,DFN)
+ . SET CNT=CNT+1
+ KILL ^TMP("VPRPS",$J),^TMP("PS",$J),^TMP($J,"PSOI")
+ QUIT
+ ;
+SETMED(RTN,MED,DFN) ; Map one VPR medication entry to FHIR MedicationRequest
+ NEW DOSE,ID,IDX,NAME,STAT
+ SET ID=+$GET(MED("id"))
+ IF ID<1 QUIT
+ DO ADDRES^C0FHIRBU(.RTN,"MedicationRequest","M"_ID,.IDX)
+ SET RTN("entry",IDX,"resource","resourceType")="MedicationRequest"
+ SET RTN("entry",IDX,"resource","id")="M"_ID
+ SET RTN("entry",IDX,"resource","intent")="order"
+ SET STAT=$$MEDSTAT($GET(MED("status")))
+ SET RTN("entry",IDX,"resource","status")=STAT
+ SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET NAME=$GET(MED("name"))
+ IF NAME'="" SET RTN("entry",IDX,"resource","medicationCodeableConcept","text")=NAME
+ DO MEDCODE(.RTN,.MED,IDX)
+ IF +$GET(MED("ordered"))>0 SET RTN("entry",IDX,"resource","authoredOn")=$$FM2FHIR^C0FHIRBU($GET(MED("ordered")))
+ IF +$GET(MED("ordered"))'>0,+$GET(MED("start"))>0 SET RTN("entry",IDX,"resource","authoredOn")=$$FM2FHIR^C0FHIRBU($GET(MED("start")))
+ IF $PIECE($GET(MED("orderingProvider")),"^",2)'="" SET RTN("entry",IDX,"resource","requester","display")=$PIECE($GET(MED("orderingProvider")),"^",2)
+ IF $GET(MED("sig"))'="" SET RTN("entry",IDX,"resource","dosageInstruction",1,"text")=$GET(MED("sig"))
+ SET DOSE=$GET(MED("dose",1))
+ IF $PIECE(DOSE,"^",5)'="" SET RTN("entry",IDX,"resource","dosageInstruction",1,"route","text")=$PIECE(DOSE,"^",5)
+ IF $PIECE(DOSE,"^",6)'="" SET RTN("entry",IDX,"resource","dosageInstruction",1,"timing","code","text")=$PIECE(DOSE,"^",6)
+ IF +$GET(MED("quantity"))>0 SET RTN("entry",IDX,"resource","dispenseRequest","quantity","value")=+$GET(MED("quantity"))
+ IF +$GET(MED("daysSupply"))>0 DO
+ . SET RTN("entry",IDX,"resource","dispenseRequest","expectedSupplyDuration","value")=+$GET(MED("daysSupply"))
+ . SET RTN("entry",IDX,"resource","dispenseRequest","expectedSupplyDuration","unit")="days"
+ IF +$GET(MED("fillsAllowed"))>0 SET RTN("entry",IDX,"resource","dispenseRequest","numberOfRepeatsAllowed")=+$GET(MED("fillsAllowed"))
+ QUIT
+ ;
+MEDCODE(RTN,MED,IDX) ; Add medication coding details when available
+ NEW PROD,VUID
+ SET PROD=$GET(MED("product",1))
+ SET VUID=$PIECE(PROD,"^",3)
+ IF VUID'="" DO
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"system")="urn:va:vuid"
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"code")=VUID
+ IF $PIECE(PROD,"^",2)'="" SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"display")=$PIECE(PROD,"^",2)
+ IF $PIECE(PROD,"^",1)'="" DO
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",2,"system")="urn:va:drug"
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",2,"code")=$PIECE(PROD,"^",1)
+ QUIT
+ ;
+MEDSTAT(X) ; Map VPR medication status to FHIR MedicationRequest status
+ NEW Y
+ SET Y=$$UPCASE($GET(X))
+ IF Y="ACTIVE" QUIT "active"
+ IF Y="HOLD" QUIT "on-hold"
+ IF Y="HISTORICAL" QUIT "completed"
+ IF Y="NOT ACTIVE" QUIT "stopped"
+ QUIT "unknown"
+ ;
 GETFHIR(RTN,FILTER) ; Web service entry point
  ; FILTER contains URL parameters, for example FILTER("dfn")=12345
  ; RTN returns JSON output nodes from ENCODE^XLFJSON
