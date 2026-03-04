@@ -39,6 +39,7 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
 GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  ; ENCIEN is expected to be a visit ien from ^AUPNVSIT
  NEW CLASS,ENC,IDX,TYPE
+ DO ENSUREENV
  SET ENCIEN=+ENCIEN
  IF ENCIEN<1 QUIT
  DO EN1^VPRDVSIT(ENCIEN,.ENC)
@@ -60,6 +61,7 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  ; FILTER contains URL parameters, for example FILTER("dfn")=12345
  ; RTN returns JSON output nodes from ENCODE^XLFJSON
  NEW ERR,REQ,TMP
+ DO ENSUREENV
  KILL RTN
  DO MAPFILT(.FILTER,.REQ)
  IF $GET(REQ("DFN"))="" DO  QUIT
@@ -79,6 +81,7 @@ GETBNDL(REQ,OUT) ; Return one Bundle response structure for a request
  ; REQ("MODE")="ENCOUNTER" or "DATERANGE"
  ; REQ(...) contains request parameters (DFN, encounter/date filters, etc.)
  NEW MODE
+ DO ENSUREENV
  SET MODE=$GET(REQ("MODE"))
  IF MODE="ENCOUNTER" DO BYENC^C0FHIRBU(.REQ,.OUT) QUIT
  IF MODE="DATERANGE" DO BYDATE^C0FHIRBU(.REQ,.OUT) QUIT
@@ -141,6 +144,12 @@ TRIM(X) ; Remove leading and trailing spaces
  FOR  QUIT:$EXTRACT(Y,1)'=" "  SET Y=$EXTRACT(Y,2,$LENGTH(Y))
  FOR  QUIT:$EXTRACT(Y,$LENGTH(Y))'=" "  SET Y=$EXTRACT(Y,1,$LENGTH(Y)-1)
  QUIT Y
+ ;
+ENSUREENV ; Ensure legacy VPR runtime variables are available
+ ; Many legacy VPR/PX routines assume U and DT are defined.
+ IF $GET(U)="" SET U="^"
+ IF '$DATA(DT) SET DT=$$DT^XLFDT
+ QUIT
  ;
 PARSEFM(X) ; Parse URL date value to FileMan date/time
  ; Supports direct FM numbers and expressions like T, T-30, NOW.
