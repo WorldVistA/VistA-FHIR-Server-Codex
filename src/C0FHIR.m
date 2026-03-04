@@ -9,8 +9,35 @@ C0FHIR ; VistA FHIR Server entry points
  ;
  QUIT  ; No default action
  ;
-GETPAT(DFN,OUT) ; Build Patient resource JSON for patient DFN
- ; TODO: Implement Patient resource mapping and serialization.
+GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
+ ; RTN is the in-flight Bundle structure
+ ; TODO: Expand Patient mapping fields beyond resourceType/id.
+ NEW IDX
+ IF $GET(DFN)="" QUIT
+ DO ADDRES^C0FHIRBU(.RTN,"Patient",DFN)
+ SET IDX=$GET(RTN("entryCount"))
+ SET RTN("entry",IDX,"resource","resourceType")="Patient"
+ SET RTN("entry",IDX,"resource","id")=DFN
+ SET RTN("entry",IDX,"fullUrl")="Patient/"_DFN
+ QUIT
+ ;
+GETFHIR(RTN,FILTER) ; Web service entry point
+ ; FILTER contains URL parameters, for example FILTER("dfn")=12345
+ ; RTN returns JSON output nodes from ENCODE^XLFJSON
+ NEW ERR,REQ,TMP
+ KILL RTN
+ DO MAPFILT(.FILTER,.REQ)
+ IF $GET(REQ("DFN"))="" DO  QUIT
+ . DO ERR^C0FHIRBU("Missing required URL parameter: dfn",.TMP)
+ . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
+ SET REQ("MODE")=$$REQMODE(.REQ)
+ IF $GET(REQ("MODE"))="" DO  QUIT
+ . DO ERR^C0FHIRBU("Cannot determine request mode from URL parameters",.TMP)
+ . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
+ DO GETBNDLJ(.REQ,.RTN,.ERR)
+ IF $DATA(ERR) DO
+ . DO ERR^C0FHIRBU("JSON encoding failed in ENCODE^XLFJSON",.TMP)
+ . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
  QUIT
  ;
 GETBNDL(REQ,OUT) ; Return one Bundle response structure for a request
@@ -30,3 +57,31 @@ GETBNDLJ(REQ,OUT,ERR) ; Return one Bundle response encoded as JSON
  DO GETBNDL(.REQ,.BUNDLE)
  DO TOJSON^C0FHIRBU(.BUNDLE,.OUT,.ERR)
  QUIT
+ ;
+MAPFILT(FILTER,REQ) ; Map URL parameters into request structure
+ KILL REQ
+ SET REQ("DFN")=$SELECT($GET(FILTER("dfn"))'="":$GET(FILTER("dfn")),1:$GET(FILTER("DFN")))
+ SET REQ("ENCOUNTER")=$SELECT($GET(FILTER("encounter"))'="":$GET(FILTER("encounter")),1:$GET(FILTER("ENCOUNTER")))
+ SET REQ("START_DT")=$SELECT($GET(FILTER("start"))'="":$GET(FILTER("start")),1:$GET(FILTER("START")))
+ SET REQ("END_DT")=$SELECT($GET(FILTER("end"))'="":$GET(FILTER("end")),1:$GET(FILTER("END")))
+ SET REQ("MODE")=$$UPCASE($SELECT($GET(FILTER("mode"))'="":$GET(FILTER("mode")),1:$GET(FILTER("MODE"))))
+ QUIT
+ ;
+REQMODE(REQ) ; Resolve request mode from mapped parameters
+ NEW MODE
+ SET MODE=$GET(REQ("MODE"))
+ IF MODE="ENCOUNTER" QUIT "ENCOUNTER"
+ IF MODE="DATERANGE" QUIT "DATERANGE"
+ IF $GET(REQ("ENCOUNTER"))'="" QUIT "ENCOUNTER"
+ IF $GET(REQ("START_DT"))'="" QUIT "DATERANGE"
+ IF $GET(REQ("END_DT"))'="" QUIT "DATERANGE"
+ QUIT ""
+ ;
+UPCASE(X) ; Upper-case helper without external dependencies
+ NEW C,I,Y
+ SET Y=""
+ FOR I=1:1:$LENGTH($GET(X)) DO
+ . SET C=$EXTRACT(X,I)
+ . IF C?1L SET C=$CHAR($ASCII(C)-32)
+ . SET Y=Y_C
+ QUIT Y

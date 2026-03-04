@@ -13,11 +13,13 @@ BYENC(REQ,OUT) ; Encounter bundle with supporting resources
  ;
  ; TODO:
  ; 1) Resolve the target encounter.
- ; 2) Add encounter resource to the Bundle.
- ; 3) Follow supporting references across required domains.
- ; 4) De-duplicate resources by resourceType/id.
- ; 5) Encode one JSON Bundle response with ENCODE^XLFJSON.
+ ; 2) Add patient resource via GETPAT^C0FHIR.
+ ; 3) Add encounter resource to the Bundle.
+ ; 4) Follow supporting references across required domains.
+ ; 5) De-duplicate resources by resourceType/id.
+ ; 6) Encode one JSON Bundle response with ENCODE^XLFJSON.
  DO INIT(.OUT,"collection")
+ DO GETPAT^C0FHIR(.OUT,$GET(REQ("DFN")))
  QUIT
  ;
 BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
@@ -28,11 +30,13 @@ BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
  ;
  ; TODO:
  ; 1) Resolve encounters in date range.
- ; 2) Add encounter resources to the Bundle.
- ; 3) Add related resources needed to support each encounter.
- ; 4) De-duplicate resources by resourceType/id.
- ; 5) Encode one JSON Bundle response with ENCODE^XLFJSON.
+ ; 2) Add patient resource via GETPAT^C0FHIR.
+ ; 3) Add encounter resources to the Bundle.
+ ; 4) Add related resources needed to support each encounter.
+ ; 5) De-duplicate resources by resourceType/id.
+ ; 6) Encode one JSON Bundle response with ENCODE^XLFJSON.
  DO INIT(.OUT,"searchset")
+ DO GETPAT^C0FHIR(.OUT,$GET(REQ("DFN")))
  QUIT
  ;
 INIT(OUT,BTYPE) ; Initialize Bundle container

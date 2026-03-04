@@ -28,12 +28,22 @@ This project returns exactly one FHIR JSON `Bundle` per request.
   - `searchset` for date-range requests.
 - JSON output is encoded using `ENCODE^XLFJSON`.
 - Errors are returned as `OperationOutcome`.
+- Web service entry point is `GETFHIR^C0FHIR(RTN,FILTER)`.
+- URL parameters are passed in `FILTER`, for example:
+  - `FILTER("dfn")=12345`
+  - `FILTER("encounter")=<enc-id>`
+  - `FILTER("start")=<fm-date-time>`
+  - `FILTER("end")=<fm-date-time>`
+  - `FILTER("mode")="encounter"` or `"daterange"` (optional when inferable)
 
 ## Implementation Notes
 - Entry points:
+  - `GETFHIR^C0FHIR`
   - `GETBNDL^C0FHIR`
   - `GETBNDLJ^C0FHIR`
   - `BYENC^C0FHIRBU`
   - `BYDATE^C0FHIRBU`
+- Resource builders:
+  - `GETPAT^C0FHIR(RTN,DFN)` appends the `Patient` resource into the in-flight bundle array.
 - Serializer helper:
   - `TOJSON^C0FHIRBU` (wraps `ENCODE^XLFJSON`)

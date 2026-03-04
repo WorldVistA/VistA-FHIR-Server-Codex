@@ -15,6 +15,8 @@ Use this file as a chronological log of concrete implementation work.
 - Added bundle response requirements in `docs/BUNDLE_REQUIREMENTS.md`.
 - Added `docs/PROJECT_CONTEXT_PUBLIC.md` as a repository-safe context document.
 - Selected `ENCODE^XLFJSON` as the JSON encoding standard and added `GETBNDLJ^C0FHIR` / `TOJSON^C0FHIRBU` scaffolding.
+- Added web service entry point `GETFHIR^C0FHIR(RTN,FILTER)` with URL-parameter mapping (for example `FILTER("dfn")=dfn`).
+- Updated patient builder contract to `GETPAT^C0FHIR(RTN,DFN)` so bundle generators pass the full in-flight bundle array by reference.
 
 ## Template For New Entries
 - Date:
