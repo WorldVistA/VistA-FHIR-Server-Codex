@@ -2,6 +2,7 @@
 
 This directory stores detailed project documentation for implementation tracking.
 
+- `PROJECT_CONTEXT_PUBLIC.md`: Repository-safe project goals, scope, and constraints.
 - `NAMING_CONVENTIONS.md`: Namespace standards for routines and DDE entities.
 - `BUNDLE_REQUIREMENTS.md`: Single-bundle response behavior and query modes.
 - `STEPS_TAKEN.md`: Chronological log of work completed.

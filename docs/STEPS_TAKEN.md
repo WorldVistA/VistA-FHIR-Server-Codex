@@ -13,6 +13,7 @@ Use this file as a chronological log of concrete implementation work.
 - Added namespace reference documentation in `docs/NAMING_CONVENTIONS.md`.
 - Added a Phase 1 resource naming map for routine names and DDE entity patterns.
 - Added bundle response requirements in `docs/BUNDLE_REQUIREMENTS.md`.
+- Added `docs/PROJECT_CONTEXT_PUBLIC.md` as a repository-safe context document.
 
 ## Template For New Entries
 - Date:
