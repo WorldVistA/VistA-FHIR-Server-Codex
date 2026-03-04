@@ -56,6 +56,7 @@ This document records findings from the source corpus in `/home/glilly/FHIR-sour
   - `Patient` via `GETPAT^C0FHIR`
   - `Encounter` via `GETENC^C0FHIR`
 - Date-range encounter traversal uses `^AUPNVSIT("AET",DFN,...)` with `MAX` limit support.
+- Full VPR container-to-FHIR mapping (with VistA source files) is maintained in `docs/VPR_CONTAINER_FHIR_MAPPING.md`.
 
 ## Known Gaps And Next Expansion Targets
 - Phase 1 resources not yet mapped into bundle output:

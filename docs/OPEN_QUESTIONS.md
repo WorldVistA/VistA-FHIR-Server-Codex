@@ -10,6 +10,7 @@ Track questions that must be answered to keep implementation moving.
 5. For encounter-centric bundles, which linked resources are mandatory vs optional to include?
 6. What is the maximum bundle size before paging or chunking is required?
 7. Should date-range responses include only active resources, or historical/inactive resources as well?
+8. What authoritative VistA sources should back `ILLNESS HISTORY`, `PROGRAM MEMBERSHIP`, and `MEDICAL CLAIM` containers where `vpr-containers.txt` does not list source files?
 
 ## Template For New Questions
 - Question:

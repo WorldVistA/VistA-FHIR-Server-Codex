@@ -10,6 +10,7 @@ This file is the shareable, repository-safe project context for implementation a
 - Build VistA-standard M (MUMPS) code that generates FHIR JSON from patient records.
 - Create DDE entities aligned with the FHIR data model to support generation.
 - Return exactly one FHIR `Bundle` JSON per request, including multi-domain supporting resources as needed.
+- Support all VPR container domain types listed in `vpr-containers.txt` using the mapping defined in `docs/VPR_CONTAINER_FHIR_MAPPING.md`.
 
 ## Success Criteria
 - Valid FHIR JSON is generated for all in-scope domains.

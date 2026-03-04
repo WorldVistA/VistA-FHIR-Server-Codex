@@ -21,6 +21,7 @@ Use this file as a chronological log of concrete implementation work.
 - Implemented first-version transaction bundle builder with de-duplicated `Patient` and `Encounter` entries.
 - Added encounter-centric and date-range encounter loading (`^AUPNVSIT("AET",DFN,...)`) into `BYENC^C0FHIRBU` and `BYDATE^C0FHIRBU`.
 - Added `docs/FHIR_SOURCE_FINDINGS.md` to document analysis findings from `FHIR-source-files` and resulting implementation decisions.
+- Added `docs/VPR_CONTAINER_FHIR_MAPPING.md` mapping all listed VPR container domains to FHIR resources and source file numbers.
 
 ## Template For New Entries
 - Date:
