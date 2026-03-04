@@ -46,8 +46,12 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 - Resource builders:
   - `GETPAT^C0FHIR(RTN,DFN)` appends the `Patient` resource into the in-flight bundle array.
   - `GETENC^C0FHIR(RTN,ENCIEN,DFN)` appends an `Encounter` resource into the in-flight bundle array.
+  - `GETCOND^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `Condition` resources from problem data.
+  - `GETOBS^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `Observation` resources from vitals data.
 - Serializer helper:
   - `TOJSON^C0FHIRBU` (wraps `ENCODE^XLFJSON`)
 - First-version scope currently implemented:
-  - `Patient` + `Encounter` bundle entries in transaction envelope.
+  - `Patient`, `Encounter`, `Condition`, and `Observation` bundle entries in transaction envelope.
   - Date-range encounter collection from `^AUPNVSIT("AET",DFN,...)`.
+  - Problem-list condition loading via `GMPLUTL2` + `VPRDGMPL`.
+  - Vital-sign observation loading via `GMRVUT0` + `VPRDGMV`.

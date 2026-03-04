@@ -3,10 +3,10 @@
 Track known issues that are not yet solved.
 
 ## Current Issues
-- Issue: Phase 1 domains beyond `Patient` and `Encounter` are not yet mapped into bundle output.
-  - Impact: First version is usable for encounter spine generation but does not yet include `Observation`, `Condition`, `AllergyIntolerance`, or `MedicationRequest`.
-  - Affected files/components: `src/C0FHIR.m`, `src/C0FHIRBU.m`, future domain routines (`C0FHIROB`, `C0FHIRCO`, `C0FHIRAL`, `C0FHIRMR`).
-  - Workaround (if any): Use current response for encounter backbone and add related resources incrementally in next iterations.
+- Issue: Remaining Phase 1 domains `AllergyIntolerance` and `MedicationRequest` are not yet mapped into bundle output.
+  - Impact: Bundle now includes patient, encounter, condition, and observation content, but allergy and medication coverage is still incomplete for Phase 1.
+  - Affected files/components: `src/C0FHIR.m`, `src/C0FHIRBU.m`, future domain routines (`C0FHIRAL`, `C0FHIRMR`).
+  - Workaround (if any): Use current response for patient/encounter/problem/vitals and add allergy/medication resources in next iterations.
   - Owner: George Lilly
   - Target resolution date:
   - Status: Open

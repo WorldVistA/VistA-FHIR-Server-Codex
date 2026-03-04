@@ -11,14 +11,22 @@ BYENC(REQ,OUT) ; Encounter bundle with supporting resources
  ; REQ("DFN")       = patient identifier
  ; REQ("ENCOUNTER") = encounter identifier
  ;
- NEW DFN,VID
+ NEW BEG,DFN,ENC,END,MAX,VID
  SET DFN=+$GET(REQ("DFN"))
  SET VID=$$ENCIEN($GET(REQ("ENCOUNTER")))
  DO INIT(.OUT,"transaction")
  IF DFN<1 DO ERR("Missing required request value: DFN",.OUT) QUIT
  IF VID<1 DO ERR("Missing or invalid request value: ENCOUNTER",.OUT) QUIT
+ SET MAX=+$GET(REQ("MAX"))
+ IF MAX<1 SET MAX=200
  DO GETPAT^C0FHIR(.OUT,DFN)
  DO GETENC^C0FHIR(.OUT,VID,DFN)
+ DO EN1^VPRDVSIT(VID,.ENC)
+ SET BEG=+$PIECE($GET(ENC("dateTime")),".")
+ IF BEG<1 SET BEG=1410101
+ SET END=BEG_".24"
+ DO GETCOND^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ DO GETOBS^C0FHIR(.OUT,DFN,BEG,END,MAX)
  QUIT
  ;
 BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
@@ -27,12 +35,20 @@ BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
  ; REQ("START_DT")  = inclusive start date/time
  ; REQ("END_DT")    = inclusive end date/time
  ;
- NEW DFN
+ NEW BEG,DFN,END,MAX
  SET DFN=+$GET(REQ("DFN"))
  DO INIT(.OUT,"transaction")
  IF DFN<1 DO ERR("Missing required request value: DFN",.OUT) QUIT
+ SET BEG=+$GET(REQ("START_DT"))
+ IF BEG<1 SET BEG=1410101
+ SET END=$GET(REQ("END_DT"))
+ IF END="" SET END=4141015
+ SET MAX=+$GET(REQ("MAX"))
+ IF MAX<1 SET MAX=200
  DO GETPAT^C0FHIR(.OUT,DFN)
  DO ADDRNG(.REQ,.OUT)
+ DO GETCOND^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ DO GETOBS^C0FHIR(.OUT,DFN,BEG,END,MAX)
  QUIT
  ;
 INIT(OUT,BTYPE) ; Initialize Bundle container
