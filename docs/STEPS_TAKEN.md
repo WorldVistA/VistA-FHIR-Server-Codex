@@ -1,0 +1,23 @@
+# Steps Taken
+
+Use this file as a chronological log of concrete implementation work.
+
+## 2026-03-03
+- Established source convention: MUMPS routines go in `src/`.
+- Established documentation convention: detailed tracking files go in `docs/`.
+- Established namespace convention: use `C0FHIR` for all new MUMPS routines and new DDE entities.
+- Added starter routine scaffold in `src/C0FHIR.m`.
+- Added bundle dispatcher entry point `GETBNDL^C0FHIR`.
+- Added bundle orchestration scaffold routine `src/C0FHIRBU.m`.
+- Added documentation tracking structure in `docs/`.
+- Added namespace reference documentation in `docs/NAMING_CONVENTIONS.md`.
+- Added a Phase 1 resource naming map for routine names and DDE entity patterns.
+- Added bundle response requirements in `docs/BUNDLE_REQUIREMENTS.md`.
+
+## Template For New Entries
+- Date:
+- Change:
+- Files touched:
+- Reason:
+- Validation performed:
+- Next follow-up:
