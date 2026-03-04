@@ -13,7 +13,7 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 - Input: a specific encounter (and patient context as required).
 - Output: one bundle containing:
   - The requested `Encounter` resource.
-  - Supporting resources that are clinically or referentially required for that encounter (for example `Patient`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest` when linked).
+  - Supporting resources that are clinically or referentially required for that encounter (for example `Patient`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest`, `Immunization`, and laboratory `Observation` resources when linked/in-range).
 
 ### Date-Range Bundle
 - Input: patient and date range.
@@ -50,12 +50,16 @@ This project returns exactly one FHIR JSON `Bundle` per request.
   - `GETOBS^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `Observation` resources from vitals data.
   - `GETALGY^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `AllergyIntolerance` resources from allergy data.
   - `GETMED^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `MedicationRequest` resources from medication/order data.
+  - `GETIMM^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `Immunization` resources from immunization data.
+  - `GETLAB^C0FHIR(RTN,DFN,BEG,END,MAX)` appends laboratory `Observation` resources (chemistry/microbiology first pass).
 - Serializer helper:
   - `TOJSON^C0FHIRBU` (wraps `ENCODE^XLFJSON`)
 - First-version scope currently implemented:
-  - `Patient`, `Encounter`, `Condition`, `Observation`, `AllergyIntolerance`, and `MedicationRequest` bundle entries in transaction envelope.
+  - `Patient`, `Encounter`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest`, and `Immunization` bundle entries in transaction envelope.
   - Date-range encounter collection from `^AUPNVSIT("AET",DFN,...)`.
   - Problem-list condition loading via `GMPLUTL2` + `VPRDGMPL`.
   - Vital-sign observation loading via `GMRVUT0` + `VPRDGMV`.
+  - Laboratory observation loading (chemistry/microbiology first pass) via `LR7OR1` + `VPRDLR`.
   - Allergy loading via `GMRADPT` + `VPRDGMRA`.
   - Medication loading via `PSOORRL` + `VPRDPSOR`.
+  - Immunization loading via `VPRDPXIM`.

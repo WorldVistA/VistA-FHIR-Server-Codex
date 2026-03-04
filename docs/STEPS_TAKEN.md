@@ -25,6 +25,7 @@ Use this file as a chronological log of concrete implementation work.
 - Updated mode resolution so requests with no encounter/date filters default to all-encounters date-range behavior.
 - Added first-pass `Condition` and `Observation` resource builders and wired them into encounter/date-range bundle generation.
 - Added first-pass `AllergyIntolerance` and `MedicationRequest` resource builders and wired them into encounter/date-range bundle generation.
+- Added first-pass `Immunization` and laboratory (`Observation`) resource builders and wired them into encounter/date-range bundle generation.
 
 ## Template For New Entries
 - Date:

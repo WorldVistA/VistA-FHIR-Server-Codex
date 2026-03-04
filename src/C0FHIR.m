@@ -192,6 +192,8 @@ ISNUM(X) ; True if X is numeric
  IF Y="" QUIT 0
  IF Y?1.N QUIT 1
  IF Y?1.N1"."1.N QUIT 1
+ IF Y?1"-".N QUIT 1
+ IF Y?1"-".N1"."1.N QUIT 1
  QUIT 0
  ;
 GETALGY(RTN,DFN,BEG,END,MAX) ; Add AllergyIntolerance resources
@@ -365,6 +367,165 @@ MEDSTAT(X) ; Map VPR medication status to FHIR MedicationRequest status
  IF Y="HISTORICAL" QUIT "completed"
  IF Y="NOT ACTIVE" QUIT "stopped"
  QUIT "unknown"
+ ;
+GETIMM(RTN,DFN,BEG,END,MAX) ; Add Immunization resources
+ NEW CNT,IMM,VPRIDT,VPRN
+ DO ENSUREENV
+ SET DFN=+$GET(DFN)
+ IF DFN<1 QUIT
+ SET BEG=+$GET(BEG)
+ IF BEG<1 SET BEG=1410101
+ SET END=+$GET(END)
+ IF END<1 SET END=4141015
+ SET MAX=+$GET(MAX)
+ IF MAX<1 SET MAX=200
+ DO SORT^VPRDPXIM(DFN,BEG,END)
+ SET (CNT,VPRIDT)=0
+ FOR  SET VPRIDT=$ORDER(^TMP("VPRIMM",$J,VPRIDT)) Q:VPRIDT<1!(CNT'<MAX)  DO
+ . SET VPRN=0
+ . FOR  SET VPRN=$ORDER(^TMP("VPRIMM",$J,VPRIDT,VPRN)) Q:VPRN<1!(CNT'<MAX)  DO
+ .. KILL IMM
+ .. DO EN1^VPRDPXIM(VPRN,.IMM)
+ .. IF '$DATA(IMM) QUIT
+ .. DO SETIMM(.RTN,.IMM,DFN)
+ .. SET CNT=CNT+1
+ KILL ^TMP("VPRIMM",$J),^TMP("PXKENC",$J)
+ QUIT
+ ;
+SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
+ NEW CVX,DATE,DOSE,ID,IDX,SRC,SITE,STAT,UNITS
+ SET ID=+$GET(IMM("id"))
+ IF ID<1 QUIT
+ DO ADDRES^C0FHIRBU(.RTN,"Immunization","IM"_ID,.IDX)
+ SET RTN("entry",IDX,"resource","resourceType")="Immunization"
+ SET RTN("entry",IDX,"resource","id")="IM"_ID
+ SET STAT=$S(+$GET(IMM("contraindicated"))=1:"not-done",1:"completed")
+ SET RTN("entry",IDX,"resource","status")=STAT
+ SET RTN("entry",IDX,"resource","patient","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET DATE=+$GET(IMM("administered"))
+ IF DATE>0 SET RTN("entry",IDX,"resource","occurrenceDateTime")=$$FM2FHIR^C0FHIRBU(DATE)
+ IF $GET(IMM("name"))'="" SET RTN("entry",IDX,"resource","vaccineCode","text")=$GET(IMM("name"))
+ SET CVX=$GET(IMM("cvx"))
+ IF CVX'="" DO
+ . SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"system")="http://hl7.org/fhir/sid/cvx"
+ . SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"code")=$PIECE(CVX,"^")
+ . IF $PIECE(CVX,"^",2)'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"display")=$PIECE(CVX,"^",2)
+ IF $GET(IMM("cpt"))'="" DO
+ . SET RTN("entry",IDX,"resource","vaccineCode","coding",2,"system")="http://www.ama-assn.org/go/cpt"
+ . SET RTN("entry",IDX,"resource","vaccineCode","coding",2,"code")=$PIECE($GET(IMM("cpt")),"^")
+ . IF $PIECE($GET(IMM("cpt")),"^",2)'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",2,"display")=$PIECE($GET(IMM("cpt")),"^",2)
+ IF +$GET(IMM("encounter"))>0 SET RTN("entry",IDX,"resource","encounter","reference")=$$REFURL^C0FHIRBU("Encounter","E"_+$GET(IMM("encounter")))
+ IF $PIECE($GET(IMM("provider")),"^",2)'="" SET RTN("entry",IDX,"resource","performer",1,"actor","display")=$PIECE($GET(IMM("provider")),"^",2)
+ IF $PIECE($GET(IMM("orderingProvider")),"^",2)'="" SET RTN("entry",IDX,"resource","performer",2,"actor","display")=$PIECE($GET(IMM("orderingProvider")),"^",2)
+ IF $PIECE($GET(IMM("documentedBy")),"^",2)'="" SET RTN("entry",IDX,"resource","performer",3,"actor","display")=$PIECE($GET(IMM("documentedBy")),"^",2)
+ IF $GET(IMM("lot"))'="" SET RTN("entry",IDX,"resource","lotNumber")=$GET(IMM("lot"))
+ IF +$GET(IMM("expirationDate"))>0 SET RTN("entry",IDX,"resource","expirationDate")=$PIECE($$FM2FHIR^C0FHIRBU($GET(IMM("expirationDate"))),"T",1)
+ IF $GET(IMM("manufacturer"))'="" SET RTN("entry",IDX,"resource","manufacturer","display")=$GET(IMM("manufacturer"))
+ SET SRC=$GET(IMM("route"))
+ IF SRC'="" SET RTN("entry",IDX,"resource","route","text")=$SELECT($PIECE(SRC,"^",2)'="":$PIECE(SRC,"^",2),1:SRC)
+ SET SITE=$GET(IMM("bodySite"))
+ IF SITE'="" SET RTN("entry",IDX,"resource","site","text")=$SELECT($PIECE(SITE,"^",2)'="":$PIECE(SITE,"^",2),1:SITE)
+ SET DOSE=$GET(IMM("dose")),UNITS=$GET(IMM("units"))
+ IF $$ISNUM(DOSE) DO
+ . SET RTN("entry",IDX,"resource","doseQuantity","value")=+DOSE
+ . IF UNITS'="" SET RTN("entry",IDX,"resource","doseQuantity","unit")=UNITS
+ IF $GET(IMM("series"))'="" SET RTN("entry",IDX,"resource","protocolApplied",1,"seriesDosesString")=$GET(IMM("series"))
+ IF $GET(IMM("reaction"))'="" SET RTN("entry",IDX,"resource","note",1,"text")="Reaction: "_$GET(IMM("reaction"))
+ IF $GET(IMM("comment"))'="" SET RTN("entry",IDX,"resource","note",2,"text")=$GET(IMM("comment"))
+ IF $GET(IMM("source"))'="" DO
+ . SET SRC=$SELECT($PIECE($GET(IMM("source")),"^",2)'="":$PIECE($GET(IMM("source")),"^",2),$PIECE($GET(IMM("source")),"^",1)'="":$PIECE($GET(IMM("source")),"^",1),1:$GET(IMM("source")))
+ . SET RTN("entry",IDX,"resource","note",3,"text")="Source: "_SRC
+ QUIT
+ ;
+GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations (chemistry + micro)
+ NEW CNT,LRDFN
+ DO ENSUREENV
+ SET DFN=+$GET(DFN)
+ IF DFN<1 QUIT
+ SET LRDFN=+$GET(^DPT(DFN,"LR"))
+ IF LRDFN<1 QUIT
+ SET BEG=+$GET(BEG)
+ IF BEG<1 SET BEG=1410101
+ SET END=+$GET(END)
+ IF END<1 SET END=4141015
+ SET MAX=+$GET(MAX)
+ IF MAX<1 SET MAX=200
+ SET CNT=0
+ DO GETLBSUB(.RTN,DFN,BEG,END,MAX,"CH",.CNT,LRDFN)
+ IF CNT<MAX DO GETLBSUB(.RTN,DFN,BEG,END,MAX,"MI",.CNT,LRDFN)
+ QUIT
+ ;
+GETLBSUB(RTN,DFN,BEG,END,MAX,SUB,CNT,LRDFN) ; Extract one lab subdomain
+ NEW LIM,LINE,ORD,VPRIDT,VPRP
+ SET LIM=MAX-CNT
+ IF LIM<1 QUIT
+ KILL ^TMP("LRRR",$J,DFN)
+ DO RR^LR7OR1(DFN,,BEG,END,SUB,,,LIM)
+ SET VPRIDT=0
+ FOR  SET VPRIDT=$ORDER(^TMP("LRRR",$J,DFN,SUB,VPRIDT)) Q:VPRIDT<1!(CNT'<MAX)  DO
+ . SET VPRP=0
+ . FOR  SET VPRP=$ORDER(^TMP("LRRR",$J,DFN,SUB,VPRIDT,VPRP)) Q:VPRP<1!(CNT'<MAX)  DO
+ .. SET ORD=""
+ .. SET LINE=$S(SUB="CH":$$CH^VPRDLR,1:$$MI^VPRDLR)
+ .. IF LINE="" QUIT
+ .. DO SETLAB(.RTN,LINE,SUB,DFN,$GET(ORD))
+ .. SET CNT=CNT+1
+ KILL ^TMP("LRRR",$J,DFN)
+ QUIT
+ ;
+SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
+ NEW ID,IDX,LOINC,NAME,RES,RID,UNIT,VUID
+ SET ID=$PIECE($GET(LINE),"^",1)
+ IF ID="" QUIT
+ SET RID=$$LABID(ID)
+ DO ADDRES^C0FHIRBU(.RTN,"Observation",RID,.IDX)
+ SET RTN("entry",IDX,"resource","resourceType")="Observation"
+ SET RTN("entry",IDX,"resource","id")=RID
+ SET RTN("entry",IDX,"resource","status")="final"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="laboratory"
+ SET NAME=$PIECE($GET(LINE),"^",2)
+ IF NAME'="" SET RTN("entry",IDX,"resource","code","text")=NAME
+ SET LOINC=$PIECE($GET(LINE),"^",9)
+ IF LOINC'="" DO
+ . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code")=LOINC
+ SET VUID=$PIECE($GET(LINE),"^",10)
+ IF VUID'="" DO
+ . SET RTN("entry",IDX,"resource","code","coding",2,"system")="urn:va:vuid"
+ . SET RTN("entry",IDX,"resource","code","coding",2,"code")=VUID
+ SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET RTN("entry",IDX,"resource","effectiveDateTime")=$$LABDT($PIECE(ID,";",2))
+ SET RES=$PIECE($GET(LINE),"^",3),UNIT=$PIECE($GET(LINE),"^",5)
+ IF $$ISNUM(RES) DO  QUIT
+ . SET RTN("entry",IDX,"resource","valueQuantity","value")=+RES
+ . IF UNIT'="" SET RTN("entry",IDX,"resource","valueQuantity","unit")=UNIT
+ . DO LABMETA(.RTN,IDX,LINE,ORD)
+ IF RES'="" SET RTN("entry",IDX,"resource","valueString")=RES
+ DO LABMETA(.RTN,IDX,LINE,ORD)
+ QUIT
+ ;
+LABMETA(RTN,IDX,LINE,ORD) ; Add lab interpretation/range/order metadata
+ NEW HI,INT,LOW,PERF
+ SET INT=$PIECE($GET(LINE),"^",4)
+ IF INT'="" SET RTN("entry",IDX,"resource","interpretation",1,"text")=INT
+ SET LOW=$PIECE($GET(LINE),"^",6),HI=$PIECE($GET(LINE),"^",7)
+ IF LOW'=""!(HI'="") SET RTN("entry",IDX,"resource","referenceRange",1,"text")=LOW_" - "_HI
+ IF $GET(ORD)="" SET ORD=$PIECE($GET(LINE),"^",11)
+ IF ORD'="" SET RTN("entry",IDX,"resource","note",1,"text")="Lab order ID: "_ORD
+ SET PERF=$PIECE($GET(LINE),"^",12)
+ IF PERF'="" SET RTN("entry",IDX,"resource","performer",1,"display")=PERF
+ QUIT
+ ;
+LABDT(X) ; Convert inverse FM date piece from lab id to FHIR dateTime
+ NEW Y
+ SET Y=+$GET(X)
+ IF Y<1 QUIT ""
+ SET Y=9999999-Y
+ QUIT $$FM2FHIR^C0FHIRBU(Y)
+ ;
+LABID(X) ; Normalize lab id to FHIR-safe id
+ QUIT "L"_$TRANSLATE($GET(X),";#","--")
  ;
 GETFHIR(RTN,FILTER) ; Web service entry point
  ; FILTER contains URL parameters, for example FILTER("dfn")=12345
