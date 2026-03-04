@@ -26,11 +26,14 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 - Bundle `type` is:
   - `collection` for encounter-centric requests.
   - `searchset` for date-range requests.
+- JSON output is encoded using `ENCODE^XLFJSON`.
 - Errors are returned as `OperationOutcome`.
 
 ## Implementation Notes
 - Entry points:
   - `GETBNDL^C0FHIR`
+  - `GETBNDLJ^C0FHIR`
   - `BYENC^C0FHIRBU`
   - `BYDATE^C0FHIRBU`
-- Final JSON serialization layer is required to convert local M structures to JSON text.
+- Serializer helper:
+  - `TOJSON^C0FHIRBU` (wraps `ENCODE^XLFJSON`)

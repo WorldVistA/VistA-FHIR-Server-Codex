@@ -16,7 +16,7 @@ BYENC(REQ,OUT) ; Encounter bundle with supporting resources
  ; 2) Add encounter resource to the Bundle.
  ; 3) Follow supporting references across required domains.
  ; 4) De-duplicate resources by resourceType/id.
- ; 5) Serialize one JSON Bundle response.
+ ; 5) Encode one JSON Bundle response with ENCODE^XLFJSON.
  DO INIT(.OUT,"collection")
  QUIT
  ;
@@ -31,7 +31,7 @@ BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
  ; 2) Add encounter resources to the Bundle.
  ; 3) Add related resources needed to support each encounter.
  ; 4) De-duplicate resources by resourceType/id.
- ; 5) Serialize one JSON Bundle response.
+ ; 5) Encode one JSON Bundle response with ENCODE^XLFJSON.
  DO INIT(.OUT,"searchset")
  QUIT
  ;
@@ -56,4 +56,12 @@ ERR(MSG,OUT) ; Build OperationOutcome-like error payload
  SET OUT("issue",1,"severity")="error"
  SET OUT("issue",1,"code")="processing"
  SET OUT("issue",1,"diagnostics")=$GET(MSG)
+ QUIT
+ ;
+TOJSON(IN,OUT,ERR) ; Encode a local M structure with ENCODE^XLFJSON
+ ; IN  = local array by reference
+ ; OUT = encoded JSON output nodes
+ ; ERR = encoder error array
+ KILL OUT,ERR
+ DO ENCODE^XLFJSON("IN","OUT","ERR")
  QUIT

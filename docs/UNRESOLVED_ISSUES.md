@@ -3,13 +3,8 @@
 Track known issues that are not yet solved.
 
 ## Current Issues
-- Issue: Final JSON serialization mechanism for bundle responses is not selected.
-  - Impact: Bundle assembly can proceed, but API cannot return final JSON text until serializer approach is finalized.
-  - Affected files/components: `src/C0FHIR.m`, `src/C0FHIRBU.m`, response layer.
-  - Workaround (if any): Build local M structures first; serialize in a later integration step.
-  - Owner: George Lilly
-  - Target resolution date:
-  - Status: Open
+- No unresolved implementation issues logged yet.
+- Resolved 2026-03-03: JSON serialization standard selected as `ENCODE^XLFJSON`.
 
 ## Template For New Issues
 - Issue:

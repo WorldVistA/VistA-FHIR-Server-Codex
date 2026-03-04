@@ -14,6 +14,7 @@ Use this file as a chronological log of concrete implementation work.
 - Added a Phase 1 resource naming map for routine names and DDE entity patterns.
 - Added bundle response requirements in `docs/BUNDLE_REQUIREMENTS.md`.
 - Added `docs/PROJECT_CONTEXT_PUBLIC.md` as a repository-safe context document.
+- Selected `ENCODE^XLFJSON` as the JSON encoding standard and added `GETBNDLJ^C0FHIR` / `TOJSON^C0FHIRBU` scaffolding.
 
 ## Template For New Entries
 - Date:

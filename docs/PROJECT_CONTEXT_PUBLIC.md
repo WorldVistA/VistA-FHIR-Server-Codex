@@ -23,6 +23,7 @@ This file is the shareable, repository-safe project context for implementation a
 ## Constraints
 - Implementation language/runtime: M (MUMPS) on VistA.
 - Namespace rule: all new routines and new DDE entities use the `C0FHIR` prefix.
+- JSON serialization standard: `ENCODE^XLFJSON`.
 - Compliance target: VistA standards and HL7 FHIR R4.
 
 ## Scope
@@ -36,6 +37,7 @@ This file is the shareable, repository-safe project context for implementation a
 ## Key Decisions
 - `C0FHIR` is the required namespace prefix for all new MUMPS routines and new DDE entities.
 - One multi-domain FHIR `Bundle` is returned per request.
+- `ENCODE^XLFJSON` is the standard serializer for bundle JSON output.
 
 ## Related Documentation
 - `docs/BUNDLE_REQUIREMENTS.md`
