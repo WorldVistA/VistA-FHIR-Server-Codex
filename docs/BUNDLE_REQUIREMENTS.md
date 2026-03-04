@@ -23,9 +23,7 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 
 ## Response Contract
 - Response `resourceType` is always `Bundle`.
-- Bundle `type` is:
-  - `collection` for encounter-centric requests.
-  - `searchset` for date-range requests.
+- Bundle `type` is `transaction` (v1 target based on source sample bundles).
 - JSON output is encoded using `ENCODE^XLFJSON`.
 - Errors are returned as `OperationOutcome`.
 - Web service entry point is `GETFHIR^C0FHIR(RTN,FILTER)`.
@@ -45,5 +43,9 @@ This project returns exactly one FHIR JSON `Bundle` per request.
   - `BYDATE^C0FHIRBU`
 - Resource builders:
   - `GETPAT^C0FHIR(RTN,DFN)` appends the `Patient` resource into the in-flight bundle array.
+  - `GETENC^C0FHIR(RTN,ENCIEN,DFN)` appends an `Encounter` resource into the in-flight bundle array.
 - Serializer helper:
   - `TOJSON^C0FHIRBU` (wraps `ENCODE^XLFJSON`)
+- First-version scope currently implemented:
+  - `Patient` + `Encounter` bundle entries in transaction envelope.
+  - Date-range encounter collection from `^AUPNVSIT("AET",DFN,...)`.
