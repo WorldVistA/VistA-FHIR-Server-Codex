@@ -33,6 +33,8 @@ This project returns exactly one FHIR JSON `Bundle` per request.
   - `FILTER("start")=<fm-date-time>`
   - `FILTER("end")=<fm-date-time>`
   - `FILTER("mode")="encounter"` or `"daterange"` (optional when inferable)
+- Default mode behavior:
+  - If no `encounter`, `start`, or `end` is provided, mode defaults to `daterange` and returns all encounters for the patient (subject to `max`).
 
 ## Implementation Notes
 - Entry points:

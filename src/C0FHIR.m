@@ -17,7 +17,7 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  IF DFN<1 QUIT
  DO ADDRES^C0FHIRBU(.RTN,"Patient",DFN,.IDX)
  SET X0=$GET(^DPT(DFN,0))
- SET NAME=$PIECE(X0,U)
+ SET NAME=$PIECE(X0,"^")
  SET RTN("entry",IDX,"resource","resourceType")="Patient"
  SET RTN("entry",IDX,"resource","id")=DFN
  IF NAME'="" DO
@@ -26,11 +26,11 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  . SET GIV=$$TRIM($PIECE(NAME,",",2,99))
  . IF FAM'="" SET RTN("entry",IDX,"resource","name",1,"family")=FAM
  . IF GIV'="" SET RTN("entry",IDX,"resource","name",1,"given",1)=GIV
- SET SEX=$PIECE(X0,U,2)
+ SET SEX=$PIECE(X0,"^",2)
  IF SEX'="" SET RTN("entry",IDX,"resource","gender")=$$GENDER(SEX)
- SET DOB=+$PIECE(X0,U,3)
+ SET DOB=+$PIECE(X0,"^",3)
  IF DOB>0 SET RTN("entry",IDX,"resource","birthDate")=$PIECE($$FM2FHIR^C0FHIRBU(DOB),"T",1)
- SET SSN=$PIECE(X0,U,9)
+ SET SSN=$PIECE(X0,"^",9)
  IF SSN?9N DO
  . SET RTN("entry",IDX,"resource","identifier",1,"system")="http://hl7.org/fhir/sid/us-ssn"
  . SET RTN("entry",IDX,"resource","identifier",1,"value")=SSN
@@ -52,7 +52,7 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  IF +$GET(DFN)>0 SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
  IF +$GET(ENC("dateTime"))>0 SET RTN("entry",IDX,"resource","period","start")=$$FM2FHIR^C0FHIRBU(ENC("dateTime"))
  IF +$GET(ENC("departureDateTime"))>0 SET RTN("entry",IDX,"resource","period","end")=$$FM2FHIR^C0FHIRBU(ENC("departureDateTime"))
- SET TYPE=$PIECE($GET(ENC("type")),U,2)
+ SET TYPE=$PIECE($GET(ENC("type")),"^",2)
  IF TYPE'="" SET RTN("entry",IDX,"resource","type",1,"text")=TYPE
  QUIT
  ;
@@ -94,11 +94,14 @@ GETBNDLJ(REQ,OUT,ERR) ; Return one Bundle response encoded as JSON
  QUIT
  ;
 MAPFILT(FILTER,REQ) ; Map URL parameters into request structure
+ NEW ENDVAL,STARTVAL
  KILL REQ
  SET REQ("DFN")=$SELECT($GET(FILTER("dfn"))'="":$GET(FILTER("dfn")),1:$GET(FILTER("DFN")))
  SET REQ("ENCOUNTER")=$SELECT($GET(FILTER("encounter"))'="":$GET(FILTER("encounter")),1:$GET(FILTER("ENCOUNTER")))
- SET REQ("START_DT")=$SELECT($GET(FILTER("start"))'="":$GET(FILTER("start")),1:$GET(FILTER("START")))
- SET REQ("END_DT")=$SELECT($GET(FILTER("end"))'="":$GET(FILTER("end")),1:$GET(FILTER("END")))
+ SET STARTVAL=$$PARSEFM($SELECT($GET(FILTER("start"))'="":$GET(FILTER("start")),1:$GET(FILTER("START"))))
+ IF STARTVAL'="" SET REQ("START_DT")=STARTVAL
+ SET ENDVAL=$$PARSEFM($SELECT($GET(FILTER("end"))'="":$GET(FILTER("end")),1:$GET(FILTER("END"))))
+ IF ENDVAL'="" SET REQ("END_DT")=ENDVAL
  SET REQ("MODE")=$$UPCASE($SELECT($GET(FILTER("mode"))'="":$GET(FILTER("mode")),1:$GET(FILTER("MODE"))))
  SET REQ("MAX")=$SELECT($GET(FILTER("max"))'="":+$GET(FILTER("max")),1:+$GET(FILTER("MAX")))
  QUIT
@@ -108,10 +111,13 @@ REQMODE(REQ) ; Resolve request mode from mapped parameters
  SET MODE=$GET(REQ("MODE"))
  IF MODE="ENCOUNTER" QUIT "ENCOUNTER"
  IF MODE="DATERANGE" QUIT "DATERANGE"
+ IF MODE'="" QUIT ""
  IF $GET(REQ("ENCOUNTER"))'="" QUIT "ENCOUNTER"
  IF $GET(REQ("START_DT"))'="" QUIT "DATERANGE"
  IF $GET(REQ("END_DT"))'="" QUIT "DATERANGE"
- QUIT ""
+ ; Default behavior: if no encounter/date filters are supplied,
+ ; return all encounters for the patient.
+ QUIT "DATERANGE"
  ;
 UPCASE(X) ; Upper-case helper without external dependencies
  NEW C,I,Y
@@ -135,3 +141,14 @@ TRIM(X) ; Remove leading and trailing spaces
  FOR  QUIT:$EXTRACT(Y,1)'=" "  SET Y=$EXTRACT(Y,2,$LENGTH(Y))
  FOR  QUIT:$EXTRACT(Y,$LENGTH(Y))'=" "  SET Y=$EXTRACT(Y,1,$LENGTH(Y)-1)
  QUIT Y
+ ;
+PARSEFM(X) ; Parse URL date value to FileMan date/time
+ ; Supports direct FM numbers and expressions like T, T-30, NOW.
+ NEW %DT,Y
+ SET X=$$TRIM($GET(X))
+ IF X="" QUIT ""
+ IF X?1.N QUIT X
+ SET %DT="TS"
+ DO ^%DT
+ IF Y>0 QUIT Y
+ QUIT ""
