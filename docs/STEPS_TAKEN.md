@@ -31,6 +31,10 @@ Use this file as a chronological log of concrete implementation work.
 - Added graph-store `DFN` index guidance (`^%wd(17.040801,3,"DFN",DFN,IEN)`) for tracing patients back to original imported Synthea source records.
 - Added explicit graph-store JSON retrieval pattern (`gtree/%25wd(17.040801,3,<IEN>,%22json%22)`) with example IEN lookup workflow.
 - Added graph-store load log retrieval pattern (`gtree/%25wd(17.040801,3,<IEN>,%22load%22)`) and documented how it supports import-vs-mapping parity debugging.
+- Replaced fragile `VPRDLR` helper calls in lab extraction with direct normalized line building from `^TMP("LRRR",...)` to avoid hidden local-variable assumptions.
+- Normalized non-canonical FileMan time components (overflow seconds/minutes) before FHIR `dateTime` serialization.
+- Switched response envelope semantics for `GET /fhir` to `Bundle.type="collection"`, removed transaction request metadata, and moved entry `fullUrl` generation to valid `urn:uuid:<uuid>` values.
+- Added post-encoding JSON normalization for numeric-literal `id` and `code` keys so those fields emit as JSON strings.
 
 ## Template For New Entries
 - Date:

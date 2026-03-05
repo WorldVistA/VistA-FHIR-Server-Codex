@@ -14,7 +14,7 @@ BYENC(REQ,OUT) ; Encounter bundle with supporting resources
  NEW BEG,DFN,ENC,END,MAX,VID
  SET DFN=+$GET(REQ("DFN"))
  SET VID=$$ENCIEN($GET(REQ("ENCOUNTER")))
- DO INIT(.OUT,"transaction")
+ DO INIT(.OUT,"collection")
  IF DFN<1 DO ERR("Missing required request value: DFN",.OUT) QUIT
  IF VID<1 DO ERR("Missing or invalid request value: ENCOUNTER",.OUT) QUIT
  SET MAX=+$GET(REQ("MAX"))
@@ -41,7 +41,7 @@ BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
  ;
  NEW BEG,DFN,END,MAX
  SET DFN=+$GET(REQ("DFN"))
- DO INIT(.OUT,"transaction")
+ DO INIT(.OUT,"collection")
  IF DFN<1 DO ERR("Missing required request value: DFN",.OUT) QUIT
  SET BEG=+$GET(REQ("START_DT"))
  IF BEG<1 SET BEG=1410101
@@ -61,8 +61,9 @@ BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
  ;
 INIT(OUT,BTYPE) ; Initialize Bundle container
  KILL OUT
+ KILL ^TMP("C0FHIRBU",$J,"UUID")
  SET OUT("resourceType")="Bundle"
- SET OUT("type")=$GET(BTYPE,"transaction")
+ SET OUT("type")=$GET(BTYPE,"collection")
  QUIT
  ;
 ADDRNG(REQ,OUT) ; Add encounters for a patient date range
@@ -104,15 +105,36 @@ ADDRES(OUT,RTYPE,RID,IDX) ; Add de-duplicated Bundle entry metadata
  SET OUT("entry",IDX,"fullUrl")=$$REFURL(RTYPE,RID)
  SET OUT("entry",IDX,"resource","resourceType")=$GET(RTYPE)
  SET OUT("entry",IDX,"resource","id")=$GET(RID)
- SET OUT("entry",IDX,"request","method")="POST"
- SET OUT("entry",IDX,"request","url")=$GET(RTYPE)
  QUIT
  ;
 KEY(RTYPE,RID) ; Build a de-duplication key
  QUIT $GET(RTYPE)_"|"_$$SAFE($GET(RID))
  ;
 REFURL(RTYPE,RID) ; Build a deterministic urn:uuid fullUrl
- QUIT "urn:uuid:"_$TRANSLATE($GET(RTYPE)_"-"_$$SAFE($GET(RID))," ","-")
+ NEW KEY,UUID
+ SET KEY=$$KEY(RTYPE,RID)
+ SET UUID=$GET(^TMP("C0FHIRBU",$J,"UUID",KEY))
+ IF UUID="" DO
+ . SET UUID=$$NEWUUID()
+ . SET ^TMP("C0FHIRBU",$J,"UUID",KEY)=UUID
+ QUIT "urn:uuid:"_UUID
+ ;
+NEWUUID() ; Return an RFC4122-style UUID string
+ NEW U
+ IF $TEXT(UUID^XLFUUID)'="" DO
+ . SET U=$$UUID^XLFUUID
+ . SET U=$TRANSLATE($GET(U),"{}","")
+ IF U'="" QUIT U
+ SET U=$$RANDHEX(8)_"-"_$$RANDHEX(4)_"-"_$$RANDHEX(4)_"-"_$$RANDHEX(4)_"-"_$$RANDHEX(12)
+ SET $EXTRACT(U,15)="4"
+ SET $EXTRACT(U,20)=$EXTRACT("89ab",$RANDOM(4)+1)
+ QUIT U
+ ;
+RANDHEX(N) ; Return N random lowercase hex characters
+ NEW I,S
+ SET S=""
+ FOR I=1:1:+$GET(N) SET S=S_$EXTRACT("0123456789abcdef",$RANDOM(16)+1)
+ QUIT S
  ;
 PATREF(DFN) ; Return the patient fullUrl reference
  QUIT $$REFURL("Patient",+$GET(DFN))
@@ -151,7 +173,12 @@ PAD2(X) ; Left-pad a numeric value to two digits
  QUIT Y
  ;
 FINAL(OUT) ; Remove internal-only nodes before JSON encoding
+ NEW IDX
+ IF $GET(OUT("type"))'="transaction",$GET(OUT("type"))'="batch" DO
+ . SET IDX=0
+ . FOR  SET IDX=$ORDER(OUT("entry",IDX)) Q:IDX<1  KILL OUT("entry",IDX,"request")
  KILL OUT("index")
+ KILL ^TMP("C0FHIRBU",$J,"UUID")
  QUIT
  ;
 ERR(MSG,OUT) ; Build OperationOutcome-like error payload
@@ -169,4 +196,39 @@ TOJSON(IN,OUT,ERR) ; Encode a local M structure with ENCODE^XLFJSON
  DO FINAL(.IN)
  KILL OUT,ERR
  DO ENCODE^XLFJSON("IN","OUT","ERR")
+ DO FORCESTR(.OUT)
+ QUIT
+ ;
+FORCESTR(OUT) ; Ensure id/code numeric JSON literals are emitted as strings
+ NEW I
+ SET I=""
+ FOR  SET I=$ORDER(OUT(I)) Q:I=""  DO
+ . SET OUT(I)=$$QKEY($GET(OUT(I)),"id")
+ . SET OUT(I)=$$QKEY($GET(OUT(I)),"code")
+ QUIT
+ ;
+QKEY(LINE,KEY) ; Quote integer JSON literal for named key
+ NEW CH,NUM,PAT,POS,SCAN,START,STOP
+ SET PAT=""""_$GET(KEY)_""":"
+ SET POS=1
+ FOR  SET POS=$FIND(LINE,PAT,POS) Q:'POS  DO
+ . SET SCAN=POS
+ . FOR  Q:SCAN>$LENGTH(LINE)!($EXTRACT(LINE,SCAN)'=" ")  SET SCAN=SCAN+1
+ . IF SCAN>$LENGTH(LINE) QUIT
+ . SET CH=$EXTRACT(LINE,SCAN)
+ . IF CH="""" QUIT  ; already a JSON string
+ . IF CH'="-",CH'?1N QUIT
+ . SET START=SCAN,STOP=SCAN
+ . FOR  SET CH=$EXTRACT(LINE,STOP) Q:CH=""!(((CH?1N)=0)&(CH'="-"))  SET STOP=STOP+1
+ . SET NUM=$EXTRACT(LINE,START,STOP-1)
+ . IF '$$ISINT(NUM) QUIT
+ . SET LINE=$EXTRACT(LINE,1,START-1)_""""_NUM_""""_$EXTRACT(LINE,STOP,$LENGTH(LINE))
+ . SET POS=STOP+2
+ QUIT LINE
+ ;
+ISINT(X) ; True if X is an integer literal
+ NEW Y
+ SET Y=$GET(X)
+ IF Y?1.N QUIT 1
+ IF Y?1"-".N QUIT 1
  QUIT

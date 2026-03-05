@@ -23,7 +23,8 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 
 ## Response Contract
 - Response `resourceType` is always `Bundle`.
-- Bundle `type` is `transaction` (v1 target based on source sample bundles).
+- Bundle `type` is `collection` for `GET /fhir` read responses.
+- Entry `fullUrl` values use `urn:uuid:<uuid>` format with valid UUIDs.
 - JSON output is encoded using `ENCODE^XLFJSON`.
 - Errors are returned as `OperationOutcome`.
 - Web service entry point is `GETFHIR^C0FHIR(RTN,FILTER)`.
@@ -55,7 +56,7 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 - Serializer helper:
   - `TOJSON^C0FHIRBU` (wraps `ENCODE^XLFJSON`)
 - First-version scope currently implemented:
-  - `Patient`, `Encounter`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest`, and `Immunization` bundle entries in transaction envelope.
+  - `Patient`, `Encounter`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest`, and `Immunization` bundle entries in collection envelope.
   - Date-range encounter collection from `^AUPNVSIT("AET",DFN,...)`.
   - Problem-list condition loading via `GMPLUTL2` + `VPRDGMPL`.
   - Vital-sign observation loading via `GMRVUT0` + `VPRDGMV`.
