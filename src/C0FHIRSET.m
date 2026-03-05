@@ -14,7 +14,7 @@ RPC ; Register/update RPC in File #8994
  NEW DESC,ERR,FDA,IEN,NAME,RPCIEN
  SET NAME="C0FHIR GET FULL BUNDLE"
  WRITE !,"Registering/updating RPC: "_NAME_"..."
- SET RPCIEN=+$$FIND1^DIC(8994,"","X",NAME)
+ SET RPCIEN=$$RPCIEN(NAME)
  SET IEN=$SELECT(RPCIEN>0:RPCIEN_",",1:"+1,")
  SET FDA(8994,IEN,.01)=NAME
  SET FDA(8994,IEN,.02)="GENFULL"
@@ -80,7 +80,7 @@ OPT ; Create/update context option (#19)
  IF OPTIEN<1 WRITE " Failed." QUIT
  ;
  ; Attach RPC to option
- SET RPCIEN=+$$FIND1^DIC(8994,"","X","C0FHIR GET FULL BUNDLE")
+ SET RPCIEN=$$RPCIEN("C0FHIR GET FULL BUNDLE")
  IF RPCIEN<1 WRITE " RPC missing." QUIT
  IF '$DATA(^DIC(19,OPTIEN,10,"B",RPCIEN)) DO
  . KILL FDA,ERR
@@ -88,4 +88,7 @@ OPT ; Create/update context option (#19)
  . DO UPDATE^DIE("","FDA","","ERR")
  WRITE " Success."
  QUIT
+ ;
+RPCIEN(NAME) ; Lookup RPC IEN in file #8994 by name
+ QUIT +$ORDER(^XWB(8994,"B",$GET(NAME),0))
  ;
