@@ -35,6 +35,9 @@ Use this file as a chronological log of concrete implementation work.
 - Normalized non-canonical FileMan time components (overflow seconds/minutes) before FHIR `dateTime` serialization.
 - Switched response envelope semantics for `GET /fhir` to `Bundle.type="collection"`, removed transaction request metadata, and moved entry `fullUrl` generation to valid `urn:uuid:<uuid>` values.
 - Added post-encoding JSON normalization for numeric-literal `id` and `code` keys so those fields emit as JSON strings.
+- Added RPC entry points `RPCFHIR^C0FHIR` (scalar params) and `RPCFHIRA^C0FHIR` (array params) as wrappers to the existing `GETFHIR^C0FHIR` request flow.
+- Added RPC gateway routine `src/C0FHIRGF.m` with `GENFULL^C0FHIRGF` for Broker-compatible parameter naming (`DFN,ENCPTR,SDT,EDT,MAX,MODE`).
+- Added environment setup routine `src/C0FHIRSET.m` to register/update RPC `C0FHIR GET FULL BUNDLE` and context option `C0FHIR CONTEXT` in files `#8994` and `#19`.
 
 ## Template For New Entries
 - Date:

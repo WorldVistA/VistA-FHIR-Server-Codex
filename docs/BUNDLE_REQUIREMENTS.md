@@ -28,6 +28,10 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 - JSON output is encoded using `ENCODE^XLFJSON`.
 - Errors are returned as `OperationOutcome`.
 - Web service entry point is `GETFHIR^C0FHIR(RTN,FILTER)`.
+- RPC entry points are:
+  - `RPCFHIR^C0FHIR(RTN,DFN,ENC,START,END,MAX,MODE)` (scalar parameters)
+  - `RPCFHIRA^C0FHIR(RTN,FILTER)` (array parameters)
+  - `GENFULL^C0FHIRGF(RTN,DFN,ENCPTR,SDT,EDT,MAX,MODE)` (Broker-oriented RPC wrapper)
 - URL parameters are passed in `FILTER`, for example:
   - `FILTER("dfn")=12345`
   - `FILTER("encounter")=<enc-id>`
@@ -40,10 +44,15 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 ## Implementation Notes
 - Entry points:
   - `GETFHIR^C0FHIR`
+  - `RPCFHIR^C0FHIR`
+  - `RPCFHIRA^C0FHIR`
+  - `GENFULL^C0FHIRGF`
   - `GETBNDL^C0FHIR`
   - `GETBNDLJ^C0FHIR`
   - `BYENC^C0FHIRBU`
   - `BYDATE^C0FHIRBU`
+- Environment/setup helper:
+  - `EN^C0FHIRSET` registers RPC `C0FHIR GET FULL BUNDLE` and context option `C0FHIR CONTEXT`.
 - Resource builders:
   - `GETPAT^C0FHIR(RTN,DFN)` appends the `Patient` resource into the in-flight bundle array.
   - `GETENC^C0FHIR(RTN,ENCIEN,DFN)` appends an `Encounter` resource into the in-flight bundle array.

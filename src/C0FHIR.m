@@ -576,6 +576,37 @@ LABDT(X) ; Convert inverse FM date piece from lab id to FHIR dateTime
 LABID(X) ; Normalize lab id to FHIR-safe id
  QUIT "L"_$TRANSLATE($GET(X),";#","--")
  ;
+RPCFHIR(RTN,DFN,ENC,START,END,MAX,MODE) ; RPC entry point (scalar params)
+ ; Broker-friendly wrapper around GETFHIR.
+ ; Inputs:
+ ;   DFN   - required patient identifier
+ ;   ENC   - optional encounter id
+ ;   START - optional start date (FM or %DT expression, e.g. T-30)
+ ;   END   - optional end date (FM or %DT expression, e.g. NOW)
+ ;   MAX   - optional numeric cap on resources
+ ;   MODE  - optional ENCOUNTER or DATERANGE
+ NEW FILTER
+ KILL RTN
+ IF $GET(DFN)'="" SET FILTER("dfn")=$GET(DFN)
+ IF $GET(ENC)'="" SET FILTER("encounter")=$GET(ENC)
+ IF $GET(START)'="" SET FILTER("start")=$GET(START)
+ IF $GET(END)'="" SET FILTER("end")=$GET(END)
+ IF +$GET(MAX)>0 SET FILTER("max")=+$GET(MAX)
+ IF $GET(MODE)'="" SET FILTER("mode")=$GET(MODE)
+ DO GETFHIR(.RTN,.FILTER)
+ QUIT
+ ;
+RPCFHIRA(RTN,FILTER) ; RPC entry point (array params)
+ ; FILTER mirrors web entry parameter names, for example:
+ ;   FILTER("dfn")=12345
+ ;   FILTER("encounter")=<enc-id>
+ ;   FILTER("start")=<fm-date-time or %DT expression>
+ ;   FILTER("end")=<fm-date-time or %DT expression>
+ ;   FILTER("max")=<n>
+ ;   FILTER("mode")="encounter" or "daterange"
+ DO GETFHIR(.RTN,.FILTER)
+ QUIT
+ ;
 GETFHIR(RTN,FILTER) ; Web service entry point
  ; FILTER contains URL parameters, for example FILTER("dfn")=12345
  ; RTN returns JSON output nodes from ENCODE^XLFJSON
