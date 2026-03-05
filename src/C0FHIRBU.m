@@ -133,10 +133,22 @@ FM2FHIR(FMDT) ; Convert FileMan date/time to FHIR date/dateTime
  IF M="" SET M="01"
  IF DAY="" SET DAY="01"
  IF $PIECE($GET(FMDT),".")=$GET(FMDT) QUIT Y_"-"_M_"-"_DAY
- SET T=$PIECE($GET(FMDT),".",2)_"000000"
- SET HH=$EXTRACT(T,1,2),MM=$EXTRACT(T,3,4),SS=$EXTRACT(T,5,6)
+ SET T=$EXTRACT($PIECE($GET(FMDT),".",2)_"000000",1,6)
+ SET HH=+$EXTRACT(T,1,2),MM=+$EXTRACT(T,3,4),SS=+$EXTRACT(T,5,6)
+ ; Lab inverse-date arithmetic can yield non-canonical times (for example seconds=64);
+ ; normalize to valid clock values before emitting FHIR dateTime.
+ IF SS>59 SET MM=MM+(SS\60),SS=SS#60
+ IF MM>59 SET HH=HH+(MM\60),MM=MM#60
+ IF HH>23 SET HH=23,MM=59,SS=59
+ SET HH=$$PAD2(HH),MM=$$PAD2(MM),SS=$$PAD2(SS)
  SET S=Y_"-"_M_"-"_DAY_"T"_HH_":"_MM_":"_SS_"Z"
  QUIT S
+ ;
+PAD2(X) ; Left-pad a numeric value to two digits
+ NEW Y
+ SET Y=+$GET(X)
+ IF Y<10 QUIT "0"_Y
+ QUIT Y
  ;
 FINAL(OUT) ; Remove internal-only nodes before JSON encoding
  KILL OUT("index")
