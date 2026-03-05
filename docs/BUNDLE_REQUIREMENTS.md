@@ -29,15 +29,21 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 - Errors are returned as `OperationOutcome`.
 - Web service entry point is `GETFHIR^C0FHIR(RTN,FILTER)`.
 - RPC entry points are:
-  - `RPCFHIR^C0FHIR(RTN,DFN,ENC,START,END,MAX,MODE)` (scalar parameters)
+  - `RPCFHIR^C0FHIR(RTN,DFN,ENC,START,END,MAX,MODE,DOMAINS)` (scalar parameters)
   - `RPCFHIRA^C0FHIR(RTN,FILTER)` (array parameters)
-  - `GENFULL^C0FHIRGF(RTN,DFN,ENCPTR,SDT,EDT,MAX,MODE)` (Broker-oriented RPC wrapper)
+  - `GENFULL^C0FHIRGF(RTN,DFN,ENCPTR,SDT,EDT,MAX,MODE,DOMAINS)` (Broker-oriented RPC wrapper)
 - URL parameters are passed in `FILTER`, for example:
   - `FILTER("dfn")=12345`
   - `FILTER("encounter")=<enc-id>`
   - `FILTER("start")=<fm-date-time>`
   - `FILTER("end")=<fm-date-time>`
+  - `FILTER("domains")="encounter,condition,vitals,labs"` (optional)
   - `FILTER("mode")="encounter"` or `"daterange"` (optional when inferable)
+- Supported domain tokens:
+  - `encounter`, `condition`, `vitals`, `allergy`, `medication`, `immunization`, `labs` (`all` keeps default behavior)
+- Domain filtering behavior:
+  - `Patient` is always included for referential context.
+  - Other domains are included only when requested (or all when no domain filter is supplied).
 - Default mode behavior:
   - If no `encounter`, `start`, or `end` is provided, mode defaults to `daterange` and returns all encounters for the patient (subject to `max`).
 

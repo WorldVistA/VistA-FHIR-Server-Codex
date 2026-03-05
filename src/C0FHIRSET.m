@@ -36,11 +36,13 @@ RPC ; Register/update RPC in File #8994
  SET DESC(7)="  4. EDT (Opt): End date (FileMan or %DT expression)."
  SET DESC(8)="  5. MAX (Opt): Max resources to include."
  SET DESC(9)="  6. MODE (Opt): ENCOUNTER or DATERANGE."
- SET DESC(10)=""
- SET DESC(11)="OUTPUT:"
- SET DESC(12)="  Returns one FHIR R4 Bundle (type=collection) as a JSON array."
- SET DESC(13)="  Includes Patient, Encounter, Conditions, Observations, Allergies,"
- SET DESC(14)="  Medications, Immunizations, and Labs in scope."
+ SET DESC(10)="  7. DOMAINS (Opt): Comma-separated domain list."
+ SET DESC(11)="     Supported: encounter,condition,vitals,allergy,medication,"
+ SET DESC(12)="     immunization,labs (""all"" for default behavior)."
+ SET DESC(13)=""
+ SET DESC(14)="OUTPUT:"
+ SET DESC(15)="  Returns one FHIR R4 Bundle (type=collection) as a JSON array."
+ SET DESC(16)="  Includes Patient and selected clinical domains in scope."
  DO WP^DIE(8994,RPCIEN_",",10,"","DESC","ERR")
  ;
  ; Re-sync parameters
@@ -51,6 +53,7 @@ RPC ; Register/update RPC in File #8994
  DO PARAM(RPCIEN,4,"EDT",0)
  DO PARAM(RPCIEN,5,"MAX",0)
  DO PARAM(RPCIEN,6,"MODE",0)
+ DO PARAM(RPCIEN,7,"DOMAINS",0)
  WRITE " Success."
  QUIT
  ;

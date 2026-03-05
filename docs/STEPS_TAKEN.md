@@ -38,6 +38,7 @@ Use this file as a chronological log of concrete implementation work.
 - Added RPC entry points `RPCFHIR^C0FHIR` (scalar params) and `RPCFHIRA^C0FHIR` (array params) as wrappers to the existing `GETFHIR^C0FHIR` request flow.
 - Added RPC gateway routine `src/C0FHIRGF.m` with `GENFULL^C0FHIRGF` for Broker-compatible parameter naming (`DFN,ENCPTR,SDT,EDT,MAX,MODE`).
 - Added environment setup routine `src/C0FHIRSET.m` to register/update RPC `C0FHIR GET FULL BUNDLE` and context option `C0FHIR CONTEXT` in files `#8994` and `#19`.
+- Added optional domain filtering (`domains`) so bundles can be requested by domain (`encounter`, `condition`, `vitals`, `allergy`, `medication`, `immunization`, `labs`) across web and RPC entry points.
 
 ## Template For New Entries
 - Date:

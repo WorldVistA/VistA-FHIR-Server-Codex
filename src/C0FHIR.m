@@ -576,7 +576,7 @@ LABDT(X) ; Convert inverse FM date piece from lab id to FHIR dateTime
 LABID(X) ; Normalize lab id to FHIR-safe id
  QUIT "L"_$TRANSLATE($GET(X),";#","--")
  ;
-RPCFHIR(RTN,DFN,ENC,START,END,MAX,MODE) ; RPC entry point (scalar params)
+RPCFHIR(RTN,DFN,ENC,START,END,MAX,MODE,DOMAINS) ; RPC entry point (scalar params)
  ; Broker-friendly wrapper around GETFHIR.
  ; Inputs:
  ;   DFN   - required patient identifier
@@ -585,6 +585,8 @@ RPCFHIR(RTN,DFN,ENC,START,END,MAX,MODE) ; RPC entry point (scalar params)
  ;   END   - optional end date (FM or %DT expression, e.g. NOW)
  ;   MAX   - optional numeric cap on resources
  ;   MODE  - optional ENCOUNTER or DATERANGE
+ ;   DOMAINS - optional comma-separated domain list
+ ;             (for example: "encounter,condition,vitals,labs")
  NEW FILTER
  KILL RTN
  IF $GET(DFN)'="" SET FILTER("dfn")=$GET(DFN)
@@ -593,6 +595,7 @@ RPCFHIR(RTN,DFN,ENC,START,END,MAX,MODE) ; RPC entry point (scalar params)
  IF $GET(END)'="" SET FILTER("end")=$GET(END)
  IF +$GET(MAX)>0 SET FILTER("max")=+$GET(MAX)
  IF $GET(MODE)'="" SET FILTER("mode")=$GET(MODE)
+ IF $GET(DOMAINS)'="" SET FILTER("domains")=$GET(DOMAINS)
  DO GETFHIR(.RTN,.FILTER)
  QUIT
  ;
@@ -604,6 +607,7 @@ RPCFHIRA(RTN,FILTER) ; RPC entry point (array params)
  ;   FILTER("end")=<fm-date-time or %DT expression>
  ;   FILTER("max")=<n>
  ;   FILTER("mode")="encounter" or "daterange"
+ ;   FILTER("domains")="encounter,condition,vitals,labs"
  DO GETFHIR(.RTN,.FILTER)
  QUIT
  ;
@@ -657,6 +661,52 @@ MAPFILT(FILTER,REQ) ; Map URL parameters into request structure
  IF ENDVAL'="" SET REQ("END_DT")=ENDVAL
  SET REQ("MODE")=$$UPCASE($SELECT($GET(FILTER("mode"))'="":$GET(FILTER("mode")),1:$GET(FILTER("MODE"))))
  SET REQ("MAX")=$SELECT($GET(FILTER("max"))'="":+$GET(FILTER("max")),1:+$GET(FILTER("MAX")))
+ DO MAPDOM(.FILTER,.REQ)
+ QUIT
+ ;
+MAPDOM(FILTER,REQ) ; Map optional domain filters into REQ("DOMAIN",...)
+ NEW SUB,VAL
+ SET VAL=$SELECT($GET(FILTER("domains"))'="":$GET(FILTER("domains")),1:$GET(FILTER("DOMAINS")))
+ DO ADDDOM(VAL,.REQ)
+ SET VAL=$SELECT($GET(FILTER("domain"))'="":$GET(FILTER("domain")),1:$GET(FILTER("DOMAIN")))
+ DO ADDDOM(VAL,.REQ)
+ SET SUB=""
+ FOR  SET SUB=$ORDER(FILTER("domains",SUB)) Q:SUB=""  DO ADDDOM($GET(FILTER("domains",SUB)),.REQ)
+ SET SUB=""
+ FOR  SET SUB=$ORDER(FILTER("DOMAINS",SUB)) Q:SUB=""  DO ADDDOM($GET(FILTER("DOMAINS",SUB)),.REQ)
+ SET SUB=""
+ FOR  SET SUB=$ORDER(FILTER("domain",SUB)) Q:SUB=""  DO ADDDOM($GET(FILTER("domain",SUB)),.REQ)
+ SET SUB=""
+ FOR  SET SUB=$ORDER(FILTER("DOMAIN",SUB)) Q:SUB=""  DO ADDDOM($GET(FILTER("DOMAIN",SUB)),.REQ)
+ QUIT
+ ;
+ADDDOM(VAL,REQ) ; Parse one domain token list into canonical domain flags
+ NEW LIST,TOK
+ SET LIST=$$UPCASE($$TRIM($GET(VAL)))
+ IF LIST="" QUIT
+ SET REQ("DOMAIN","_FILTERED")=1
+ SET LIST=$TRANSLATE(LIST,"|;/",",,,")
+ FOR  QUIT:LIST=""  DO
+ . SET TOK=$$TRIM($PIECE(LIST,",",1))
+ . SET LIST=$PIECE(LIST,",",2,999)
+ . IF TOK="" QUIT
+ . SET TOK=$$DOMTOK(TOK)
+ . IF TOK'="" SET REQ("DOMAIN",TOK)=1
+ QUIT
+ ;
+DOMTOK(X) ; Normalize domain alias to canonical token
+ NEW Y
+ SET Y=$$UPCASE($$TRIM($GET(X)))
+ IF Y="" QUIT ""
+ IF Y="ALL" QUIT "ALL"
+ IF Y="PATIENT"!(Y="PAT") QUIT "PATIENT"
+ IF Y="ENCOUNTER"!(Y="ENCOUNTERS")!(Y="ENC")!(Y="VISIT")!(Y="VISITS") QUIT "ENCOUNTER"
+ IF Y="CONDITION"!(Y="CONDITIONS")!(Y="PROBLEM")!(Y="PROBLEMS") QUIT "CONDITION"
+ IF Y="OBS"!(Y="OBSERVATION")!(Y="OBSERVATIONS")!(Y="VITAL")!(Y="VITALS") QUIT "VITAL"
+ IF Y="ALLERGY"!(Y="ALLERGIES")!(Y="ALGY")!(Y="ALLERGYINTOLERANCE") QUIT "ALLERGY"
+ IF Y="MED"!(Y="MEDS")!(Y="MEDICATION")!(Y="MEDICATIONS")!(Y="RX")!(Y="MEDICATIONREQUEST") QUIT "MEDICATION"
+ IF Y="IMM"!(Y="IMMS")!(Y="IMMUNIZATION")!(Y="IMMUNIZATIONS") QUIT "IMMUNIZATION"
+ IF Y="LAB"!(Y="LABS")!(Y="LABORATORY")!(Y="LABORATORIES") QUIT "LAB"
  QUIT
  ;
 REQMODE(REQ) ; Resolve request mode from mapped parameters
