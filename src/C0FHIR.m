@@ -34,6 +34,8 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  IF SSN?9N DO
  . SET RTN("entry",IDX,"resource","identifier",1,"system")="http://hl7.org/fhir/sid/us-ssn"
  . SET RTN("entry",IDX,"resource","identifier",1,"value")=SSN
+ . ; Force JSON string type for SSN (FHIR identifier.value is string)
+ . SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
  QUIT
  ;
 GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
