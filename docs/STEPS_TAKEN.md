@@ -28,7 +28,7 @@ Use this file as a chronological log of concrete implementation work.
 - Added first-pass `Immunization` and laboratory (`Observation`) resource builders and wired them into encounter/date-range bundle generation.
 - Added `docs/TEST_SERVER_VALIDATION.md` to document `dfn`-based VPR test server parity checks and a baseline validation case.
 - Added `^DPT("B")` `gtree` endpoint guidance to document how to discover patient `dfn` values from the test server.
-- Added graph-store `DFN` index guidance (`^%wd(17.040801,3,"DFN",IEN,DFN)`) for tracing patients back to original imported Synthea source records.
+- Added graph-store `DFN` index guidance (`^%wd(17.040801,3,"DFN",DFN,IEN)`) for tracing patients back to original imported Synthea source records.
 - Added explicit graph-store JSON retrieval pattern (`gtree/%25wd(17.040801,3,<IEN>,%22json%22)`) with example IEN lookup workflow.
 - Added graph-store load log retrieval pattern (`gtree/%25wd(17.040801,3,<IEN>,%22load%22)`) and documented how it supports import-vs-mapping parity debugging.
 

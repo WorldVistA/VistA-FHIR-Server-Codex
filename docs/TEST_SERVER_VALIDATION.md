@@ -14,8 +14,8 @@ Use the VistA test VPR endpoint as a quick ground-truth source by patient `dfn`.
 ## Graph store source lookup
 
 - Graph index endpoint: `http://fhir.vistaplex.org:9080/global/%25wd(17.040801,3,%22DFN%22)`
-- This index maps graph-store record IENs to patient DFNs:
-  - `^%wd(17.040801,3,"DFN",<IEN>,<DFN>)=""`
+- This index maps patient DFNs to graph-store record IENs:
+  - `^%wd(17.040801,3,"DFN",<DFN>,<IEN>)=""`
 - Use it to locate the graph-store IEN for a known `dfn`.
 - Then retrieve the original imported JSON payload from:
   - `http://fhir.vistaplex.org:9080/gtree/%25wd(17.040801,3,<IEN>,%22json%22)`

@@ -616,9 +616,18 @@ TRIM(X) ; Remove leading and trailing spaces
  QUIT Y
  ;
 ENSUREENV ; Ensure legacy VPR runtime variables are available
- ; Many legacy VPR/PX routines assume U and DT are defined.
+ ; Many legacy VPR/PX/Kernel routines assume U,DT,DUZ,DUZ(0),DUZ(2) are defined.
+ NEW DIV
  IF $GET(U)="" SET U="^"
  IF '$DATA(DT) SET DT=$$DT^XLFDT
+ IF +$GET(DUZ)<1 DO
+ . IF $DATA(^VA(200,.5,0)) SET DUZ=.5 QUIT
+ . SET DUZ=+$ORDER(^VA(200,0))
+ IF $GET(DUZ(0))="" SET DUZ(0)="@"
+ IF +$GET(DUZ(2))<1 DO
+ . SET DIV=+$PIECE($GET(^VA(200,+DUZ,2,1,0)),"^")
+ . IF DIV<1 SET DIV=+$ORDER(^DIC(4,0))
+ . SET DUZ(2)=DIV
  QUIT
  ;
 PARSEFM(X) ; Parse URL date value to FileMan date/time
