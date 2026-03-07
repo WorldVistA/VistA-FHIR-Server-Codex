@@ -216,7 +216,7 @@ FORCESTR(OUT) ; Ensure id/code numeric JSON literals are emitted as strings
  . SET OUT(I)=$$QKEY($GET(OUT(I)),"code")
  QUIT
  ;
-QKEY(LINE,KEY) ; Quote integer JSON literal for named key
+QKEY(LINE,KEY) ; Quote numeric JSON literal for named key
  NEW CH,NUM,PAT,POS,SCAN,START,STOP
  SET PAT=""""_$GET(KEY)_""":"
  SET POS=1
@@ -228,16 +228,41 @@ QKEY(LINE,KEY) ; Quote integer JSON literal for named key
  . IF CH="""" QUIT  ; already a JSON string
  . IF CH'="-",CH'?1N QUIT
  . SET START=SCAN,STOP=SCAN
- . FOR  SET CH=$EXTRACT(LINE,STOP) Q:CH=""!(((CH?1N)=0)&(CH'="-"))  SET STOP=STOP+1
+. FOR  SET CH=$EXTRACT(LINE,STOP) Q:CH=""!(CH=",")!(CH="}")!(CH="]")!(CH=" ")  SET STOP=STOP+1
  . SET NUM=$EXTRACT(LINE,START,STOP-1)
- . IF '$$ISINT(NUM) QUIT
+. IF '$$ISJNUM(NUM) QUIT
  . SET LINE=$EXTRACT(LINE,1,START-1)_""""_NUM_""""_$EXTRACT(LINE,STOP,$LENGTH(LINE))
  . SET POS=STOP+2
  QUIT LINE
  ;
-ISINT(X) ; True if X is an integer literal
- NEW Y
- SET Y=$GET(X)
- IF Y?1.N QUIT 1
- IF Y?1"-".N QUIT 1
- QUIT
+ISJNUM(X) ; True if X is a valid JSON numeric literal
+NEW FAIL,FST,I,LEN
+SET X=$GET(X),LEN=$LENGTH(X),FAIL=0
+IF LEN<1 QUIT 0
+SET I=1
+IF $EXTRACT(X,I)="-" SET I=I+1
+IF I>LEN QUIT 0
+SET FST=$EXTRACT(X,I)
+IF FST="0" DO
+. SET I=I+1
+ELSE  DO
+. IF FST'?1N SET FAIL=1 QUIT
+. FOR  Q:I>LEN!($EXTRACT(X,I)'?1N)  SET I=I+1
+IF FAIL QUIT 0
+IF I'>LEN,$EXTRACT(X,I)?1N QUIT 0
+IF I'>LEN,$EXTRACT(X,I)="." DO
+. SET I=I+1
+. IF I>LEN SET FAIL=1 QUIT
+. IF $EXTRACT(X,I)'?1N SET FAIL=1 QUIT
+. FOR  Q:I>LEN!($EXTRACT(X,I)'?1N)  SET I=I+1
+IF FAIL QUIT 0
+IF I'>LEN,($EXTRACT(X,I)="e"!($EXTRACT(X,I)="E")) DO
+. SET I=I+1
+. IF I>LEN SET FAIL=1 QUIT
+. IF ($EXTRACT(X,I)="+")!($EXTRACT(X,I)="-") SET I=I+1
+. IF I>LEN SET FAIL=1 QUIT
+. IF $EXTRACT(X,I)'?1N SET FAIL=1 QUIT
+. FOR  Q:I>LEN!($EXTRACT(X,I)'?1N)  SET I=I+1
+IF FAIL QUIT 0
+IF I'>LEN QUIT 0
+QUIT 1
