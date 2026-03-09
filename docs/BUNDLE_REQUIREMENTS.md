@@ -58,7 +58,7 @@ This project returns exactly one FHIR JSON `Bundle` per request.
   - `BYENC^C0FHIRBU`
   - `BYDATE^C0FHIRBU`
 - Environment/setup helper:
-  - `EN^C0FHIRSET` registers RPC `C0FHIR GET FULL BUNDLE` and context option `C0FHIR CONTEXT`.
+  - `EN^C0FHIRSE` registers RPC `C0FHIR GET FULL BUNDLE` and context option `C0FHIR CONTEXT`.
 - Resource builders:
   - `GETPAT^C0FHIR(RTN,DFN)` appends the `Patient` resource into the in-flight bundle array.
   - `GETENC^C0FHIR(RTN,ENCIEN,DFN)` appends an `Encounter` resource into the in-flight bundle array.

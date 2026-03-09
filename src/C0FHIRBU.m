@@ -1,4 +1,4 @@
-C0FHIRBU ; Bundle orchestration for multi-domain responses
+C0FHIRBU ; VAMC/JS - Bundle orchestration for multi-domain responses
  ;;0.1;VISTA FHIR SERVER;**0**;Mar 03, 2026
  ;
  ; This routine builds one FHIR Bundle response per request.
@@ -130,10 +130,6 @@ REFURL(RTYPE,RID) ; Build a deterministic urn:uuid fullUrl
  ;
 NEWUUID() ; Return an RFC4122-style UUID string
  NEW U
- IF $TEXT(UUID^XLFUUID)'="" DO
- . SET U=$$UUID^XLFUUID
- . SET U=$TRANSLATE($GET(U),"{}","")
- IF $GET(U)'="" QUIT U
  SET U=$$RANDHEX(8)_"-"_$$RANDHEX(4)_"-"_$$RANDHEX(4)_"-"_$$RANDHEX(4)_"-"_$$RANDHEX(12)
  SET $EXTRACT(U,15)="4"
  SET $EXTRACT(U,20)=$EXTRACT("89ab",$RANDOM(4)+1)

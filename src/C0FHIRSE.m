@@ -1,4 +1,4 @@
-C0FHIRSET ; VAMC/JS - FHIR suite environment setup
+C0FHIRSE ; VAMC/JS - FHIR suite environment setup
  ;;0.1;VISTA FHIR SERVER;**0**;Mar 03, 2026
  ;
  QUIT  ; No default action
