@@ -1,12 +1,22 @@
 # Agent Working Agreement
 
-Shared context source:
+Shared context source (primary):
 
-- `/home/glilly/ops/agent-context/README.md`
-- `/home/glilly/ops/agent-context/workflow.md`
-- `/home/glilly/ops/agent-context/commands-template.md`
-- `/home/glilly/ops/agent-context/security.md`
-- `/home/glilly/ops/agent-context/checklist.md`
+- `https://github.com/glilly/ai-m/blob/master/agent-context/README.md`
+- `https://github.com/glilly/ai-m/blob/master/agent-context/workflow.md`
+- `https://github.com/glilly/ai-m/blob/master/agent-context/commands-template.md`
+- `https://github.com/glilly/ai-m/blob/master/agent-context/security.md`
+- `https://github.com/glilly/ai-m/blob/master/agent-context/checklist.md`
+- `https://github.com/glilly/ai-m/blob/master/agent-context/vista-container-developer-guide.md`
+
+Shared context source (local clone equivalent):
+
+- `/home/glilly/ai-m/agent-context/README.md`
+- `/home/glilly/ai-m/agent-context/workflow.md`
+- `/home/glilly/ai-m/agent-context/commands-template.md`
+- `/home/glilly/ai-m/agent-context/security.md`
+- `/home/glilly/ai-m/agent-context/checklist.md`
+- `/home/glilly/ai-m/agent-context/vista-container-developer-guide.md`
 
 Repo-specific overrides:
 
