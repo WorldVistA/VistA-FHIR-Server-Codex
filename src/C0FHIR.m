@@ -197,17 +197,136 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  KILL RTN
  DO MAPFILT(.FILTER,.REQ)
  IF $GET(REQ("DFN"))="" DO  QUIT
- . DO ERR^C0FHIRBU("Missing required URL parameter: dfn",.TMP)
- . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
+ . DO FHIRIDX(.RTN)
  SET REQ("MODE")=$$REQMODE(.REQ)
  IF $GET(REQ("MODE"))="" DO  QUIT
  . DO ERR^C0FHIRBU("Cannot determine request mode from URL parameters",.TMP)
  . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
+ SET HTTPRSP("mime")="application/json"
  DO GETBNDLJ(.REQ,.RTN,.ERR)
  IF $DATA(ERR) DO
  . DO ERR^C0FHIRBU("JSON encoding failed in ENCODE^XLFJSON",.TMP)
  . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
  QUIT
+ ;
+FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
+ NEW BURL,CNT,DFN,FURL,IEN,JURL,KEY,LURL,NAME,ROOT,ROW,SORT,SUM,VURL
+ SET HTTPRSP("mime")="text/html"
+ KILL RTN
+ DO ADDLN(.RTN,"<!DOCTYPE HTML>")
+ DO ADDLN(.RTN,"<html><head><title>FHIR Patient Index</title></head><body>")
+ DO ADDLN(.RTN,"<h1>FHIR Patient Index</h1>")
+ DO ADDLN(.RTN,"<p>Click Name for interactive browser view.</p>")
+ DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
+ DO ADDLN(.RTN,"<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>Synthea Json</th><th>Load Log</th><th>VPR</th></tr>")
+ SET ROOT=$$setroot^%wd("fhir-intake")
+ IF ROOT="" SET ROOT="^%wd(17.040801,3)"
+ SET CNT=0
+ IF $DATA(@ROOT@("DFN")) DO
+ . SET DFN=0
+ . FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN)) Q:+DFN<1  DO
+ . . SET IEN=$ORDER(@ROOT@("DFN",DFN,""),-1)
+ . . IF IEN<1 QUIT
+ . . IF '$$SHOWROW(ROOT,IEN) QUIT
+ . . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^")
+ . . IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
+ . . SET KEY=$$UPCASE(NAME)
+ . . SET SORT(KEY,NAME,DFN,IEN)=""
+ . SET KEY=""
+ . FOR  SET KEY=$ORDER(SORT(KEY)) Q:KEY=""  DO
+ . . SET NAME=""
+ . . FOR  SET NAME=$ORDER(SORT(KEY,NAME)) Q:NAME=""  DO
+ . . . SET DFN=0
+ . . . FOR  SET DFN=$ORDER(SORT(KEY,NAME,DFN)) Q:+DFN<1  DO
+ . . . . SET IEN=0
+ . . . . FOR  SET IEN=$ORDER(SORT(KEY,NAME,DFN,IEN)) Q:+IEN<1  DO
+ . . . . . SET CNT=CNT+1
+ . . . . . SET FURL="/fhir?dfn="_DFN
+ . . . . . SET BURL="/fhir?dfn="_DFN_"&view=browser"
+ . . . . . SET VURL="/vpr?dfn="_DFN
+ . . . . . SET JURL="/showfhir?ien="_IEN
+ . . . . . SET LURL="/gtree/%25wd(17.040801,3,"_IEN_",%22load%22)"
+ . . . . . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
+ . . . . . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
+ . . . . . SET ROW=ROW_"<td>"_DFN_"</td><td>"_IEN_"</td>"
+ . . . . . SET ROW=ROW_"<td><a href="""_JURL_""">json</a></td>"
+ . . . . . SET ROW=ROW_"<td><a href="""_LURL_""">load</a></td>"
+ . . . . . SET ROW=ROW_"<td><a href="""_VURL_""">vpr</a></td></tr>"
+ . . . . . DO ADDLN(.RTN,ROW)
+ . . . . . SET SUM=$$DOMSUM(ROOT,IEN)
+ . . . . . DO ADDLN(.RTN,"<tr><td colspan=""7""><small>"_$$HTMLESC(SUM)_"</small></td></tr>")
+ IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan=""7"">No imported patients found in fhir-intake.</td></tr>")
+ DO ADDLN(.RTN,"</table>")
+ DO ADDLN(.RTN,"</body></html>")
+ QUIT
+ ;
+SHOWROW(ROOT,IEN) ; True when graph has one or more loaded labs
+ NEW DOM,LD,ST,ZI
+ SET LD=0
+ ;
+ ; Preferred: explicit per-domain loaded counter.
+ SET DOM=""
+ FOR  SET DOM=$ORDER(@ROOT@(IEN,"load",DOM)) Q:DOM=""  D  Q:LD>0
+ . IF $$UPCASE(DOM)'="LABS" QUIT
+ . SET LD=+$GET(@ROOT@(IEN,"load",DOM,"status","loaded"))
+ IF LD>0 QUIT 1
+ ;
+ ; Fallback: scan item-level loadstatus nodes.
+ SET DOM=""
+ FOR  SET DOM=$ORDER(@ROOT@(IEN,"load",DOM)) Q:DOM=""  D  Q:LD>0
+ . IF $$UPCASE(DOM)'="LABS" QUIT
+ . SET ZI=0
+ . FOR  SET ZI=$ORDER(@ROOT@(IEN,"load",DOM,ZI)) Q:+ZI<1  DO  Q:LD>0
+ . . SET ST=$$UPCASE($GET(@ROOT@(IEN,"load",DOM,ZI,"status","loadstatus")))
+ . . IF ST="LOADED" SET LD=1
+ QUIT $SELECT(LD>0:1,1:0)
+ ;
+DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
+ NEW DOM,DOMLD,DOMSRC,LD,SRC,ST,STDOM,SUM,TXT,ZI
+ SET TXT=""
+ SET DOM=""
+ FOR  SET DOM=$ORDER(@ROOT@(IEN,"load",DOM)) Q:DOM=""  DO
+ . SET (LD,SRC)=0
+ . SET ZI=0
+ . FOR  SET ZI=$ORDER(@ROOT@(IEN,"load",DOM,ZI)) Q:+ZI<1  DO
+ . . SET SRC=SRC+1
+ . . SET ST=$$UPCASE($GET(@ROOT@(IEN,"load",DOM,ZI,"status","loadstatus")))
+ . . IF ST="LOADED" SET LD=LD+1
+ . ; Some domains (for example Patient) use only domain-level status nodes.
+ . ; Prefer explicit status counters when present, then fallback to status/loadstatus.
+ . SET DOMSRC=+$GET(@ROOT@(IEN,"load",DOM,"status","source"))
+ . SET DOMLD=+$GET(@ROOT@(IEN,"load",DOM,"status","loaded"))
+ . IF DOMSRC>0 SET SRC=DOMSRC
+ . IF DOMLD>0 SET LD=DOMLD
+ . IF SRC=0 DO
+ . . SET STDOM=$$UPCASE($GET(@ROOT@(IEN,"load",DOM,"status","loadstatus")))
+ . . IF STDOM'="" SET SRC=1,LD=$SELECT(STDOM="LOADED":1,1:0)
+ . ; Hide empty domains so we do not display misleading 0/0 rows.
+ . IF SRC=0,LD=0 QUIT
+ . SET SUM=DOM_":"_LD_"/"_SRC
+ . IF TXT'="" SET TXT=TXT_" | "
+ . SET TXT=TXT_SUM
+ IF TXT="" SET TXT="No load summary available."
+ QUIT TXT
+ ;
+ADDLN(RTN,TXT) ; Append one line to output array
+ NEW IDX
+ SET IDX=$ORDER(RTN(""),-1)+1
+ SET RTN(IDX)=$GET(TXT)
+ QUIT
+ ;
+HTMLESC(X) ; Escape basic HTML special chars
+ NEW C,I,Y
+ SET Y=""
+ FOR I=1:1:$LENGTH($GET(X)) DO
+ . SET C=$EXTRACT(X,I)
+ . IF C="&" SET Y=Y_"&amp;" QUIT
+ . IF C="<" SET Y=Y_"&lt;" QUIT
+ . IF C=">" SET Y=Y_"&gt;" QUIT
+ . IF C="""" SET Y=Y_"&quot;" QUIT
+ . IF C="'" SET Y=Y_"&#39;" QUIT
+ . SET Y=Y_C
+ QUIT Y
  ;
 GETBNDL(REQ,OUT) ; Return one Bundle response structure for a request
  ; REQ("MODE")="ENCOUNTER" or "DATERANGE"
