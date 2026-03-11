@@ -13,5 +13,6 @@ This directory stores detailed project documentation for implementation tracking
 - `UNRESOLVED_ISSUES.md`: Known issues, blockers, and remaining gaps.
 - `SYNTHETIC_PATIENT_1631_FOUR_URL_ANALYSIS.md`: End-to-end crosswalk of VPR, FHIR, graph JSON, and load-log views for one synthetic patient.
 - `MULTIREPO_WORKSPACE_GUIDE.md`: Workspace profiles, repo roles (`SYNTHEA`/`ISI`/`SYN`/`FHIR`/`SOURCE`), and cross-repo validation workflow.
+- `SYN_GAP_REPAIR_WORKFLOW.md`: Analyze ingested-patient gaps and selectively rerun `SYN` loader categories after routine improvements.
 
 Update these files as work progresses so implementation state is always clear.
