@@ -73,7 +73,7 @@ BROWSER(RTN,DFN) ; React-style interactive FHIR browser
  D ADDLN(.RTN,"</head>")
  D ADDLN(.RTN,"<body>")
  D ADDLN(.RTN,"<div class='top'><strong>C0FHIR Browser</strong>")
- D ADDLN(.RTN,"<div class='sub'><a href='/fhir'>index</a><a href='/fhir?dfn="_D_"'>raw fhir</a><a href='/vpr?dfn="_D_"'>vpr</a> DFN "_D_"</div></div>")
+ D ADDLN(.RTN,"<div class='sub'><a href='/fhir'>index</a><a href='/fhir?dfn="_D_"'>raw fhir</a><a href='/vpr?dfn="_D_"&format=xml'>vpr</a> DFN "_D_"</div></div>")
  D ADDLN(.RTN,"<div class='wrap'>")
  D ADDLN(.RTN,"<section class='left'>")
  D ADDLN(.RTN,"<div class='bar'><input id='q' placeholder='Search text'></div>")
@@ -150,7 +150,7 @@ SEARCH(RTN,VAL) ; Simple patient name search page
  . . S X0=$G(^DPT(DFN,0))
  . . S SSN=$P(X0,"^",9)
  . . S LINE=LINE+1
- . . S RTN(LINE)="<tr><td>"_$$HTMLESC(NAME)_"</td><td>"_DFN_"</td><td>"_SSN_"</td><td><a href=""/fhir?dfn="_DFN_""">fhir</a></td><td><a href=""/vpr?dfn="_DFN_""">vpr</a></td></tr>"
+ . . S RTN(LINE)="<tr><td>"_$$HTMLESC(NAME)_"</td><td>"_DFN_"</td><td>"_SSN_"</td><td><a href=""/fhir?dfn="_DFN_""">fhir</a></td><td><a href=""/vpr?dfn="_DFN_"&format=xml"">vpr</a></td></tr>"
  . . S CNT=CNT+1
  I CNT=0 S LINE=LINE+1,RTN(LINE)="<tr><td colspan=""5"">No matching patients found.</td></tr>"
  S LINE=LINE+1,RTN(LINE)="</table>"

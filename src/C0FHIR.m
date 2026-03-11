@@ -243,7 +243,7 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . . . . . SET CNT=CNT+1
  . . . . . SET FURL="/fhir?dfn="_DFN
  . . . . . SET BURL="/fhir?dfn="_DFN_"&view=browser"
- . . . . . SET VURL="/vpr?dfn="_DFN
+ . . . . . SET VURL="/vpr?dfn="_DFN_"&format=xml"
  . . . . . SET JURL="/showfhir?ien="_IEN
  . . . . . SET LURL="/gtree/%25wd(17.040801,3,"_IEN_",%22load%22)"
  . . . . . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
