@@ -259,6 +259,10 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  DO SETIMM^C0FHIRM(.RTN,.IMM,$GET(DFN))
  QUIT
  ;
+GETPROC(RTN,DFN,BEG,END,MAX) ; Add Procedure resources
+ DO GETPROC^C0FHIRP(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
+ QUIT
+ ;
 GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations (chemistry + micro)
  DO GETLAB^C0FHIRL(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
  QUIT

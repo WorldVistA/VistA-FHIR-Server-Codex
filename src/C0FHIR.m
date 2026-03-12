@@ -123,6 +123,10 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  DO SETIMM^C0FHIRD(.RTN,.IMM,$GET(DFN))
  QUIT
  ;
+GETPROC(RTN,DFN,BEG,END,MAX) ; Add Procedure resources
+ DO GETPROC^C0FHIRD(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
+ QUIT
+ ;
 GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations (chemistry + micro)
  DO GETLAB^C0FHIRD(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
  QUIT
@@ -164,7 +168,7 @@ RPCFHIR(RTN,DFN,ENC,START,END,MAX,MODE,DOMAINS) ; RPC entry point (scalar params
  ;   MAX   - optional numeric cap on resources
  ;   MODE  - optional ENCOUNTER or DATERANGE
  ;   DOMAINS - optional comma-separated domain list
- ;             (for example: "encounter,condition,vitals,labs")
+ ;             (for example: "encounter,condition,vitals,procedures,labs")
  NEW FILTER
  KILL RTN
  IF $GET(DFN)'="" SET FILTER("dfn")=$GET(DFN)
@@ -185,7 +189,7 @@ RPCFHIRA(RTN,FILTER) ; RPC entry point (array params)
  ;   FILTER("end")=<fm-date-time or %DT expression>
  ;   FILTER("max")=<n>
  ;   FILTER("mode")="encounter" or "daterange"
- ;   FILTER("domains")="encounter,condition,vitals,labs"
+ ;   FILTER("domains")="encounter,condition,vitals,procedures,labs"
  DO GETFHIR(.RTN,.FILTER)
  QUIT
  ;
@@ -473,6 +477,7 @@ DOMTOK(X) ; Normalize domain alias to canonical token
  IF Y="ALLERGY"!(Y="ALLERGIES")!(Y="ALGY")!(Y="ALLERGYINTOLERANCE") QUIT "ALLERGY"
  IF Y="MED"!(Y="MEDS")!(Y="MEDICATION")!(Y="MEDICATIONS")!(Y="RX")!(Y="MEDICATIONREQUEST") QUIT "MEDICATION"
  IF Y="IMM"!(Y="IMMS")!(Y="IMMUNIZATION")!(Y="IMMUNIZATIONS") QUIT "IMMUNIZATION"
+ IF Y="PROC"!(Y="PROCS")!(Y="PROCEDURE")!(Y="PROCEDURES") QUIT "PROCEDURE"
  IF Y="LAB"!(Y="LABS")!(Y="LABORATORY")!(Y="LABORATORIES") QUIT "LAB"
  QUIT
  ;

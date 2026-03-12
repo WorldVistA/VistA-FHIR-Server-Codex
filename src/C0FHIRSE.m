@@ -38,7 +38,7 @@ RPC ; Register/update RPC in File #8994
  SET DESC(9)="  6. MODE (Opt): ENCOUNTER or DATERANGE."
  SET DESC(10)="  7. DOMAINS (Opt): Comma-separated domain list."
  SET DESC(11)="     Supported: encounter,condition,vitals,allergy,medication,"
- SET DESC(12)="     immunization,labs (""all"" for default behavior)."
+ SET DESC(12)="     immunization,procedures,labs (""all"" for default behavior)."
  SET DESC(13)=""
  SET DESC(14)="OUTPUT:"
  SET DESC(15)="  Returns one FHIR R4 Bundle (type=collection) as a JSON array."

@@ -13,7 +13,7 @@ This project returns exactly one FHIR JSON `Bundle` per request.
 - Input: a specific encounter (and patient context as required).
 - Output: one bundle containing:
   - The requested `Encounter` resource.
-  - Supporting resources that are clinically or referentially required for that encounter (for example `Patient`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest`, `Immunization`, and laboratory `Observation` resources when linked/in-range).
+  - Supporting resources that are clinically or referentially required for that encounter (for example `Patient`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest`, `Immunization`, `Procedure`, and laboratory `Observation` resources when linked/in-range).
 
 ### Date-Range Bundle
 - Input: patient and date range.
@@ -37,10 +37,10 @@ This project returns exactly one FHIR JSON `Bundle` per request.
   - `FILTER("encounter")=<enc-id>`
   - `FILTER("start")=<fm-date-time>`
   - `FILTER("end")=<fm-date-time>`
-  - `FILTER("domains")="encounter,condition,vitals,labs"` (optional)
+  - `FILTER("domains")="encounter,condition,vitals,procedures,labs"` (optional)
   - `FILTER("mode")="encounter"` or `"daterange"` (optional when inferable)
 - Supported domain tokens:
-  - `encounter`, `condition`, `vitals`, `allergy`, `medication`, `immunization`, `labs` (`all` keeps default behavior)
+  - `encounter`, `condition`, `vitals`, `allergy`, `medication`, `immunization`, `procedures`, `labs` (`all` keeps default behavior)
 - Domain filtering behavior:
   - `Patient` is always included for referential context.
   - Other domains are included only when requested (or all when no domain filter is supplied).
@@ -67,11 +67,12 @@ This project returns exactly one FHIR JSON `Bundle` per request.
   - `GETALGY^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `AllergyIntolerance` resources from allergy data.
   - `GETMED^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `MedicationRequest` resources from medication/order data.
   - `GETIMM^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `Immunization` resources from immunization data.
+  - `GETPROC^C0FHIR(RTN,DFN,BEG,END,MAX)` appends `Procedure` resources from surgery/radiology/clinical-procedure/V-CPT data.
   - `GETLAB^C0FHIR(RTN,DFN,BEG,END,MAX)` appends laboratory `Observation` resources (chemistry/microbiology first pass).
 - Serializer helper:
   - `TOJSON^C0FHIRBU` (wraps `ENCODE^XLFJSON`)
 - First-version scope currently implemented:
-  - `Patient`, `Encounter`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest`, and `Immunization` bundle entries in collection envelope.
+  - `Patient`, `Encounter`, `Condition`, `Observation`, `AllergyIntolerance`, `MedicationRequest`, `Immunization`, and `Procedure` bundle entries in collection envelope.
   - Date-range encounter collection from `^AUPNVSIT("AET",DFN,...)`.
   - Problem-list condition loading via `GMPLUTL2` + `VPRDGMPL`.
   - Vital-sign observation loading via `GMRVUT0` + `VPRDGMV`.

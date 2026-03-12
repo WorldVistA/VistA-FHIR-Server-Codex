@@ -40,6 +40,7 @@ Use this file as a chronological log of concrete implementation work.
 - Added environment setup routine `src/C0FHIRSE.m` to register/update RPC `C0FHIR GET FULL BUNDLE` and context option `C0FHIR CONTEXT` in files `#8994` and `#19`.
 - Added optional domain filtering (`domains`) so bundles can be requested by domain (`encounter`, `condition`, `vitals`, `allergy`, `medication`, `immunization`, `labs`) across web and RPC entry points.
 - Refactored oversized `C0FHIR` logic into helper routines (`C0FHIRD`, `C0FHIRM`, `C0FHIRL`) while preserving public entry points in `C0FHIR`.
+- Added first-pass `Procedure` resource builders (surgery, radiology, clinical procedures, and V-CPT sources) and wired `procedures` domain filtering into encounter/date-range bundle generation, RPC descriptions, and requirements docs.
 
 ## Template For New Entries
 - Date:
