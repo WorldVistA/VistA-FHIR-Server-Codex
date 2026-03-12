@@ -106,6 +106,21 @@ def labs_loaded_from_summary(summary: str) -> int:
     return loaded
 
 
+def html_has_id(body: str, element_id: str) -> bool:
+    pattern = rf"id=['\"]{re.escape(element_id)}['\"]"
+    return re.search(pattern, body, re.IGNORECASE) is not None
+
+
+def extract_inline_script(body: str) -> str:
+    match = re.search(
+        r"<script[^>]*>(?P<script>.*?)</script>",
+        body,
+        re.IGNORECASE | re.DOTALL,
+    )
+    ensure(match is not None, "Browser page missing inline script.")
+    return match.group("script")
+
+
 def check_index(base_url: str, timeout: int) -> List[Row]:
     url = f"{base_url}/fhir"
     status, headers, body = fetch(url, timeout)
@@ -168,7 +183,32 @@ def check_browser(base_url: str, timeout: int, dfn: int) -> None:
         f"/vpr?dfn={dfn}&format=xml" in body,
         f"Browser page missing XML VPR link for DFN {dfn}.",
     )
-    print(f"PASS /fhir?dfn={dfn}&view=browser HTML")
+    ensure(
+        f"/fhir?dfn={dfn}" in body,
+        f"Browser page missing raw FHIR link for DFN {dfn}.",
+    )
+    ensure("Loading..." in body, "Browser page missing loading indicator.")
+    ensure("Select a resource" in body, "Browser page missing detail placeholder.")
+
+    for element_id in ("q", "type", "list", "meta", "detail"):
+        ensure(
+            html_has_id(body, element_id),
+            f"Browser page missing required #{element_id} element.",
+        )
+
+    script = extract_inline_script(body)
+    ensure(
+        re.search(rf"const\s+dfn\s*=\s*{dfn}\s*;", script) is not None,
+        f"Browser script missing DFN bootstrap value {dfn}.",
+    )
+    ensure(
+        re.search(r"fetch\(\s*['\"]/fhir\?dfn=['\"]\s*\+\s*dfn\s*\)", script)
+        is not None,
+        "Browser script missing /fhir?dfn bootstrap fetch.",
+    )
+    ensure("j.entry" in script, "Browser script does not read Bundle entry data.")
+
+    print(f"PASS /fhir?dfn={dfn}&view=browser HTML and UI wiring")
 
 
 def parse_args() -> argparse.Namespace:
