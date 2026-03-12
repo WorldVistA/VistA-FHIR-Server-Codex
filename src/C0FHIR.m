@@ -219,8 +219,7 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  DO ADDLN(.RTN,"<p>Click Name for interactive browser view.</p>")
  DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
  DO ADDLN(.RTN,"<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>Synthea Json</th><th>Load Log</th><th>VPR</th></tr>")
- SET ROOT=$$setroot^%wd("fhir-intake")
- IF ROOT="" SET ROOT="^%wd(17.040801,3)"
+ SET ROOT=$$GSROOT()
  SET CNT=0
  IF $DATA(@ROOT@("DFN")) DO
  . SET DFN=0
@@ -245,7 +244,7 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . . . . . SET BURL="/fhir?dfn="_DFN_"&view=browser"
  . . . . . SET VURL="/vpr?dfn="_DFN_"&format=xml"
  . . . . . SET JURL="/showfhir?ien="_IEN
- . . . . . SET LURL="/gtree/%25wd(17.040801,3,"_IEN_",%22load%22)"
+ . . . . . SET LURL=$$LOADLOGURL(ROOT,IEN)
  . . . . . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
  . . . . . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
  . . . . . SET ROW=ROW_"<td>"_DFN_"</td><td>"_IEN_"</td>"
@@ -308,6 +307,27 @@ DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
  . SET TXT=TXT_SUM
  IF TXT="" SET TXT="No load summary available."
  QUIT TXT
+ ;
+GSROOT() ; Resolve graph-store root across deployments
+ NEW PROOT
+ ; Some deployments do not permit % globals and store graph data in ^SYNGRAPH.
+ IF $DATA(^SYNGRAPH(2002.801,2,"DFN")) QUIT "^SYNGRAPH(2002.801,2)"
+ ;
+ ; Standard C0 path in environments that use ^%wd.
+ SET PROOT="^"_$CHAR(37)_"wd(17.040801,3)"
+ IF $DATA(@PROOT@("DFN")) QUIT PROOT
+ ;
+ ; Fallback preserves prior behavior if DFN xref is absent.
+ QUIT PROOT
+ ;
+LOADLOGURL(ROOT,IEN) ; Build /gtree URL for load log node
+ NEW URLROOT
+ SET URLROOT=$EXTRACT($GET(ROOT),2,$LENGTH($GET(ROOT))) ; drop leading ^
+ IF URLROOT="" QUIT ""
+ IF URLROOT["(" SET URLROOT=$EXTRACT(URLROOT,1,$LENGTH(URLROOT)-1)_","_(+IEN)_",%22load%22)"
+ ELSE  SET URLROOT=URLROOT_"("_(+IEN)_",%22load%22)"
+ IF $EXTRACT(URLROOT,1)="%" SET URLROOT="%25"_$EXTRACT(URLROOT,2,$LENGTH(URLROOT))
+ QUIT "/gtree/"_URLROOT
  ;
 ADDLN(RTN,TXT) ; Append one line to output array
  NEW IDX
