@@ -1,0 +1,1933 @@
+{
+  "resourceType": "ValueSet",
+  "id": "medication_rxnorm",
+  "url": "http://example.org/synthea/ValueSet/medication_rxnorm",
+  "title": "Synthea medication codes (rxnorm)",
+  "description": "Codes extracted from Synthea modules for category 'medication', system http://www.nlm.nih.gov/research/umls/rxnorm.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+        "concept": [
+          {
+            "code": "1000126",
+            "display": "1 ML medroxyPROGESTERone acetate 150 MG/ML Injection"
+          },
+          {
+            "code": "1000126",
+            "display": "1 ML medroxyprogesterone acetate 150 MG/ML Injection"
+          },
+          {
+            "code": "1014676",
+            "display": "cetirizine hydrochloride 5 MG Oral Tablet"
+          },
+          {
+            "code": "1014678",
+            "display": "cetirizine hydrochloride 10 MG Oral Tablet"
+          },
+          {
+            "code": "1043400",
+            "display": "Acetaminophen 21.7 MG/ML / Dextromethorphan Hydrobromide 1 MG/ML / doxylamine succinate 0.417 MG/ML Oral Solution"
+          },
+          {
+            "code": "1049221",
+            "display": "Acetaminophen 325 MG / Oxycodone Hydrochloride 5 MG Oral Tablet"
+          },
+          {
+            "code": "1049221",
+            "display": "Acetaminophen 325 MG / oxyCODONE Hydrochloride 5 MG Oral Tablet"
+          },
+          {
+            "code": "1049504",
+            "display": "Abuse-Deterrent 12 HR Oxycodone Hydrochloride 10 MG Extended Release Oral Tablet [Oxycontin]"
+          },
+          {
+            "code": "1049625",
+            "display": "Acetaminophen 325 MG / Oxycodone Hydrochloride 10 MG Oral Tablet [Percocet]"
+          },
+          {
+            "code": "1049630",
+            "display": "diphenhydrAMINE Hydrochloride 25 MG Oral Tablet"
+          },
+          {
+            "code": "1049635",
+            "display": "Acetaminophen 325 MG / oxyCODONE Hydrochloride 2.5 MG Oral Tablet"
+          },
+          {
+            "code": "1049683",
+            "display": "oxyCODONE Hydrochloride 10 MG Oral Tablet"
+          },
+          {
+            "code": "105078",
+            "display": "Penicillin G 375 MG/ML Injectable Solution"
+          },
+          {
+            "code": "105585",
+            "display": "Methotrexate 2.5 MG Oral Tablet"
+          },
+          {
+            "code": "106258",
+            "display": "Hydrocortisone 10 MG/ML Topical Cream"
+          },
+          {
+            "code": "106892",
+            "display": "insulin isophane, human 70 UNT/ML / insulin, regular, human 30 UNT/ML Injectable Suspension [Humulin]"
+          },
+          {
+            "code": "108515",
+            "display": "1 ML tacrolimus 5 MG/ML Injection [Prograf]"
+          },
+          {
+            "code": "1091392",
+            "display": "Methylphenidate Hydrochloride 20 MG Oral Tablet"
+          },
+          {
+            "code": "1100184",
+            "display": "Donepezil hydrochloride 23 MG Oral Tablet"
+          },
+          {
+            "code": "1114085",
+            "display": "100 ML zoledronic acid 0.04 MG/ML Injection"
+          },
+          {
+            "code": "1116635",
+            "display": "ticagrelor 90 MG Oral Tablet"
+          },
+          {
+            "code": "1116758",
+            "display": "chloroquine phosphate 500 MG Oral Tablet"
+          },
+          {
+            "code": "1147334",
+            "display": "emtricitabine 200 MG / rilpivirine 25 MG / tenofovir disoproxil fumarate 300 MG Oral Tablet"
+          },
+          {
+            "code": "1190766",
+            "display": "atropine sulfate 0.31 MG/ML Ophthalmic Solution"
+          },
+          {
+            "code": "1191013",
+            "display": "proparacaine hydrochloride 5 MG/ML Ophthalmic Solution"
+          },
+          {
+            "code": "1191222",
+            "display": "naloxone hydrochloride 0.4 MG/ML Injectable Solution"
+          },
+          {
+            "code": "1234995",
+            "display": "Rocuronium bromide 10 MG/ML Injectable Solution"
+          },
+          {
+            "code": "1243052",
+            "display": "ivacaftor 150 MG Oral Tablet [Kalydeco]"
+          },
+          {
+            "code": "1245441",
+            "display": "ezetimibe 10 MG / simvastatin 40 MG Oral Tablet [Vytorin]"
+          },
+          {
+            "code": "1306292",
+            "display": "cobicistat 150 MG / elvitegravir 150 MG / emtricitabine 200 MG / tenofovir disoproxil fumarate 300 MG Oral Tablet"
+          },
+          {
+            "code": "1359133",
+            "display": "{5 (ethinyl estradiol 0.02 MG / norethindrone acetate 1 MG Oral Tablet) / 7 (ethinyl estradiol 0.03 MG / norethindrone acetate 1 MG Oral Tablet) / 9 (ethinyl estradiol 0.035 MG / norethindrone acetate 1 MG Oral Tablet) / 7 (ferrous fumarate 75 MG Oral Tablet) } Pack [Estrostep Fe 28 Day]"
+          },
+          {
+            "code": "1359269",
+            "display": "darunavir 800 MG Oral Tablet"
+          },
+          {
+            "code": "1361048",
+            "display": "heparin sodium, porcine 100 UNT/ML Injectable Solution"
+          },
+          {
+            "code": "1361226",
+            "display": "heparin sodium, porcine 1000 UNT/ML Injectable Solution"
+          },
+          {
+            "code": "1363309",
+            "display": "Chlorpheniramine Maleate 4 MG Oral Tablet"
+          },
+          {
+            "code": "1366343",
+            "display": "Levonorgestrel 0.00354 MG/HR Drug Implant"
+          },
+          {
+            "code": "1367439",
+            "display": "21 DAY ethinyl estradiol 0.000625 MG/HR / etonogestrel 0.005 MG/HR Vaginal System [NuvaRing]"
+          },
+          {
+            "code": "1373463",
+            "display": "canagliflozin 100 MG Oral Tablet"
+          },
+          {
+            "code": "141918",
+            "display": "Terfenadine 60 MG Oral Tablet"
+          },
+          {
+            "code": "141962",
+            "display": "Azithromycin 250 MG Oral Capsule"
+          },
+          {
+            "code": "1431987",
+            "display": "24 HR tacrolimus 5 MG Extended Release Oral Capsule [Astagraf]"
+          },
+          {
+            "code": "1433873",
+            "display": "dolutegravir 50 MG Oral Tablet"
+          },
+          {
+            "code": "1435630",
+            "display": "enalapril maleate 1 MG/ML Oral Solution [Epaned]"
+          },
+          {
+            "code": "1437975",
+            "display": "Glycopyrrolate 1.5 MG Oral Tablet [Glycate]"
+          },
+          {
+            "code": "1437975",
+            "display": "glycopyrrolate 1.5 MG Oral Tablet [Glycate]"
+          },
+          {
+            "code": "1483744",
+            "display": "Naltrexone hydrochloride 50 MG Oral Tablet"
+          },
+          {
+            "code": "1534809",
+            "display": "168 HR Ethinyl Estradiol 0.00146 MG/HR / norelgestromin 0.00625 MG/HR Transdermal System"
+          },
+          {
+            "code": "1535362",
+            "display": "sodium fluoride 0.0272 MG/MG Oral Gel"
+          },
+          {
+            "code": "1536144",
+            "display": "120 ACTUAT mometasone furoate 0.1 MG/ACTUAT Metered Dose Inhaler [Asmanex]"
+          },
+          {
+            "code": "1536148",
+            "display": "120 ACTUAT mometasone furoate 0.2 MG/ACTUAT Metered Dose Inhaler [Asmanex]"
+          },
+          {
+            "code": "1547660",
+            "display": "30 ACTUAT fluticasone furoate 0.1 MG/ACTUAT Dry Powder Inhaler [Arnuity]"
+          },
+          {
+            "code": "1547672",
+            "display": "30 ACTUAT fluticasone furoate 0.2 MG/ACTUAT Dry Powder Inhaler [Arnuity]"
+          },
+          {
+            "code": "1599803",
+            "display": "24 HR Donepezil hydrochloride 10 MG / Memantine hydrochloride 28 MG Extended Release Oral Capsule"
+          },
+          {
+            "code": "1601380",
+            "display": "palbociclib 100 MG Oral Capsule"
+          },
+          {
+            "code": "1605257",
+            "display": "levonorgestrel 0.000813 MG/HR Intrauterine System [Liletta]"
+          },
+          {
+            "code": "1648755",
+            "display": "nitrofurantoin, macrocrystals 25 MG / nitrofurantoin, monohydrate 75 MG Oral Capsule"
+          },
+          {
+            "code": "1648756",
+            "display": "nitrofurantoin, macrocrystals 25 MG / nitrofurantoin, monohydrate 75 MG [Macrobid]"
+          },
+          {
+            "code": "1649485",
+            "display": "ivabradine 5 MG Oral Tablet"
+          },
+          {
+            "code": "1649987",
+            "display": "doxycycline hyclate 100 MG"
+          },
+          {
+            "code": "1650142",
+            "display": "Doxycycline Monohydrate 100 MG Oral Tablet"
+          },
+          {
+            "code": "1652673",
+            "display": "Doxycycline Monohydrate 50 MG Oral Tablet"
+          },
+          {
+            "code": "1656318",
+            "display": "Cefotaxime 2000 MG Injection"
+          },
+          {
+            "code": "1656346",
+            "display": "sacubitril 24 MG / valsartan 26 MG Oral Tablet [Entresto]"
+          },
+          {
+            "code": "1656351",
+            "display": "sacubitril 49 MG / valsartan 51 MG Oral Tablet [Entresto]"
+          },
+          {
+            "code": "1656356",
+            "display": "sacubitril 97 MG / valsartan 103 MG Oral Tablet [Entresto]"
+          },
+          {
+            "code": "1657066",
+            "display": "4 ML bevacizumab 25 MG/ML Injection"
+          },
+          {
+            "code": "1657981",
+            "display": "20 ML tocilizumab 20 MG/ML Injection"
+          },
+          {
+            "code": "1658084",
+            "display": "ado-trastuzumab emtansine 100 MG Injection"
+          },
+          {
+            "code": "1659131",
+            "display": "piperacillin 2000 MG / tazobactam 250 MG Injection"
+          },
+          {
+            "code": "1659149",
+            "display": "Piperacillin 4000 MG / tazobactam 500 MG Injection"
+          },
+          {
+            "code": "1659149",
+            "display": "piperacillin 4000 MG / tazobactam 500 MG Injection"
+          },
+          {
+            "code": "1659263",
+            "display": "1 ML heparin sodium, porcine 5000 UNT/ML Injection"
+          },
+          {
+            "code": "1664463",
+            "display": "24 HR tacrolimus 1 MG Extended Release Oral Tablet [Envarsus]"
+          },
+          {
+            "code": "1664986",
+            "display": "Aztreonam 2000 MG Injection"
+          },
+          {
+            "code": "1665021",
+            "display": "ceftriaxone 1000 MG Injection"
+          },
+          {
+            "code": "1665060",
+            "display": "cefazolin 2000 MG Injection"
+          },
+          {
+            "code": "1665227",
+            "display": "20 ML Ciprofloxacin 10 MG/ML Injection"
+          },
+          {
+            "code": "1719286",
+            "display": "10 ML Furosemide 10 MG/ML Injection"
+          },
+          {
+            "code": "1721613",
+            "display": "cobicistat 150 MG / elvitegravir 150 MG / emtricitabine 200 MG / tenofovir alafenamide 10 MG Oral Tablet"
+          },
+          {
+            "code": "1723208",
+            "display": "10 ML Alfentanil 0.5 MG/ML Injection"
+          },
+          {
+            "code": "1728805",
+            "display": "2 ML morphine sulfate 1 MG/ML Injection"
+          },
+          {
+            "code": "1729584",
+            "display": "remifentanil 2 MG Injection"
+          },
+          {
+            "code": "1732136",
+            "display": "1 ML Morphine Sulfate 5 MG/ML Injection"
+          },
+          {
+            "code": "1732186",
+            "display": "100 ML Epirubicin Hydrochloride 2 MG/ML Injection"
+          },
+          {
+            "code": "1734919",
+            "display": "Cyclophosphamide 1000 MG Injection"
+          },
+          {
+            "code": "1735006",
+            "display": "10 ML Fentanyl 0.05 MG/ML Injection"
+          },
+          {
+            "code": "1736776",
+            "display": "10 ML oxaliplatin 5 MG/ML Injection"
+          },
+          {
+            "code": "1736854",
+            "display": "Cisplatin 50 MG Injection"
+          },
+          {
+            "code": "1737449",
+            "display": "10 ML Pamidronate Disodium 3 MG/ML Injection"
+          },
+          {
+            "code": "1737466",
+            "display": "100 ML tirofiban 0.05 MG/ML Injection"
+          },
+          {
+            "code": "1740467",
+            "display": "2 ML Ondansetron 2 MG/ML Injection"
+          },
+          {
+            "code": "1744259",
+            "display": "5 ML metoprolol tartrate 1 MG/ML Cartridge"
+          },
+          {
+            "code": "1747691",
+            "display": "emtricitabine 200 MG / tenofovir alafenamide 25 MG Oral Tablet"
+          },
+          {
+            "code": "1789958",
+            "display": "abobotulinumtoxinA 300 UNT Injection [Dysport]"
+          },
+          {
+            "code": "1790099",
+            "display": "10 ML Doxorubicin Hydrochloride 2 MG/ML Injection"
+          },
+          {
+            "code": "1791701",
+            "display": "10 ML Fluorouracil 50 MG/ML Injection"
+          },
+          {
+            "code": "1796676",
+            "display": "25 ML protamine sulfate (USP) 10 MG/ML Injection"
+          },
+          {
+            "code": "1803932",
+            "display": "Leucovorin 100 MG Injection"
+          },
+          {
+            "code": "1804799",
+            "display": "Alteplase 100 MG Injection"
+          },
+          {
+            "code": "1804799",
+            "display": "alteplase 100 MG Injection"
+          },
+          {
+            "code": "1806890",
+            "display": "lisinopril 1 MG/ML Oral Solution [Qbrelis]"
+          },
+          {
+            "code": "1807510",
+            "display": "150 ML vancomycin 5 MG/ML Injection"
+          },
+          {
+            "code": "1807513",
+            "display": "vancomycin 1000 MG Injection"
+          },
+          {
+            "code": "1808217",
+            "display": "100 ML Propofol 10 MG/ML Injection"
+          },
+          {
+            "code": "1809104",
+            "display": "5 ML SUFentanil 0.05 MG/ML Injection"
+          },
+          {
+            "code": "1856546",
+            "display": "levonorgestrel 0.000729 MG/HR Intrauterine System [Kyleena]"
+          },
+          {
+            "code": "1860154",
+            "display": "Abuse-Deterrent 12 HR Oxycodone Hydrochloride 15 MG Extended Release Oral Tablet"
+          },
+          {
+            "code": "1860480",
+            "display": "1 ML DOCEtaxel 20 MG/ML Injection"
+          },
+          {
+            "code": "1860491",
+            "display": "12 HR Hydrocodone Bitartrate 10 MG Extended Release Oral Capsule"
+          },
+          {
+            "code": "1870230",
+            "display": "NDA020800 0.3 ML Epinephrine 1 MG/ML Auto-Injector"
+          },
+          {
+            "code": "1873983",
+            "display": "ribociclib 200 MG Oral Tablet"
+          },
+          {
+            "code": "1923432",
+            "display": "dorzolamide 20 MG/ML / timolol 5 MG/ML Ophthalmic Solution"
+          },
+          {
+            "code": "1940648",
+            "display": "neratinib 40 MG Oral Tablet"
+          },
+          {
+            "code": "1946840",
+            "display": "abemaciclib 100 MG Oral Tablet [Verzenio]"
+          },
+          {
+            "code": "197319",
+            "display": "Allopurinol 100 MG Oral Tablet"
+          },
+          {
+            "code": "197378",
+            "display": "Astemizole 10 MG Oral Tablet"
+          },
+          {
+            "code": "197379",
+            "display": "atenolol 100 MG Oral Tablet"
+          },
+          {
+            "code": "197380",
+            "display": "atenolol 25 MG Oral Tablet"
+          },
+          {
+            "code": "197381",
+            "display": "atenolol 50 MG Oral Tablet"
+          },
+          {
+            "code": "197454",
+            "display": "cephalexin 500 MG Oral Tablet"
+          },
+          {
+            "code": "197511",
+            "display": "ciprofloxacin 250 MG Oral Tablet"
+          },
+          {
+            "code": "197517",
+            "display": "clarithromycin 500 MG Oral Tablet"
+          },
+          {
+            "code": "197541",
+            "display": "Colchicine 0.6 MG Oral Tablet"
+          },
+          {
+            "code": "197558",
+            "display": "dapsone 25 MG Oral Tablet"
+          },
+          {
+            "code": "197591",
+            "display": "Diazepam 5 MG Oral Tablet"
+          },
+          {
+            "code": "197604",
+            "display": "Digoxin 0.125 MG Oral Tablet"
+          },
+          {
+            "code": "197604",
+            "display": "digoxin 0.125 MG Oral Tablet"
+          },
+          {
+            "code": "197862",
+            "display": "leucovorin 25 MG Oral Tablet"
+          },
+          {
+            "code": "197884",
+            "display": "lisinopril 40 MG Oral Tablet"
+          },
+          {
+            "code": "197885",
+            "display": "hydrochlorothiazide 12.5 MG / lisinopril 10 MG Oral Tablet"
+          },
+          {
+            "code": "197886",
+            "display": "hydrochlorothiazide 12.5 MG / lisinopril 20 MG Oral Tablet"
+          },
+          {
+            "code": "197887",
+            "display": "hydrochlorothiazide 25 MG / lisinopril 20 MG Oral Tablet"
+          },
+          {
+            "code": "197903",
+            "display": "lovastatin 10 MG Oral Tablet"
+          },
+          {
+            "code": "197904",
+            "display": "lovastatin 20 MG Oral Tablet"
+          },
+          {
+            "code": "197905",
+            "display": "lovastatin 40 MG Oral Tablet"
+          },
+          {
+            "code": "198014",
+            "display": "Naproxen 500 MG Oral Tablet"
+          },
+          {
+            "code": "198031",
+            "display": "24 HR nicotine 0.292 MG/HR Transdermal System"
+          },
+          {
+            "code": "198039",
+            "display": "nitroglycerin 0.4 MG Sublingual Tablet"
+          },
+          {
+            "code": "198182",
+            "display": "pyrimethamine 25 MG Oral Tablet"
+          },
+          {
+            "code": "198188",
+            "display": "ramipril 2.5 MG Oral Capsule"
+          },
+          {
+            "code": "198189",
+            "display": "ramipril 5 MG Oral Capsule"
+          },
+          {
+            "code": "198211",
+            "display": "simvastatin 40 MG Oral Tablet"
+          },
+          {
+            "code": "198240",
+            "display": "Tamoxifen 10 MG Oral Tablet"
+          },
+          {
+            "code": "198334",
+            "display": "sulfamethoxazole 400 MG / trimethoprim 80 MG Oral Tablet"
+          },
+          {
+            "code": "198335",
+            "display": "sulfamethoxazole 800 MG / trimethoprim 160 MG Oral Tablet"
+          },
+          {
+            "code": "198405",
+            "display": "Ibuprofen 100 MG Oral Tablet"
+          },
+          {
+            "code": "198440",
+            "display": "Acetaminophen 500 MG Oral Tablet"
+          },
+          {
+            "code": "198767",
+            "display": "Pancreatin 600 MG Oral Tablet"
+          },
+          {
+            "code": "199224",
+            "display": "anastrozole 1 MG Oral Tablet"
+          },
+          {
+            "code": "199663",
+            "display": "zidovudine 300 MG Oral Tablet"
+          },
+          {
+            "code": "1997015",
+            "display": "50 ML bivalirudin 5 MG/ML Injection"
+          },
+          {
+            "code": "1998772",
+            "display": "Breath-Actuated 120 ACTUAT beclomethasone dipropionate 0.08 MG/ACTUAT Metered Dose Inhaler [Qvar]"
+          },
+          {
+            "code": "1998774",
+            "display": "Breath-Actuated 120 ACTUAT beclomethasone dipropionate 0.04 MG/ACTUAT Metered Dose Inhaler [Qvar]"
+          },
+          {
+            "code": "199885",
+            "display": "levofloxacin 500 MG Oral Tablet"
+          },
+          {
+            "code": "1999667",
+            "display": "bictegravir 50 MG / emtricitabine 200 MG / tenofovir alafenamide 25 MG Oral Tablet"
+          },
+          {
+            "code": "200031",
+            "display": "carvedilol 6.25 MG Oral Tablet"
+          },
+          {
+            "code": "200032",
+            "display": "carvedilol 12.5 MG Oral Tablet"
+          },
+          {
+            "code": "200033",
+            "display": "carvedilol 25 MG Oral Tablet"
+          },
+          {
+            "code": "200064",
+            "display": "letrozole 2.5 MG Oral Tablet"
+          },
+          {
+            "code": "200082",
+            "display": "lamivudine 150 MG / zidovudine 300 MG Oral Tablet"
+          },
+          {
+            "code": "200094",
+            "display": "irbesartan 75 MG Oral Tablet"
+          },
+          {
+            "code": "200095",
+            "display": "irbesartan 150 MG Oral Tablet"
+          },
+          {
+            "code": "200096",
+            "display": "irbesartan 300 MG Oral Tablet"
+          },
+          {
+            "code": "2001499",
+            "display": "Vitamin B12 5 MG/ML Injectable Solution"
+          },
+          {
+            "code": "200243",
+            "display": "sevoflurane 1000 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "200284",
+            "display": "hydrochlorothiazide 12.5 MG / valsartan 80 MG Oral Tablet"
+          },
+          {
+            "code": "200285",
+            "display": "hydrochlorothiazide 12.5 MG / valsartan 160 MG Oral Tablet"
+          },
+          {
+            "code": "2003249",
+            "display": "lamivudine 300 MG / tenofovir disoproxil fumarate 300 MG Oral Tablet"
+          },
+          {
+            "code": "200345",
+            "display": "simvastatin 80 MG Oral Tablet"
+          },
+          {
+            "code": "200346",
+            "display": "cefdinir 300 MG Oral Capsule"
+          },
+          {
+            "code": "200349",
+            "display": "100 ML eptifibatide 0.75 MG/ML Injection"
+          },
+          {
+            "code": "2047241",
+            "display": "baricitinib 2 MG Oral Tablet"
+          },
+          {
+            "code": "204844",
+            "display": "azithromycin 600 MG Oral Tablet"
+          },
+          {
+            "code": "204892",
+            "display": "clonazePAM 0.25 MG Oral Tablet"
+          },
+          {
+            "code": "205304",
+            "display": "telmisartan 40 MG Oral Tablet"
+          },
+          {
+            "code": "205305",
+            "display": "telmisartan 80 MG Oral Tablet"
+          },
+          {
+            "code": "205326",
+            "display": "lisinopril 30 MG Oral Tablet"
+          },
+          {
+            "code": "205532",
+            "display": "dornase alfa 1 MG/ML Inhalation Solution [Pulmozyme]"
+          },
+          {
+            "code": "205923",
+            "display": "1 ML Epoetin Alfa 4000 UNT/ML Injection [Epogen]"
+          },
+          {
+            "code": "206905",
+            "display": "Ibuprofen 400 MG Oral Tablet [Ibu]"
+          },
+          {
+            "code": "209387",
+            "display": "Acetaminophen 325 MG Oral Tablet [Tylenol]"
+          },
+          {
+            "code": "2103182",
+            "display": "1 ML Vasopressin (USP) 20 UNT/ML Injection"
+          },
+          {
+            "code": "2119714",
+            "display": "5 ML hyaluronidase-oysk 2000 UNT/ML / trastuzumab-oysk 120 MG/ML Injection"
+          },
+          {
+            "code": "212033",
+            "display": "aspirin 325 MG Oral Tablet"
+          },
+          {
+            "code": "2122519",
+            "display": "dolutegravir 50 MG / lamivudine 300 MG Oral Tablet"
+          },
+          {
+            "code": "2123111",
+            "display": "NDA020503 200 ACTUAT Albuterol 0.09 MG/ACTUAT Metered Dose Inhaler"
+          },
+          {
+            "code": "212388",
+            "display": "carvedilol 6.25 MG Oral Tablet [Coreg]"
+          },
+          {
+            "code": "212389",
+            "display": "carvedilol 12.5 MG Oral Tablet [Coreg]"
+          },
+          {
+            "code": "212390",
+            "display": "carvedilol 25 MG Oral Tablet [Coreg]"
+          },
+          {
+            "code": "212446",
+            "display": "azithromycin 250 MG Oral Tablet [Zithromax]"
+          },
+          {
+            "code": "213432",
+            "display": "telmisartan 80 MG Oral Tablet [Micardis]"
+          },
+          {
+            "code": "226719",
+            "display": "etoposide 100 MG Injection [Etopophos]"
+          },
+          {
+            "code": "2284960",
+            "display": "remdesivir 100 MG Injection"
+          },
+          {
+            "code": "235389",
+            "display": "Mestranol / Norethynodrel"
+          },
+          {
+            "code": "238100",
+            "display": "Lorazepam 2 MG/ML Injectable Solution"
+          },
+          {
+            "code": "241834",
+            "display": "cycloSPORINE, modified 100 MG Oral Capsule"
+          },
+          {
+            "code": "242754",
+            "display": "levalbuterol 0.417 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "242969",
+            "display": "4 ML Norepinephrine 1 MG/ML Injection"
+          },
+          {
+            "code": "242969",
+            "display": "4 ML norepinephrine 1 MG/ML Injection"
+          },
+          {
+            "code": "243670",
+            "display": "Aspirin 81 MG Oral Tablet"
+          },
+          {
+            "code": "243670",
+            "display": "aspirin 81 MG Oral Tablet"
+          },
+          {
+            "code": "245134",
+            "display": "72 HR Fentanyl 0.025 MG/HR Transdermal System"
+          },
+          {
+            "code": "245314",
+            "display": "Albuterol 5 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "245314",
+            "display": "albuterol 5 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "252559",
+            "display": "budesonide 0.5 MG/ML Inhalation Suspension"
+          },
+          {
+            "code": "2563431",
+            "display": "aspirin 81 MG Oral Capsule [Vazalore]"
+          },
+          {
+            "code": "259255",
+            "display": "atorvastatin 80 MG Oral Tablet"
+          },
+          {
+            "code": "261962",
+            "display": "ramipril 10 MG Oral Capsule"
+          },
+          {
+            "code": "282755",
+            "display": "telmisartan 20 MG Oral Tablet"
+          },
+          {
+            "code": "284215",
+            "display": "clindamycin 300 MG Oral Capsule"
+          },
+          {
+            "code": "284531",
+            "display": "telmisartan 20 MG Oral Tablet [Micardis]"
+          },
+          {
+            "code": "284988",
+            "display": "didanosine 400 MG Delayed Release Oral Capsule"
+          },
+          {
+            "code": "308136",
+            "display": "amLODIPine 2.5 MG Oral Tablet"
+          },
+          {
+            "code": "308182",
+            "display": "Amoxicillin 250 MG Oral Capsule"
+          },
+          {
+            "code": "308192",
+            "display": "Amoxicillin 500 MG Oral Tablet"
+          },
+          {
+            "code": "308192",
+            "display": "amoxicillin 500 MG Oral Tablet"
+          },
+          {
+            "code": "308429",
+            "display": "atovaquone 150 MG/ML Oral Suspension"
+          },
+          {
+            "code": "308460",
+            "display": "Azithromycin 250 MG Oral Tablet"
+          },
+          {
+            "code": "308971",
+            "display": "carbamazepine 20 MG/ML Oral Suspension [Tegretol]"
+          },
+          {
+            "code": "309043",
+            "display": "12 HR Cefaclor 500 MG Extended Release Oral Tablet"
+          },
+          {
+            "code": "309045",
+            "display": "Cefaclor 250 MG Oral Capsule"
+          },
+          {
+            "code": "309076",
+            "display": "cefpodoxime 100 MG Oral Tablet"
+          },
+          {
+            "code": "309078",
+            "display": "cefpodoxime 200 MG Oral Tablet"
+          },
+          {
+            "code": "309097",
+            "display": "Cefuroxime 250 MG Oral Tablet"
+          },
+          {
+            "code": "309309",
+            "display": "ciprofloxacin 500 MG Oral Tablet"
+          },
+          {
+            "code": "309362",
+            "display": "Clopidogrel 75 MG Oral Tablet"
+          },
+          {
+            "code": "309362",
+            "display": "clopidogrel 75 MG Oral Tablet"
+          },
+          {
+            "code": "309845",
+            "display": "Diazepam 5 MG/ML Injectable Solution"
+          },
+          {
+            "code": "310261",
+            "display": "exemestane 25 MG Oral Tablet"
+          },
+          {
+            "code": "310325",
+            "display": "ferrous sulfate 325 MG Oral Tablet"
+          },
+          {
+            "code": "310385",
+            "display": "FLUoxetine 20 MG Oral Capsule"
+          },
+          {
+            "code": "310436",
+            "display": "Galantamine 4 MG Oral Tablet"
+          },
+          {
+            "code": "310798",
+            "display": "Hydrochlorothiazide 25 MG Oral Tablet"
+          },
+          {
+            "code": "310965",
+            "display": "Ibuprofen 200 MG Oral Tablet"
+          },
+          {
+            "code": "310988",
+            "display": "indinavir 400 MG Oral Capsule"
+          },
+          {
+            "code": "311034",
+            "display": "insulin, regular, human 100 UNT/ML Injectable Solution"
+          },
+          {
+            "code": "311353",
+            "display": "lisinopril 2.5 MG Oral Tablet"
+          },
+          {
+            "code": "311354",
+            "display": "lisinopril 5 MG Oral Tablet"
+          },
+          {
+            "code": "311372",
+            "display": "Loratadine 10 MG Oral Tablet"
+          },
+          {
+            "code": "311700",
+            "display": "Midazolam 1 MG/ML Injectable Solution"
+          },
+          {
+            "code": "312615",
+            "display": "predniSONE 20 MG Oral Tablet"
+          },
+          {
+            "code": "312617",
+            "display": "predniSONE 5 MG Oral Tablet"
+          },
+          {
+            "code": "312748",
+            "display": "quinapril 10 MG Oral Tablet"
+          },
+          {
+            "code": "312749",
+            "display": "quinapril 20 MG Oral Tablet"
+          },
+          {
+            "code": "312750",
+            "display": "quinapril 5 MG Oral Tablet"
+          },
+          {
+            "code": "312938",
+            "display": "Sertraline 100 MG Oral Tablet"
+          },
+          {
+            "code": "312961",
+            "display": "Simvastatin 20 MG Oral Tablet"
+          },
+          {
+            "code": "312961",
+            "display": "simvastatin 20 MG Oral Tablet"
+          },
+          {
+            "code": "312962",
+            "display": "simvastatin 5 MG Oral Tablet"
+          },
+          {
+            "code": "313002",
+            "display": "Sodium Chloride 9 MG/ML Injectable Solution"
+          },
+          {
+            "code": "313096",
+            "display": "spironolactone 25 MG Oral Tablet"
+          },
+          {
+            "code": "313110",
+            "display": "stavudine 40 MG Oral Capsule"
+          },
+          {
+            "code": "313185",
+            "display": "Tacrine 10 MG Oral Capsule"
+          },
+          {
+            "code": "313212",
+            "display": "tenecteplase 50 MG Injection"
+          },
+          {
+            "code": "313521",
+            "display": "tropicamide 5 MG/ML Ophthalmic Solution"
+          },
+          {
+            "code": "313572",
+            "display": "Vancomycin 50 MG/ML Injectable Solution"
+          },
+          {
+            "code": "313760",
+            "display": "zalcitabine 0.75 MG Oral Tablet"
+          },
+          {
+            "code": "313782",
+            "display": "Acetaminophen 325 MG Oral Tablet"
+          },
+          {
+            "code": "313820",
+            "display": "Acetaminophen 160 MG Chewable Tablet"
+          },
+          {
+            "code": "313988",
+            "display": "Furosemide 40 MG Oral Tablet"
+          },
+          {
+            "code": "314076",
+            "display": "lisinopril 10 MG Oral Tablet"
+          },
+          {
+            "code": "314077",
+            "display": "lisinopril 20 MG Oral Tablet"
+          },
+          {
+            "code": "314203",
+            "display": "quinapril 40 MG Oral Tablet"
+          },
+          {
+            "code": "314231",
+            "display": "Simvastatin 10 MG Oral Tablet"
+          },
+          {
+            "code": "314231",
+            "display": "simvastatin 10 MG Oral Tablet"
+          },
+          {
+            "code": "317150",
+            "display": "ritonavir 100 MG Oral Capsule"
+          },
+          {
+            "code": "349094",
+            "display": "budesonide 0.125 MG/ML Inhalation Suspension"
+          },
+          {
+            "code": "349199",
+            "display": "valsartan 80 MG Oral Tablet"
+          },
+          {
+            "code": "349200",
+            "display": "valsartan 320 MG Oral Tablet"
+          },
+          {
+            "code": "349201",
+            "display": "valsartan 160 MG Oral Tablet"
+          },
+          {
+            "code": "349251",
+            "display": "tenofovir disoproxil fumarate 300 MG Oral Tablet"
+          },
+          {
+            "code": "349353",
+            "display": "hydrochlorothiazide 25 MG / valsartan 160 MG Oral Tablet"
+          },
+          {
+            "code": "349477",
+            "display": "efavirenz 600 MG Oral Tablet"
+          },
+          {
+            "code": "349483",
+            "display": "valsartan 40 MG Oral Tablet"
+          },
+          {
+            "code": "349491",
+            "display": "lamivudine 300 MG Oral Tablet"
+          },
+          {
+            "code": "351109",
+            "display": "budesonide 0.25 MG/ML Inhalation Suspension"
+          },
+          {
+            "code": "351136",
+            "display": "albuterol 0.417 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "351137",
+            "display": "albuterol 0.21 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "351266",
+            "display": "buprenorphine 2 MG / naloxone 0.5 MG Sublingual Tablet"
+          },
+          {
+            "code": "351875",
+            "display": "72 HR scopolamine 0.0139 MG/HR Transdermal System [Transderm Scop]"
+          },
+          {
+            "code": "352001",
+            "display": "valsartan 320 MG Oral Tablet [Diovan]"
+          },
+          {
+            "code": "360110",
+            "display": "Sirolimus 2 MG Oral Tablet"
+          },
+          {
+            "code": "389221",
+            "display": "Etonogestrel 68 MG Drug Implant"
+          },
+          {
+            "code": "402109",
+            "display": "fosamprenavir 700 MG Oral Tablet"
+          },
+          {
+            "code": "403875",
+            "display": "emtricitabine 200 MG Oral Capsule"
+          },
+          {
+            "code": "403978",
+            "display": "nelfinavir 625 MG Oral Tablet"
+          },
+          {
+            "code": "476349",
+            "display": "ezetimibe 10 MG / simvastatin 20 MG Oral Tablet"
+          },
+          {
+            "code": "476350",
+            "display": "ezetimibe 10 MG / simvastatin 40 MG Oral Tablet"
+          },
+          {
+            "code": "476351",
+            "display": "ezetimibe 10 MG / simvastatin 80 MG Oral Tablet"
+          },
+          {
+            "code": "476556",
+            "display": "emtricitabine 200 MG / tenofovir disoproxil fumarate 300 MG Oral Tablet"
+          },
+          {
+            "code": "477045",
+            "display": "Chlorpheniramine Maleate 2 MG/ML Oral Solution"
+          },
+          {
+            "code": "483438",
+            "display": "pregabalin 100 MG Oral Capsule"
+          },
+          {
+            "code": "542347",
+            "display": "isoflurane 999 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "562251",
+            "display": "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"
+          },
+          {
+            "code": "562366",
+            "display": "desflurane 1000 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "562508",
+            "display": "amoxicillin 875 MG / clavulanate 125 MG Oral Tablet"
+          },
+          {
+            "code": "583214",
+            "display": "PACLitaxel 100 MG Injection"
+          },
+          {
+            "code": "583214",
+            "display": "Paclitaxel 100 MG Injection"
+          },
+          {
+            "code": "596926",
+            "display": "duloxetine 20 MG Delayed Release Oral Capsule"
+          },
+          {
+            "code": "597195",
+            "display": "Carboplatin 10 MG/ML Injectable Solution"
+          },
+          {
+            "code": "597730",
+            "display": "lopinavir 200 MG / Ritonavir 50 MG Oral Tablet"
+          },
+          {
+            "code": "597730",
+            "display": "lopinavir 200 MG / ritonavir 50 MG Oral Tablet"
+          },
+          {
+            "code": "608139",
+            "display": "atomoxetine 100 MG Oral Capsule"
+          },
+          {
+            "code": "616830",
+            "display": "budesonide 0.125 MG/ML Inhalation Suspension [Pulmicort]"
+          },
+          {
+            "code": "617296",
+            "display": "amoxicillin 500 MG / clavulanate 125 MG Oral Tablet"
+          },
+          {
+            "code": "617310",
+            "display": "atorvastatin 20 MG Oral Tablet"
+          },
+          {
+            "code": "617311",
+            "display": "atorvastatin 40 MG Oral Tablet"
+          },
+          {
+            "code": "617312",
+            "display": "atorvastatin 10 MG Oral Tablet"
+          },
+          {
+            "code": "617314",
+            "display": "atorvastatin 10 MG Oral Tablet [Lipitor]"
+          },
+          {
+            "code": "617320",
+            "display": "atorvastatin 40 MG Oral Tablet [Lipitor]"
+          },
+          {
+            "code": "630208",
+            "display": "albuterol 0.83 MG/ML Inhalation Solution"
+          },
+          {
+            "code": "636042",
+            "display": "hydrochlorothiazide 12.5 MG / valsartan 320 MG Oral Tablet"
+          },
+          {
+            "code": "636045",
+            "display": "hydrochlorothiazide 25 MG / valsartan 320 MG Oral Tablet"
+          },
+          {
+            "code": "643066",
+            "display": "efavirenz 600 MG / emtricitabine 200 MG / tenofovir disoproxil fumarate 300 MG Oral Tablet"
+          },
+          {
+            "code": "664741",
+            "display": "atazanavir 300 MG Oral Capsule"
+          },
+          {
+            "code": "665078",
+            "display": "Loratadine 5 MG Chewable Tablet"
+          },
+          {
+            "code": "672149",
+            "display": "lapatinib 250 MG Oral Tablet"
+          },
+          {
+            "code": "686924",
+            "display": "carvedilol 3.125 MG Oral Tablet"
+          },
+          {
+            "code": "705129",
+            "display": "Nitroglycerin 0.4 MG/ACTUAT Mucosal Spray"
+          },
+          {
+            "code": "727711",
+            "display": "0.67 ML anakinra 149 MG/ML Prefilled Syringe"
+          },
+          {
+            "code": "727762",
+            "display": "5 ML fulvestrant 50 MG/ML Prefilled Syringe"
+          },
+          {
+            "code": "744842",
+            "display": "raltegravir 400 MG Oral Tablet"
+          },
+          {
+            "code": "745752",
+            "display": "NDA021457 200 ACTUAT albuterol 0.09 MG/ACTUAT Metered Dose Inhaler [ProAir]"
+          },
+          {
+            "code": "745791",
+            "display": "200 ACTUAT levalbuterol 0.045 MG/ACTUAT Metered Dose Inhaler"
+          },
+          {
+            "code": "746466",
+            "display": "200 ACTUAT levalbuterol 0.045 MG/ACTUAT Metered Dose Inhaler [Xopenex]"
+          },
+          {
+            "code": "746763",
+            "display": "NDA020503 200 ACTUAT albuterol 0.09 MG/ACTUAT Metered Dose Inhaler [Proventil]"
+          },
+          {
+            "code": "746804",
+            "display": "120 ACTUAT mometasone furoate 0.22 MG/ACTUAT Dry Powder Inhaler [Asmanex]"
+          },
+          {
+            "code": "746811",
+            "display": "14 ACTUAT mometasone furoate 0.22 MG/ACTUAT Dry Powder Inhaler [Asmanex]"
+          },
+          {
+            "code": "746815",
+            "display": "60 ACTUAT mometasone furoate 0.22 MG/ACTUAT Dry Powder Inhaler [Asmanex]"
+          },
+          {
+            "code": "748856",
+            "display": "{24 (drospirenone 3 MG / ethinyl estradiol 0.02 MG Oral Tablet) / 4 (inert ingredients 1 MG Oral Tablet) } Pack [Yaz 28 Day]"
+          },
+          {
+            "code": "748879",
+            "display": "{21 (ethinyl estradiol 0.03 MG / levonorgestrel 0.15 MG Oral Tablet) / 7 (inert ingredients 1 MG Oral Tablet) } Pack [Levora 0.15/30 28 Day]"
+          },
+          {
+            "code": "748962",
+            "display": "{28 (norethindrone 0.35 MG Oral Tablet) } Pack [Camila 28 Day]"
+          },
+          {
+            "code": "749196",
+            "display": "clopidogrel 300 MG Oral Tablet"
+          },
+          {
+            "code": "749762",
+            "display": "{7 (ethinyl estradiol 0.01 MG Oral Tablet) / 84 (ethinyl estradiol 0.03 MG / levonorgestrel 0.15 MG Oral Tablet) } Pack [Seasonique]"
+          },
+          {
+            "code": "749785",
+            "display": "{7 (ethinyl estradiol 0.035 MG / norgestimate 0.18 MG Oral Tablet) / 7 (ethinyl estradiol 0.035 MG / norgestimate 0.215 MG Oral Tablet) / 7 (ethinyl estradiol 0.035 MG / norgestimate 0.25 MG Oral Tablet) / 7 (inert ingredients 1 MG Oral Tablet) } Pack [Ortho Tri-Cyclen 28 Day]"
+          },
+          {
+            "code": "749882",
+            "display": "{7 (inert ingredients 1 MG Oral Tablet) / 21 (mestranol 0.05 MG / norethindrone 1 MG Oral Tablet) } Pack [Norinyl 1+50 28 Day]"
+          },
+          {
+            "code": "751616",
+            "display": "nebivolol 10 MG Oral Tablet [Bystolic]"
+          },
+          {
+            "code": "751620",
+            "display": "nebivolol 2.5 MG Oral Tablet [Bystolic]"
+          },
+          {
+            "code": "751623",
+            "display": "nebivolol 5 MG Oral Tablet [Bystolic]"
+          },
+          {
+            "code": "751905",
+            "display": "{7 (ethinyl estradiol 0.035 MG / norgestimate 0.18 MG Oral Tablet) / 7 (ethinyl estradiol 0.035 MG / norgestimate 0.215 MG Oral Tablet) / 7 (ethinyl estradiol 0.035 MG / norgestimate 0.25 MG Oral Tablet) / 7 (inert ingredients 1 MG Oral Tablet) } Pack [Trinessa 28 Day]"
+          },
+          {
+            "code": "752899",
+            "display": "0.25 ML Leuprolide Acetate 30 MG/ML Prefilled Syringe"
+          },
+          {
+            "code": "757594",
+            "display": "{28 (norethindrone 0.35 MG Oral Tablet) } Pack [Jolivette 28 Day]"
+          },
+          {
+            "code": "763138",
+            "display": "reteplase 10 UNT Injection"
+          },
+          {
+            "code": "789980",
+            "display": "Ampicillin 100 MG/ML Injectable Solution"
+          },
+          {
+            "code": "801095",
+            "display": "NDA020983 60 ACTUAT albuterol 0.09 MG/ACTUAT Metered Dose Inhaler [Ventolin]"
+          },
+          {
+            "code": "807283",
+            "display": "levonorgestrel 0.000833 MG/HR Intrauterine System [Mirena]"
+          },
+          {
+            "code": "808917",
+            "display": "fosfomycin 3000 MG Granules for Oral Solution"
+          },
+          {
+            "code": "827075",
+            "display": "nebivolol 20 MG Oral Tablet [Bystolic]"
+          },
+          {
+            "code": "831533",
+            "display": "{28 (norethindrone 0.35 MG Oral Tablet) } Pack [Errin 28 Day]"
+          },
+          {
+            "code": "833135",
+            "display": "Milnacipran hydrochloride 100 MG Oral Tablet"
+          },
+          {
+            "code": "834061",
+            "display": "Penicillin V Potassium 250 MG Oral Tablet"
+          },
+          {
+            "code": "834102",
+            "display": "Penicillin V Potassium 500 MG Oral Tablet"
+          },
+          {
+            "code": "835603",
+            "display": "tramadol hydrochloride 50 MG Oral Tablet"
+          },
+          {
+            "code": "845488",
+            "display": "ramipril 1.25 MG Oral Capsule"
+          },
+          {
+            "code": "849574",
+            "display": "Naproxen sodium 220 MG Oral Tablet"
+          },
+          {
+            "code": "854228",
+            "display": "0.3 ML Enoxaparin sodium 100 MG/ML Prefilled Syringe"
+          },
+          {
+            "code": "854235",
+            "display": "0.4 ML Enoxaparin sodium 100 MG/ML Prefilled Syringe"
+          },
+          {
+            "code": "854252",
+            "display": "1 ML Enoxaparin sodium 150 MG/ML Prefilled Syringe"
+          },
+          {
+            "code": "854255",
+            "display": "enoxaparin sodium 100 MG/ML Injectable Solution"
+          },
+          {
+            "code": "854901",
+            "display": "bisoprolol fumarate 10 MG Oral Tablet"
+          },
+          {
+            "code": "854905",
+            "display": "bisoprolol fumarate 5 MG Oral Tablet"
+          },
+          {
+            "code": "854908",
+            "display": "bisoprolol fumarate 10 MG / hydrochlorothiazide 6.25 MG Oral Tablet"
+          },
+          {
+            "code": "854916",
+            "display": "bisoprolol fumarate 2.5 MG / hydrochlorothiazide 6.25 MG Oral Tablet"
+          },
+          {
+            "code": "854919",
+            "display": "bisoprolol fumarate 5 MG / hydrochlorothiazide 6.25 MG Oral Tablet"
+          },
+          {
+            "code": "855332",
+            "display": "Warfarin Sodium 5 MG Oral Tablet"
+          },
+          {
+            "code": "855332",
+            "display": "warfarin sodium 5 MG Oral Tablet"
+          },
+          {
+            "code": "855812",
+            "display": "prasugrel 10 MG Oral Tablet"
+          },
+          {
+            "code": "856448",
+            "display": "propranolol hydrochloride 10 MG Oral Tablet"
+          },
+          {
+            "code": "856457",
+            "display": "propranolol hydrochloride 20 MG Oral Tablet"
+          },
+          {
+            "code": "856460",
+            "display": "24 HR propranolol hydrochloride 120 MG Extended Release Oral Capsule"
+          },
+          {
+            "code": "856481",
+            "display": "24 HR propranolol hydrochloride 160 MG Extended Release Oral Capsule"
+          },
+          {
+            "code": "856519",
+            "display": "propranolol hydrochloride 40 MG Oral Tablet"
+          },
+          {
+            "code": "856535",
+            "display": "24 HR propranolol hydrochloride 60 MG Extended Release Oral Capsule"
+          },
+          {
+            "code": "856556",
+            "display": "propranolol hydrochloride 60 MG Oral Tablet"
+          },
+          {
+            "code": "856569",
+            "display": "24 HR propranolol hydrochloride 80 MG Extended Release Oral Capsule"
+          },
+          {
+            "code": "856578",
+            "display": "propranolol hydrochloride 80 MG Oral Tablet"
+          },
+          {
+            "code": "856980",
+            "display": "acetaminophen 300 MG / hydrocodone bitartrate 10 MG Oral Tablet"
+          },
+          {
+            "code": "856987",
+            "display": "Acetaminophen 300 MG / HYDROcodone Bitartrate 5 MG Oral Tablet"
+          },
+          {
+            "code": "856987",
+            "display": "Acetaminophen 300 MG / Hydrocodone Bitartrate 5 MG Oral Tablet"
+          },
+          {
+            "code": "857005",
+            "display": "Acetaminophen 325 MG / HYDROcodone Bitartrate 7.5 MG Oral Tablet"
+          },
+          {
+            "code": "858804",
+            "display": "enalapril maleate 2.5 MG Oral Tablet"
+          },
+          {
+            "code": "858810",
+            "display": "enalapril maleate 20 MG Oral Tablet"
+          },
+          {
+            "code": "858813",
+            "display": "enalapril maleate 5 MG Oral Tablet"
+          },
+          {
+            "code": "858817",
+            "display": "enalapril maleate 10 MG Oral Tablet"
+          },
+          {
+            "code": "859088",
+            "display": "NDA020983 200 ACTUAT albuterol 0.09 MG/ACTUAT Metered Dose Inhaler [Ventolin]"
+          },
+          {
+            "code": "859419",
+            "display": "rosuvastatin calcium 40 MG Oral Tablet"
+          },
+          {
+            "code": "859421",
+            "display": "rosuvastatin calcium 40 MG Oral Tablet [Crestor]"
+          },
+          {
+            "code": "859424",
+            "display": "rosuvastatin calcium 5 MG Oral Tablet"
+          },
+          {
+            "code": "859426",
+            "display": "rosuvastatin calcium 5 MG Oral Tablet [Crestor]"
+          },
+          {
+            "code": "859747",
+            "display": "rosuvastatin calcium 10 MG Oral Tablet"
+          },
+          {
+            "code": "859749",
+            "display": "rosuvastatin calcium 10 MG Oral Tablet [Crestor]"
+          },
+          {
+            "code": "859751",
+            "display": "rosuvastatin calcium 20 MG Oral Tablet"
+          },
+          {
+            "code": "859753",
+            "display": "rosuvastatin calcium 20 MG Oral Tablet [Crestor]"
+          },
+          {
+            "code": "859863",
+            "display": "saquinavir mesylate 500 MG Oral Tablet"
+          },
+          {
+            "code": "860182",
+            "display": "rimabotulinumtoxinB 5000 UNT/ML [Myobloc]"
+          },
+          {
+            "code": "860510",
+            "display": "24 HR carvedilol phosphate 10 MG Extended Release Oral Capsule"
+          },
+          {
+            "code": "860516",
+            "display": "24 HR carvedilol phosphate 20 MG Extended Release Oral Capsule"
+          },
+          {
+            "code": "860518",
+            "display": "24 HR carvedilol phosphate 20 MG Extended Release Oral Capsule [Coreg]"
+          },
+          {
+            "code": "860975",
+            "display": "24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet"
+          },
+          {
+            "code": "861204",
+            "display": "brimonidine tartrate 1 MG/ML Ophthalmic Solution"
+          },
+          {
+            "code": "861356",
+            "display": "0.8 ML fondaparinux sodium 12.5 MG/ML Prefilled Syringe"
+          },
+          {
+            "code": "861467",
+            "display": "Meperidine Hydrochloride 50 MG Oral Tablet"
+          },
+          {
+            "code": "861646",
+            "display": "pitavastatin calcium 1 MG Oral Tablet [Livalo]"
+          },
+          {
+            "code": "861650",
+            "display": "pitavastatin calcium 2 MG Oral Tablet [Livalo]"
+          },
+          {
+            "code": "861654",
+            "display": "pitavastatin calcium 4 MG Oral Tablet [Livalo]"
+          },
+          {
+            "code": "864706",
+            "display": "methadone hydrochloride 10 MG Oral Tablet"
+          },
+          {
+            "code": "864718",
+            "display": "Methadone Hydrochloride 5 MG Oral Tablet"
+          },
+          {
+            "code": "865098",
+            "display": "Insulin Lispro 100 UNT/ML Injectable Solution [Humalog]"
+          },
+          {
+            "code": "866412",
+            "display": "24 HR metoprolol succinate 100 MG Extended Release Oral Tablet"
+          },
+          {
+            "code": "866419",
+            "display": "24 HR metoprolol succinate 200 MG Extended Release Oral Tablet"
+          },
+          {
+            "code": "866427",
+            "display": "24 HR metoprolol succinate 25 MG Extended Release Oral Tablet"
+          },
+          {
+            "code": "866429",
+            "display": "24 HR metoprolol succinate 25 MG Extended Release Oral Tablet [Toprol]"
+          },
+          {
+            "code": "866436",
+            "display": "24 HR metoprolol succinate 50 MG Extended Release Oral Tablet"
+          },
+          {
+            "code": "866438",
+            "display": "24 HR metoprolol succinate 50 MG Extended Release Oral Tablet [Toprol]"
+          },
+          {
+            "code": "866508",
+            "display": "5 ML metoprolol tartrate 1 MG/ML Injection"
+          },
+          {
+            "code": "866511",
+            "display": "metoprolol tartrate 100 MG Oral Tablet"
+          },
+          {
+            "code": "866514",
+            "display": "metoprolol tartrate 50 MG Oral Tablet"
+          },
+          {
+            "code": "866516",
+            "display": "metoprolol tartrate 50 MG Oral Tablet [Lopressor]"
+          },
+          {
+            "code": "866924",
+            "display": "metoprolol tartrate 25 MG Oral Tablet"
+          },
+          {
+            "code": "883826",
+            "display": "Tranexamic Acid 650 MG Oral Tablet"
+          },
+          {
+            "code": "885219",
+            "display": "Benztropine mesylate 0.5 MG Oral Tablet"
+          },
+          {
+            "code": "895996",
+            "display": "120 ACTUAT fluticasone propionate 0.044 MG/ACTUAT Metered Dose Inhaler [Flovent]"
+          },
+          {
+            "code": "896001",
+            "display": "120 ACTUAT fluticasone propionate 0.11 MG/ACTUAT Metered Dose Inhaler [Flovent]"
+          },
+          {
+            "code": "896006",
+            "display": "120 ACTUAT fluticasone propionate 0.22 MG/ACTUAT Metered Dose Inhaler [Flovent]"
+          },
+          {
+            "code": "896019",
+            "display": "60 ACTUAT fluticasone propionate 0.05 MG/ACTUAT Dry Powder Inhaler [Flovent]"
+          },
+          {
+            "code": "896023",
+            "display": "60 ACTUAT fluticasone propionate 0.1 MG/ACTUAT Dry Powder Inhaler [Flovent]"
+          },
+          {
+            "code": "896027",
+            "display": "60 ACTUAT fluticasone propionate 0.25 MG/ACTUAT Dry Powder Inhaler [Flovent]"
+          },
+          {
+            "code": "896209",
+            "display": "60 ACTUAT Fluticasone propionate 0.25 MG/ACTUAT / salmeterol 0.05 MG/ACTUAT Dry Powder Inhaler"
+          },
+          {
+            "code": "896758",
+            "display": "labetalol hydrochloride 100 MG Oral Tablet"
+          },
+          {
+            "code": "896762",
+            "display": "labetalol hydrochloride 200 MG Oral Tablet"
+          },
+          {
+            "code": "896766",
+            "display": "labetalol hydrochloride 300 MG Oral Tablet"
+          },
+          {
+            "code": "897122",
+            "display": "3 ML liraglutide 6 MG/ML Pen Injector"
+          },
+          {
+            "code": "897685",
+            "display": "verapamil hydrochloride 80 MG Oral Tablet [Calan]"
+          },
+          {
+            "code": "898342",
+            "display": "amlodipine 10 MG / benazepril hydrochloride 20 MG Oral Capsule"
+          },
+          {
+            "code": "898346",
+            "display": "amlodipine 10 MG / benazepril hydrochloride 40 MG Oral Capsule"
+          },
+          {
+            "code": "898350",
+            "display": "amlodipine 2.5 MG / benazepril hydrochloride 10 MG Oral Capsule"
+          },
+          {
+            "code": "898353",
+            "display": "amlodipine 5 MG / benazepril hydrochloride 10 MG Oral Capsule"
+          },
+          {
+            "code": "898356",
+            "display": "amlodipine 5 MG / benazepril hydrochloride 20 MG Oral Capsule"
+          },
+          {
+            "code": "898359",
+            "display": "amlodipine 5 MG / benazepril hydrochloride 40 MG Oral Capsule"
+          },
+          {
+            "code": "898362",
+            "display": "benazepril hydrochloride 10 MG / hydrochlorothiazide 12.5 MG Oral Tablet"
+          },
+          {
+            "code": "898367",
+            "display": "benazepril hydrochloride 20 MG / hydrochlorothiazide 12.5 MG Oral Tablet"
+          },
+          {
+            "code": "898372",
+            "display": "benazepril hydrochloride 20 MG / hydrochlorothiazide 25 MG Oral Tablet"
+          },
+          {
+            "code": "898687",
+            "display": "benazepril hydrochloride 10 MG Oral Tablet"
+          },
+          {
+            "code": "898690",
+            "display": "benazepril hydrochloride 20 MG Oral Tablet"
+          },
+          {
+            "code": "898719",
+            "display": "benazepril hydrochloride 40 MG Oral Tablet"
+          },
+          {
+            "code": "898723",
+            "display": "benazepril hydrochloride 5 MG Oral Tablet"
+          },
+          {
+            "code": "904419",
+            "display": "Alendronic acid 10 MG Oral Tablet"
+          },
+          {
+            "code": "904458",
+            "display": "pravastatin sodium 10 MG Oral Tablet"
+          },
+          {
+            "code": "904467",
+            "display": "pravastatin sodium 20 MG Oral Tablet"
+          },
+          {
+            "code": "904475",
+            "display": "pravastatin sodium 40 MG Oral Tablet"
+          },
+          {
+            "code": "904477",
+            "display": "pravastatin sodium 40 MG Oral Tablet [Pravachol]"
+          },
+          {
+            "code": "904481",
+            "display": "pravastatin sodium 80 MG Oral Tablet"
+          },
+          {
+            "code": "905269",
+            "display": "Trihexyphenidyl Hydrochloride 2 MG Oral Tablet"
+          },
+          {
+            "code": "905377",
+            "display": "hydralazine hydrochloride 37.5 MG / isosorbide dinitrate 20 MG Oral Tablet"
+          },
+          {
+            "code": "966222",
+            "display": "Levothyroxine Sodium 0.075 MG Oral Tablet"
+          },
+          {
+            "code": "966524",
+            "display": "120 ACTUAT budesonide 0.18 MG/ACTUAT Dry Powder Inhaler [Pulmicort]"
+          },
+          {
+            "code": "966529",
+            "display": "60 ACTUAT budesonide 0.09 MG/ACTUAT Dry Powder Inhaler [Pulmicort]"
+          },
+          {
+            "code": "978950",
+            "display": "{5 (dienogest 2 MG / estradiol valerate 2 MG Oral Tablet) / 17 (dienogest 3 MG / estradiol valerate 2 MG Oral Tablet) / 2 (estradiol valerate 1 MG Oral Tablet) / 2 (estradiol valerate 3 MG Oral Tablet) / 2 (inert ingredients 1 MG Oral Tablet) } Pack [Natazia 28 Day]"
+          },
+          {
+            "code": "979092",
+            "display": "Hydroxychloroquine Sulfate 200 MG Oral Tablet"
+          },
+          {
+            "code": "979464",
+            "display": "hydrochlorothiazide 12.5 MG / losartan potassium 100 MG Oral Tablet"
+          },
+          {
+            "code": "979466",
+            "display": "hydrochlorothiazide 12.5 MG / losartan potassium 100 MG Oral Tablet [Hyzaar]"
+          },
+          {
+            "code": "979468",
+            "display": "hydrochlorothiazide 12.5 MG / losartan potassium 50 MG Oral Tablet"
+          },
+          {
+            "code": "979470",
+            "display": "hydrochlorothiazide 12.5 MG / losartan potassium 50 MG Oral Tablet [Hyzaar]"
+          },
+          {
+            "code": "979471",
+            "display": "hydrochlorothiazide 25 MG / losartan potassium 100 MG Oral Tablet"
+          },
+          {
+            "code": "979473",
+            "display": "hydrochlorothiazide 25 MG / losartan potassium 100 MG Oral Tablet [Hyzaar]"
+          },
+          {
+            "code": "979480",
+            "display": "losartan potassium 100 MG Oral Tablet"
+          },
+          {
+            "code": "979485",
+            "display": "Losartan Potassium 25 MG Oral Tablet"
+          },
+          {
+            "code": "979485",
+            "display": "losartan potassium 25 MG Oral Tablet"
+          },
+          {
+            "code": "979487",
+            "display": "losartan potassium 25 MG Oral Tablet [Cozaar]"
+          },
+          {
+            "code": "979492",
+            "display": "losartan potassium 50 MG Oral Tablet"
+          },
+          {
+            "code": "979494",
+            "display": "losartan potassium 50 MG Oral Tablet [Cozaar]"
+          },
+          {
+            "code": "993452",
+            "display": "1 ML denosumab 60 MG/ML Prefilled Syringe"
+          },
+          {
+            "code": "993770",
+            "display": "Acetaminophen 300 MG / Codeine Phosphate 15 MG Oral Tablet"
+          },
+          {
+            "code": "996740",
+            "display": "Memantine hydrochloride 2 MG/ML Oral Solution"
+          },
+          {
+            "code": "997223",
+            "display": "Donepezil hydrochloride 10 MG Oral Tablet"
+          },
+          {
+            "code": "997488",
+            "display": "Fexofenadine hydrochloride 30 MG Oral Tablet"
+          },
+          {
+            "code": "997501",
+            "display": "Fexofenadine hydrochloride 60 MG Oral Tablet"
+          },
+          {
+            "code": "999970",
+            "display": "amlodipine / hydrochlorothiazide / olmesartan Oral Tablet [Tribenzor]"
+          },
+          {
+            "code": "999998",
+            "display": "amlodipine 5 MG / hydrochlorothiazide 12.5 MG / olmesartan medoxomil 40 MG [Tribenzor]"
+          }
+        ]
+      }
+    ]
+  }
+}

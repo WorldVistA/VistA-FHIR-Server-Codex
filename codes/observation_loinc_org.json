@@ -1,0 +1,481 @@
+{
+  "resourceType": "ValueSet",
+  "id": "observation_loinc_org",
+  "url": "http://example.org/synthea/ValueSet/observation_loinc_org",
+  "title": "Synthea observation codes (loinc.org)",
+  "description": "Codes extracted from Synthea modules for category 'observation', system http://loinc.org.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://loinc.org",
+        "concept": [
+          {
+            "code": "10480-2",
+            "display": "Estrogen+Progesterone receptor Ag [Presence] in Tissue by Immune stain"
+          },
+          {
+            "code": "14804-9",
+            "display": "Lactate dehydrogenase [Enzymatic activity/volume] in Serum or Plasma by Lactate to pyruvate reaction"
+          },
+          {
+            "code": "14959-1",
+            "display": "Microalbumin/Creatinine [Mass Ratio] in Urine"
+          },
+          {
+            "code": "18752-6",
+            "display": "Exercise stress test study"
+          },
+          {
+            "code": "19123-9",
+            "display": "Magnesium [Mass/volume] in Serum or Plasma"
+          },
+          {
+            "code": "1988-5",
+            "display": "C reactive protein [Mass/volume] in Serum or Plasma"
+          },
+          {
+            "code": "19926-5",
+            "display": "FEV1/FVC"
+          },
+          {
+            "code": "19994-3",
+            "display": "Oxygen/Total gas setting [Volume Fraction] Ventilator"
+          },
+          {
+            "code": "20447-9",
+            "display": "HIV 1 RNA [#/volume] (viral load) in Serum or Plasma by NAA with probe detection"
+          },
+          {
+            "code": "2106-3",
+            "display": "Choriogonadotropin [Presence] in Urine"
+          },
+          {
+            "code": "21377-7",
+            "display": "Magnesium [Mass/volume] in Blood"
+          },
+          {
+            "code": "2157-6",
+            "display": "Creatine kinase [Enzymatic activity/volume] in Serum or Plasma"
+          },
+          {
+            "code": "21905-5",
+            "display": "Primary tumor.clinical [Class] Cancer"
+          },
+          {
+            "code": "21906-3",
+            "display": "Regional lymph nodes.clinical [Class] Cancer"
+          },
+          {
+            "code": "21907-1",
+            "display": "Distant metastases.clinical [Class] Cancer"
+          },
+          {
+            "code": "21908-9",
+            "display": "Stage group.clinical Cancer"
+          },
+          {
+            "code": "21924-6",
+            "display": "Tumor marker Cancer"
+          },
+          {
+            "code": "22577-1",
+            "display": "Toxoplasma gondii Ab [Presence] in Serum"
+          },
+          {
+            "code": "24467-3",
+            "display": "CD3+CD4+ (T4 helper) cells [#/volume] in Blood"
+          },
+          {
+            "code": "2532-0",
+            "display": "Lactate dehydrogenase [Enzymatic activity/volume] in Serum or Plasma"
+          },
+          {
+            "code": "2708-6",
+            "display": "Oxygen saturation in Arterial blood"
+          },
+          {
+            "code": "2777-1",
+            "display": "Phosphate [Mass/volume] in Serum or Plasma"
+          },
+          {
+            "code": "28245-9",
+            "display": "Abuse Status [OMAHA]"
+          },
+          {
+            "code": "2857-1",
+            "display": "Prostate specific Ag [Mass/volume] in Serum or Plasma"
+          },
+          {
+            "code": "29463-7",
+            "display": "Body Weight"
+          },
+          {
+            "code": "29554-3",
+            "display": "Procedure Narrative"
+          },
+          {
+            "code": "3016-3",
+            "display": "Thyrotropin [Units/volume] in Serum or Plasma"
+          },
+          {
+            "code": "3024-7",
+            "display": "Thyroxine (T4) free [Mass/volume] in Serum or Plasma"
+          },
+          {
+            "code": "3173-2",
+            "display": "aPTT in Blood by Coagulation assay"
+          },
+          {
+            "code": "3184-9",
+            "display": "Activated clotting time (ACT) of Blood by Coagulation assay"
+          },
+          {
+            "code": "32465-7",
+            "display": "Physical findings of Prostate"
+          },
+          {
+            "code": "32693-4",
+            "display": "Lactate [Moles/volume] in Blood"
+          },
+          {
+            "code": "33728-7",
+            "display": "Size.maximum dimension in Tumor"
+          },
+          {
+            "code": "33756-8",
+            "display": "Polyp size greatest dimension"
+          },
+          {
+            "code": "33762-6",
+            "display": "Natriuretic peptide.B prohormone N-Terminal [Mass/volume] in Serum or Plasma"
+          },
+          {
+            "code": "33914-3",
+            "display": "Glomerular filtration rate [Volume Rate/Area] in Serum or Plasma by Creatinine-based formula (MDRD)/1.73 sq M"
+          },
+          {
+            "code": "33959-8",
+            "display": "Procalcitonin [Mass/volume] in Serum or Plasma"
+          },
+          {
+            "code": "38208-5",
+            "display": "Pain severity - Reported"
+          },
+          {
+            "code": "38265-5",
+            "display": "DXA Radius and Ulna [T-score] Bone density"
+          },
+          {
+            "code": "39156-5",
+            "display": "Body mass index (BMI) [Ratio]"
+          },
+          {
+            "code": "44667-4",
+            "display": "Site of distant metastasis in Breast tumor"
+          },
+          {
+            "code": "44963-7",
+            "display": "Capillary refill [Time] of Nail bed"
+          },
+          {
+            "code": "4548-4",
+            "display": "Hemoglobin A1c/Hemoglobin.total in Blood"
+          },
+          {
+            "code": "46240-8",
+            "display": "History of Hospitalizations+Outpatient visits Narrative"
+          },
+          {
+            "code": "46288-7",
+            "display": "US Guidance for biopsy of Prostate"
+          },
+          {
+            "code": "48065-7",
+            "display": "Fibrin D-dimer FEU [Mass/volume] in Platelet poor plasma"
+          },
+          {
+            "code": "55277-8",
+            "display": "HIV status"
+          },
+          {
+            "code": "57905-2",
+            "display": "Hemoglobin.gastrointestinal.lower [Presence] in Stool by Immunoassay --1st specimen"
+          },
+          {
+            "code": "59408-5",
+            "display": "Oxygen saturation in Arterial blood by Pulse oximetry"
+          },
+          {
+            "code": "59557-9",
+            "display": "Treatment status Cancer"
+          },
+          {
+            "code": "59576-9",
+            "display": "Body mass index (BMI) [Percentile] Per age and sex"
+          },
+          {
+            "code": "600-7",
+            "display": "Bacteria identified in Blood by Culture"
+          },
+          {
+            "code": "6075-6",
+            "display": "Cladosporium herbarum IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6082-2",
+            "display": "Codfish IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6085-5",
+            "display": "Common Ragweed IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6095-4",
+            "display": "American house dust mite IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6106-9",
+            "display": "Egg white IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6158-0",
+            "display": "Latex IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6189-5",
+            "display": "White oak IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6206-7",
+            "display": "Peanut IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6246-3",
+            "display": "Shrimp IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6248-9",
+            "display": "Soybean IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6273-7",
+            "display": "Walnut IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6276-0",
+            "display": "Wheat IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "630-4",
+            "display": "Bacteria identified in Urine by Culture"
+          },
+          {
+            "code": "6301-6",
+            "display": "INR in Platelet poor plasma by Coagulation assay"
+          },
+          {
+            "code": "63513-6",
+            "display": "Are you covered by health insurance or some other kind of health care plan [PhenX]"
+          },
+          {
+            "code": "65750-2",
+            "display": "Drugs of abuse 5 panel - Urine by Screen method"
+          },
+          {
+            "code": "66519-0",
+            "display": "Percentage area affected by eczema Head and Neck [PhenX]"
+          },
+          {
+            "code": "66524-0",
+            "display": "Percentage area affected by eczema Upper extremity - bilateral [PhenX]"
+          },
+          {
+            "code": "66529-9",
+            "display": "Percentage area affected by eczema Trunk [PhenX]"
+          },
+          {
+            "code": "66534-9",
+            "display": "Percentage area affected by eczema Lower extremity - bilateral [PhenX]"
+          },
+          {
+            "code": "6833-8",
+            "display": "Cat dander IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "6844-5",
+            "display": "Honey bee IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "70006-2",
+            "display": "Medication management note"
+          },
+          {
+            "code": "71425-3",
+            "display": "Natriuretic peptide.B prohormone N-Terminal [Mass/volume] in Blood by Immunoassay"
+          },
+          {
+            "code": "71490-7",
+            "display": "Left eye Diabetic retinopathy severity level by Ophthalmoscopy"
+          },
+          {
+            "code": "71491-5",
+            "display": "Right eye Diabetic retinopathy severity level by Ophthalmoscopy"
+          },
+          {
+            "code": "71802-3",
+            "display": "Housing status"
+          },
+          {
+            "code": "72106-8",
+            "display": "Total score [MMSE]"
+          },
+          {
+            "code": "72166-2",
+            "display": "Tobacco smoking status"
+          },
+          {
+            "code": "72514-3",
+            "display": "Pain severity - 0-10 verbal numeric rating [Score] - Reported"
+          },
+          {
+            "code": "7258-7",
+            "display": "Cow milk IgE Ab [Units/volume] in Serum"
+          },
+          {
+            "code": "74006-8",
+            "display": "Weight difference [Mass difference] --pre dialysis - post dialysis"
+          },
+          {
+            "code": "751-8",
+            "display": "Neutrophils [#/volume] in Blood by Automated count"
+          },
+          {
+            "code": "75325-1",
+            "display": "Symptom"
+          },
+          {
+            "code": "75443-2",
+            "display": "Mental health Outpatient Note"
+          },
+          {
+            "code": "75636-1",
+            "display": "Emergency severity index [ESI]"
+          },
+          {
+            "code": "76690-7",
+            "display": "Sexual orientation"
+          },
+          {
+            "code": "77606-2",
+            "display": "Weight-for-length Per age and sex"
+          },
+          {
+            "code": "79892-6",
+            "display": "Right eye Intraocular pressure"
+          },
+          {
+            "code": "79893-4",
+            "display": "Left eye Intraocular pressure"
+          },
+          {
+            "code": "80271-0",
+            "display": "Physical findings of Abdomen by Palpation"
+          },
+          {
+            "code": "82810-3",
+            "display": "Pregnancy status"
+          },
+          {
+            "code": "8289-1",
+            "display": "Head Occipital-frontal circumference Percentile"
+          },
+          {
+            "code": "8302-2",
+            "display": "Body Height"
+          },
+          {
+            "code": "8310-5",
+            "display": "Body Temperature"
+          },
+          {
+            "code": "8310-5",
+            "display": "Body temperature"
+          },
+          {
+            "code": "8331-1",
+            "display": "Oral temperature"
+          },
+          {
+            "code": "84215-3",
+            "display": "Mental health Telehealth Note"
+          },
+          {
+            "code": "8478-0",
+            "display": "Mean blood pressure"
+          },
+          {
+            "code": "85318-4",
+            "display": "ERBB2 gene duplication [Presence] in Breast cancer specimen by FISH"
+          },
+          {
+            "code": "85319-2",
+            "display": "HER2 [Presence] in Breast cancer specimen by Immune stain"
+          },
+          {
+            "code": "85337-4",
+            "display": "Estrogen receptor Ag [Presence] in Breast cancer specimen by Immune stain"
+          },
+          {
+            "code": "85339-0",
+            "display": "Progesterone receptor Ag [Presence] in Breast cancer specimen by Immune stain"
+          },
+          {
+            "code": "85343-2",
+            "display": "Lymph nodes with macrometastases [#] in Cancer specimen by Light microscopy"
+          },
+          {
+            "code": "85344-0",
+            "display": "Lymph nodes with micrometastases [#] in Cancer specimen by Light microscopy"
+          },
+          {
+            "code": "85352-3",
+            "display": "Lymph nodes with isolated tumor cells [#] in Cancer specimen by Light microscopy"
+          },
+          {
+            "code": "87626-8",
+            "display": "Suicide prevention note"
+          },
+          {
+            "code": "88040-1",
+            "display": "Response to cancer treatment"
+          },
+          {
+            "code": "8867-4",
+            "display": "Heart rate"
+          },
+          {
+            "code": "89579-7",
+            "display": "Troponin I.cardiac [Mass/volume] in Serum or Plasma by High sensitivity method"
+          },
+          {
+            "code": "9279-1",
+            "display": "Respiratory rate"
+          },
+          {
+            "code": "9843-4",
+            "display": "Head Occipital-frontal circumference"
+          },
+          {
+            "code": "98498-9",
+            "display": "Visual acuity uncorrected Left eye"
+          },
+          {
+            "code": "98499-7",
+            "display": "Visual acuity uncorrected Right eye"
+          }
+        ]
+      }
+    ]
+  }
+}

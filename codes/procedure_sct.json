@@ -1,0 +1,1729 @@
+{
+  "resourceType": "ValueSet",
+  "id": "procedure_sct",
+  "url": "http://example.org/synthea/ValueSet/procedure_sct",
+  "title": "Synthea procedure codes (sct)",
+  "description": "Codes extracted from Synthea modules for category 'procedure', system http://snomed.info/sct.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "1004045004",
+            "display": "Intravitreal injection of anti-vascular endothelial growth factor (procedure)"
+          },
+          {
+            "code": "103697008",
+            "display": "Patient referral for dental care (procedure)"
+          },
+          {
+            "code": "103746007",
+            "display": "Heparin therapy (procedure)"
+          },
+          {
+            "code": "103750000",
+            "display": "Sleep apnea assessment (procedure)"
+          },
+          {
+            "code": "10383002",
+            "display": "Counseling for termination of pregnancy (procedure)"
+          },
+          {
+            "code": "104091002",
+            "display": "Hemogram, automated, with red blood cells, white blood cells, hemoglobin, hematocrit, indices, platelet count, and manual white blood cell differential (procedure)"
+          },
+          {
+            "code": "104173009",
+            "display": "Microbial culture of sputum (procedure)"
+          },
+          {
+            "code": "104308009",
+            "display": "Serologic test for Toxoplasma gondii (procedure)"
+          },
+          {
+            "code": "104326007",
+            "display": "Measurement of Varicella-zoster virus antibody (procedure)"
+          },
+          {
+            "code": "104375008",
+            "display": "Hepatitis C antibody, confirmatory test (procedure)"
+          },
+          {
+            "code": "104435004",
+            "display": "Screening for occult blood in feces (procedure)"
+          },
+          {
+            "code": "10563004",
+            "display": "Sleep disorder function test (procedure)"
+          },
+          {
+            "code": "110467000",
+            "display": "Pre-surgery testing (procedure)"
+          },
+          {
+            "code": "112001000119100",
+            "display": "Positive screening for depression on Patient Health Questionnaire 9 (finding)"
+          },
+          {
+            "code": "112011000119102",
+            "display": "Negative screening for depression on Patient Health Questionnaire 9 (finding)"
+          },
+          {
+            "code": "112790001",
+            "display": "Nasal sinus endoscopy (procedure)"
+          },
+          {
+            "code": "112798008",
+            "display": "Insertion of endotracheal tube (procedure)"
+          },
+          {
+            "code": "113076002",
+            "display": "Glucose tolerance test (procedure)"
+          },
+          {
+            "code": "113120007",
+            "display": "Interstitial brachytherapy (procedure)"
+          },
+          {
+            "code": "11466000",
+            "display": "Cesarean section (procedure)"
+          },
+          {
+            "code": "1155885007",
+            "display": "Repair of aortic valve (procedure)"
+          },
+          {
+            "code": "116861002",
+            "display": "Transfusion of fresh frozen plasma (procedure)"
+          },
+          {
+            "code": "116863004",
+            "display": "Transfusion of red blood cells (procedure)"
+          },
+          {
+            "code": "117010004",
+            "display": "Urine culture (procedure)"
+          },
+          {
+            "code": "117015009",
+            "display": "Throat culture (procedure)"
+          },
+          {
+            "code": "118001005",
+            "display": "Streptococcus pneumoniae group B antigen assay (procedure)"
+          },
+          {
+            "code": "122460008",
+            "display": "Reexploration procedure (procedure)"
+          },
+          {
+            "code": "122548005",
+            "display": "Biopsy of breast (procedure)"
+          },
+          {
+            "code": "122856003",
+            "display": "Oral examination (procedure)"
+          },
+          {
+            "code": "122869004",
+            "display": "Measurement procedure (procedure)"
+          },
+          {
+            "code": "1256042007",
+            "display": "Restoration of tooth with coverage of all cusps using dental filling material (procedure)"
+          },
+          {
+            "code": "1259293006",
+            "display": "Application of composite dental filling material to dentin of tooth following fracture of tooth (procedure)"
+          },
+          {
+            "code": "1259900009",
+            "display": "Fitting of intraoral appliance (procedure)"
+          },
+          {
+            "code": "1260009003",
+            "display": "Removal of supragingival plaque and calculus from all teeth using dental instrument (procedure)"
+          },
+          {
+            "code": "1260010008",
+            "display": "Removal of subgingival plaque and calculus from all teeth using dental instrument (procedure)"
+          },
+          {
+            "code": "1263416007",
+            "display": "Removal of intrauterine contraceptive device (procedure)"
+          },
+          {
+            "code": "1269321004",
+            "display": "Fitting of denture (procedure)"
+          },
+          {
+            "code": "12719002",
+            "display": "Platelet transfusion (procedure)"
+          },
+          {
+            "code": "127783003",
+            "display": "Spirometry (procedure)"
+          },
+          {
+            "code": "1287742003",
+            "display": "Radiotherapy (procedure)"
+          },
+          {
+            "code": "1290953004",
+            "display": "Plain X-ray of spine and pelvis (procedure)"
+          },
+          {
+            "code": "133899007",
+            "display": "Postoperative care (regime/therapy)"
+          },
+          {
+            "code": "133900002",
+            "display": "Intraoperative care (regime/therapy)"
+          },
+          {
+            "code": "13569004",
+            "display": "Transfusion of plasma (procedure)"
+          },
+          {
+            "code": "13995008",
+            "display": "Amputation of arm through shoulder (procedure)"
+          },
+          {
+            "code": "14152002",
+            "display": "Intravenous infusion (procedure)"
+          },
+          {
+            "code": "14736009",
+            "display": "History and physical examination with evaluation and management of patient (procedure)"
+          },
+          {
+            "code": "14768001",
+            "display": "Peripheral blood smear interpretation (procedure)"
+          },
+          {
+            "code": "15081005",
+            "display": "Pulmonary rehabilitation (regime/therapy)"
+          },
+          {
+            "code": "15220000",
+            "display": "Laboratory test (procedure)"
+          },
+          {
+            "code": "1571000087109",
+            "display": "Ultrasonography of bilateral breasts (procedure)"
+          },
+          {
+            "code": "162676008",
+            "display": "Brief general examination (procedure)"
+          },
+          {
+            "code": "165197003",
+            "display": "Diagnostic assessment (procedure)"
+          },
+          {
+            "code": "165355002",
+            "display": "Patient informed - test result (situation)"
+          },
+          {
+            "code": "165829005",
+            "display": "Gonorrhea infection titer test (procedure)"
+          },
+          {
+            "code": "166001",
+            "display": "Behavioral therapy (regime/therapy)"
+          },
+          {
+            "code": "167226008",
+            "display": "Urine dipstick test (procedure)"
+          },
+          {
+            "code": "167252002",
+            "display": "Urine pregnancy test (procedure)"
+          },
+          {
+            "code": "167995008",
+            "display": "Sputum microscopy (procedure)"
+          },
+          {
+            "code": "16830007",
+            "display": "Visual acuity testing (procedure)"
+          },
+          {
+            "code": "169230002",
+            "display": "Ultrasound scan for fetal viability (procedure)"
+          },
+          {
+            "code": "169553002",
+            "display": "Implantation of subcutaneous contraceptive (procedure)"
+          },
+          {
+            "code": "169673001",
+            "display": "Antenatal RhD antibody screening (procedure)"
+          },
+          {
+            "code": "16983000",
+            "display": "Death in hospital (event)"
+          },
+          {
+            "code": "170245002",
+            "display": "Child examination: school screening (procedure)"
+          },
+          {
+            "code": "171121004",
+            "display": "Human immunodeficiency virus screening (procedure)"
+          },
+          {
+            "code": "171122006",
+            "display": "Hepatitis B screening (procedure)"
+          },
+          {
+            "code": "171126009",
+            "display": "Tuberculosis screening (procedure)"
+          },
+          {
+            "code": "171128005",
+            "display": "Venereal disease screening (procedure)"
+          },
+          {
+            "code": "171207006",
+            "display": "Depression screening (procedure)"
+          },
+          {
+            "code": "171231001",
+            "display": "Asthma screening (procedure)"
+          },
+          {
+            "code": "173291009",
+            "display": "Simple extraction of tooth (procedure)"
+          },
+          {
+            "code": "173521004",
+            "display": "Transposition of submandibular duct (procedure)"
+          },
+          {
+            "code": "177157003",
+            "display": "Spontaneous breech delivery (procedure)"
+          },
+          {
+            "code": "177765008",
+            "display": "Opening of chest (procedure)"
+          },
+          {
+            "code": "17881005",
+            "display": "Cauterization of choroid plexus (procedure)"
+          },
+          {
+            "code": "179632003",
+            "display": "Closed reduction of dislocation of temporomandibular joint (procedure)"
+          },
+          {
+            "code": "180030006",
+            "display": "Amputation of the foot (procedure)"
+          },
+          {
+            "code": "180178009",
+            "display": "Continuous subcutaneous infusion of insulin (procedure)"
+          },
+          {
+            "code": "180207008",
+            "display": "Intravenous blood transfusion of packed cells (procedure)"
+          },
+          {
+            "code": "180256009",
+            "display": "Subcutaneous immunotherapy (procedure)"
+          },
+          {
+            "code": "180325003",
+            "display": "Direct current cardioversion (procedure)"
+          },
+          {
+            "code": "182777000",
+            "display": "Monitoring of patient (regime/therapy)"
+          },
+          {
+            "code": "182836005",
+            "display": "Review of medication (procedure)"
+          },
+          {
+            "code": "18286008",
+            "display": "Catheter ablation of tissue of heart (procedure)"
+          },
+          {
+            "code": "183418007",
+            "display": "Social case work (regime/therapy)"
+          },
+          {
+            "code": "183444007",
+            "display": "Referral for further care (procedure)"
+          },
+          {
+            "code": "183450002",
+            "display": "Admission to burn unit (procedure)"
+          },
+          {
+            "code": "183519002",
+            "display": "Referral to cardiology service (procedure)"
+          },
+          {
+            "code": "183830008",
+            "display": "Referral for X-ray (procedure)"
+          },
+          {
+            "code": "183856001",
+            "display": "Referral to hypertension clinic (procedure)"
+          },
+          {
+            "code": "183976008",
+            "display": "Operative procedure planned (situation)"
+          },
+          {
+            "code": "185087000",
+            "display": "Notifications (procedure)"
+          },
+          {
+            "code": "18946005",
+            "display": "Epidural anesthesia (procedure)"
+          },
+          {
+            "code": "200619008",
+            "display": "Comprehensive interview and evaluation (procedure)"
+          },
+          {
+            "code": "223470000",
+            "display": "Discussion about signs and symptoms (procedure)"
+          },
+          {
+            "code": "223484005",
+            "display": "Discussion about treatment (procedure)"
+          },
+          {
+            "code": "223487003",
+            "display": "Discussion about options (procedure)"
+          },
+          {
+            "code": "223495004",
+            "display": "Preparation of patient for procedure (regime/therapy)"
+          },
+          {
+            "code": "225158009",
+            "display": "Auscultation of the fetal heart (procedure)"
+          },
+          {
+            "code": "22523008",
+            "display": "Vasectomy (procedure)"
+          },
+          {
+            "code": "225297008",
+            "display": "Care planning and problem solving actions (procedure)"
+          },
+          {
+            "code": "225337009",
+            "display": "Suicide risk assessment (procedure)"
+          },
+          {
+            "code": "225338004",
+            "display": "Risk assessment (procedure)"
+          },
+          {
+            "code": "225362009",
+            "display": "Dental care (regime/therapy)"
+          },
+          {
+            "code": "225386006",
+            "display": "Pre-discharge assessment (procedure)"
+          },
+          {
+            "code": "225415001",
+            "display": "Close observation (regime/therapy)"
+          },
+          {
+            "code": "225953001",
+            "display": "Evaluating response to treatment (procedure)"
+          },
+          {
+            "code": "228557008",
+            "display": "Cognitive and behavioral therapy (regime/therapy)"
+          },
+          {
+            "code": "229064008",
+            "display": "Movement therapy (regime/therapy)"
+          },
+          {
+            "code": "229069003",
+            "display": "Posture training (procedure)"
+          },
+          {
+            "code": "229095001",
+            "display": "Exercise class (regime/therapy)"
+          },
+          {
+            "code": "23183008",
+            "display": "Excision of lingual torus (procedure)"
+          },
+          {
+            "code": "232657004",
+            "display": "Single lung transplant (procedure)"
+          },
+          {
+            "code": "232717009",
+            "display": "Coronary artery bypass grafting (procedure)"
+          },
+          {
+            "code": "232816009",
+            "display": "Aortic valve and adjacent structure operations (procedure)"
+          },
+          {
+            "code": "232965003",
+            "display": "Implantation of cardiac ventricular assist device (procedure)"
+          },
+          {
+            "code": "232967006",
+            "display": "Implantation of left cardiac ventricular assist device (procedure)"
+          },
+          {
+            "code": "233174007",
+            "display": "Cardiac pacemaker procedure (procedure)"
+          },
+          {
+            "code": "233553003",
+            "display": "Vascular cannula removal (procedure)"
+          },
+          {
+            "code": "23426006",
+            "display": "Measurement of respiratory function (procedure)"
+          },
+          {
+            "code": "234262008",
+            "display": "Excision of axillary lymph node (procedure)"
+          },
+          {
+            "code": "234336002",
+            "display": "Hemopoietic stem cell transplant (procedure)"
+          },
+          {
+            "code": "234687006",
+            "display": "Grafting of periodontal bone defect (procedure)"
+          },
+          {
+            "code": "234745004",
+            "display": "Take oral or dental impression (procedure)"
+          },
+          {
+            "code": "234754001",
+            "display": "Take impression for orthodontic appliance (procedure)"
+          },
+          {
+            "code": "236931002",
+            "display": "Methotrexate injection into tubal pregnancy (procedure)"
+          },
+          {
+            "code": "236974004",
+            "display": "Instrumental delivery (procedure)"
+          },
+          {
+            "code": "237001001",
+            "display": "Augmentation of labor (procedure)"
+          },
+          {
+            "code": "23745001",
+            "display": "Documentation procedure (procedure)"
+          },
+          {
+            "code": "23933004",
+            "display": "Excision of lingual frenum (procedure)"
+          },
+          {
+            "code": "241055006",
+            "display": "Mammogram - symptomatic (procedure)"
+          },
+          {
+            "code": "241149003",
+            "display": "Videofluoroscopy swallow (procedure)"
+          },
+          {
+            "code": "241615005",
+            "display": "Magnetic resonance imaging of breast (procedure)"
+          },
+          {
+            "code": "241645008",
+            "display": "Magnetic resonance imaging of spine (procedure)"
+          },
+          {
+            "code": "243063003",
+            "display": "Postoperative procedure education (procedure)"
+          },
+          {
+            "code": "243085009",
+            "display": "Oral health education (procedure)"
+          },
+          {
+            "code": "243092004",
+            "display": "Orthodontic appliance care education (procedure)"
+          },
+          {
+            "code": "243150007",
+            "display": "Assist control ventilation (regime/therapy)"
+          },
+          {
+            "code": "243174005",
+            "display": "Weaning from mechanically assisted ventilation (regime/therapy)"
+          },
+          {
+            "code": "24623002",
+            "display": "Screening mammography (procedure)"
+          },
+          {
+            "code": "24832002",
+            "display": "Closed reduction of mandibular fracture (procedure)"
+          },
+          {
+            "code": "252160004",
+            "display": "Standard pregnancy test (procedure)"
+          },
+          {
+            "code": "252480006",
+            "display": "Simple walk test (procedure)"
+          },
+          {
+            "code": "252482003",
+            "display": "Stair-climbing test (procedure)"
+          },
+          {
+            "code": "252832004",
+            "display": "Intraocular pressure test (procedure)"
+          },
+          {
+            "code": "252895004",
+            "display": "Urodynamic studies (procedure)"
+          },
+          {
+            "code": "25656009",
+            "display": "Physical examination, complete (procedure)"
+          },
+          {
+            "code": "261352009",
+            "display": "Face mask (physical object)"
+          },
+          {
+            "code": "261554009",
+            "display": "Reoperation (qualifier value)"
+          },
+          {
+            "code": "26212005",
+            "display": "Replacement of aortic valve (procedure)"
+          },
+          {
+            "code": "265764009",
+            "display": "Renal dialysis (procedure)"
+          },
+          {
+            "code": "26604007",
+            "display": "Complete blood count (procedure)"
+          },
+          {
+            "code": "266753000",
+            "display": "Referral for laboratory tests (procedure)"
+          },
+          {
+            "code": "268400002",
+            "display": "12 lead electrocardiogram (procedure)"
+          },
+          {
+            "code": "268533009",
+            "display": "Sterilization education (procedure)"
+          },
+          {
+            "code": "268556000",
+            "display": "Urine screening for glucose (procedure)"
+          },
+          {
+            "code": "269828009",
+            "display": "Syphilis infectious titer test (procedure)"
+          },
+          {
+            "code": "269911007",
+            "display": "Sputum examination (procedure)"
+          },
+          {
+            "code": "271280005",
+            "display": "Removal of endotracheal tube (procedure)"
+          },
+          {
+            "code": "271442007",
+            "display": "Fetal anatomy study (procedure)"
+          },
+          {
+            "code": "274031008",
+            "display": "Rectal polypectomy (procedure)"
+          },
+          {
+            "code": "274474001",
+            "display": "Bone immobilization (procedure)"
+          },
+          {
+            "code": "274788003",
+            "display": "Examination of gingivae (procedure)"
+          },
+          {
+            "code": "274804006",
+            "display": "Evaluation of uterine fundal height (procedure)"
+          },
+          {
+            "code": "275833003",
+            "display": "Alpha-fetoprotein test - antenatal (procedure)"
+          },
+          {
+            "code": "28163009",
+            "display": "Skin test for tuberculosis, Tine test (procedure)"
+          },
+          {
+            "code": "281789004",
+            "display": "Antibiotic therapy (procedure)"
+          },
+          {
+            "code": "281790008",
+            "display": "Intravenous antibiotic therapy (procedure)"
+          },
+          {
+            "code": "284053004",
+            "display": "Tooth socket procedure (procedure)"
+          },
+          {
+            "code": "287664005",
+            "display": "Ligation of bilateral fallopian tubes (procedure)"
+          },
+          {
+            "code": "288086009",
+            "display": "Suture open wound (procedure)"
+          },
+          {
+            "code": "290045001",
+            "display": "Kitchen practice (regime/therapy)"
+          },
+          {
+            "code": "29240004",
+            "display": "Autopsy examination (procedure)"
+          },
+          {
+            "code": "29303009",
+            "display": "Electrocardiographic procedure (procedure)"
+          },
+          {
+            "code": "30088009",
+            "display": "Blood culture (procedure)"
+          },
+          {
+            "code": "301807007",
+            "display": "Removal of subcutaneous contraceptive (procedure)"
+          },
+          {
+            "code": "301882004",
+            "display": "Placement of aortic cross clamp (procedure)"
+          },
+          {
+            "code": "301884003",
+            "display": "Removal of aortic cross clamp (procedure)"
+          },
+          {
+            "code": "302351005",
+            "display": "Ligation of salivary duct (procedure)"
+          },
+          {
+            "code": "302497006",
+            "display": "Hemodialysis (procedure)"
+          },
+          {
+            "code": "302761001",
+            "display": "Walking exercise test (procedure)"
+          },
+          {
+            "code": "303653007",
+            "display": "Computed tomography of head (procedure)"
+          },
+          {
+            "code": "304531008",
+            "display": "Treatment side effects education (procedure)"
+          },
+          {
+            "code": "304532001",
+            "display": "Treatment failure risk education (procedure)"
+          },
+          {
+            "code": "305340004",
+            "display": "Admission to long stay hospital (procedure)"
+          },
+          {
+            "code": "305342007",
+            "display": "Admission to ward (procedure)"
+          },
+          {
+            "code": "305351004",
+            "display": "Admission to intensive care unit (procedure)"
+          },
+          {
+            "code": "305425002",
+            "display": "Admission to neurosurgical department (procedure)"
+          },
+          {
+            "code": "305428000",
+            "display": "Admission to orthopedic department (procedure)"
+          },
+          {
+            "code": "305433001",
+            "display": "Admission to trauma surgery department (procedure)"
+          },
+          {
+            "code": "306185001",
+            "display": "Referral to cardiac surgery service (procedure)"
+          },
+          {
+            "code": "306206005",
+            "display": "Referral to service (procedure)"
+          },
+          {
+            "code": "306237005",
+            "display": "Referral to palliative care service (procedure)"
+          },
+          {
+            "code": "306316000",
+            "display": "Referral to transplant surgeon (procedure)"
+          },
+          {
+            "code": "306706006",
+            "display": "Discharge to ward (procedure)"
+          },
+          {
+            "code": "308283009",
+            "display": "Discharge from hospital (procedure)"
+          },
+          {
+            "code": "308481009",
+            "display": "Referral to orthopedic surgeon (procedure)"
+          },
+          {
+            "code": "310417005",
+            "display": "Certification procedure (procedure)"
+          },
+          {
+            "code": "310861008",
+            "display": "Chlamydia antigen test (procedure)"
+          },
+          {
+            "code": "311555007",
+            "display": "Speech and language therapy regime (regime/therapy)"
+          },
+          {
+            "code": "311707005",
+            "display": "Oral motor exercises (regime/therapy)"
+          },
+          {
+            "code": "311791003",
+            "display": "Information gathering (procedure)"
+          },
+          {
+            "code": "311834001",
+            "display": "Fiberoptic endoscopic evaluation of swallowing (procedure)"
+          },
+          {
+            "code": "31208007",
+            "display": "Medical induction of labor (procedure)"
+          },
+          {
+            "code": "312384001",
+            "display": "Multidisciplinary assessment (procedure)"
+          },
+          {
+            "code": "312421008",
+            "display": "Radionuclide imaging - action (qualifier value)"
+          },
+          {
+            "code": "312681000",
+            "display": "Bone density scan (procedure)"
+          },
+          {
+            "code": "312853008",
+            "display": "Medical records review (procedure)"
+          },
+          {
+            "code": "313077009",
+            "display": "Human immunodeficiency virus counseling (procedure)"
+          },
+          {
+            "code": "313191000",
+            "display": "Injection of epinephrine (procedure)"
+          },
+          {
+            "code": "313398001",
+            "display": "Hepatitis antibody test (procedure)"
+          },
+          {
+            "code": "313660005",
+            "display": "Absolute CD4 count procedure (procedure)"
+          },
+          {
+            "code": "314098000",
+            "display": "Rubella screening test (procedure)"
+          },
+          {
+            "code": "315124004",
+            "display": "Human immunodeficiency virus viral load (procedure)"
+          },
+          {
+            "code": "315639002",
+            "display": "Initial patient assessment (procedure)"
+          },
+          {
+            "code": "31676001",
+            "display": "Human immunodeficiency virus antigen test (procedure)"
+          },
+          {
+            "code": "32413006",
+            "display": "Transplantation of heart (procedure)"
+          },
+          {
+            "code": "33195004",
+            "display": "External beam radiation therapy procedure (procedure)"
+          },
+          {
+            "code": "33367005",
+            "display": "Angiography of coronary artery (procedure)"
+          },
+          {
+            "code": "33633005",
+            "display": "Prescription of drug (procedure)"
+          },
+          {
+            "code": "34043003",
+            "display": "Dental consultation and report (procedure)"
+          },
+          {
+            "code": "3457005",
+            "display": "Patient referral (procedure)"
+          },
+          {
+            "code": "34896006",
+            "display": "Incision (procedure)"
+          },
+          {
+            "code": "35025007",
+            "display": "Manual pelvic examination (procedure)"
+          },
+          {
+            "code": "359672006",
+            "display": "Median sternotomy (procedure)"
+          },
+          {
+            "code": "363215001",
+            "display": "Musculoskeletal system physical examination (procedure)"
+          },
+          {
+            "code": "36576007",
+            "display": "Infusion (procedure)"
+          },
+          {
+            "code": "365853002",
+            "display": "Imaging finding (finding)"
+          },
+          {
+            "code": "367336001",
+            "display": "Chemotherapy (procedure)"
+          },
+          {
+            "code": "367494004",
+            "display": "Premature birth of newborn (finding)"
+          },
+          {
+            "code": "370789001",
+            "display": "Development of individualized plan of care (procedure)"
+          },
+          {
+            "code": "370995009",
+            "display": "Health risks education (procedure)"
+          },
+          {
+            "code": "371361000119107",
+            "display": "Comprehensive metabolic panel (procedure)"
+          },
+          {
+            "code": "371908008",
+            "display": "Oxygen administration by mask (procedure)"
+          },
+          {
+            "code": "373786007",
+            "display": "Reasons for treatment delay (finding)"
+          },
+          {
+            "code": "37542007",
+            "display": "Posttreatment stabilization, orthodontic device (procedure)"
+          },
+          {
+            "code": "37729005",
+            "display": "Patient transfer, in-hospital (procedure)"
+          },
+          {
+            "code": "3802001",
+            "display": "Dental application of desensitizing medicament (procedure)"
+          },
+          {
+            "code": "38102005",
+            "display": "Cholecystectomy (procedure)"
+          },
+          {
+            "code": "384682003",
+            "display": "Multidisciplinary care conference (procedure)"
+          },
+          {
+            "code": "384692006",
+            "display": "Intracavitary brachytherapy (procedure)"
+          },
+          {
+            "code": "384700001",
+            "display": "Injection of tetanus antitoxin (procedure)"
+          },
+          {
+            "code": "385488000",
+            "display": "Surgical procedure on chest wall (procedure)"
+          },
+          {
+            "code": "385763009",
+            "display": "Hospice care (regime/therapy)"
+          },
+          {
+            "code": "385781007",
+            "display": "Home health aide service (regime/therapy)"
+          },
+          {
+            "code": "385798007",
+            "display": "Radiation therapy care (regime/therapy)"
+          },
+          {
+            "code": "385892002",
+            "display": "Mental health screening (procedure)"
+          },
+          {
+            "code": "386053000",
+            "display": "Evaluation procedure (procedure)"
+          },
+          {
+            "code": "386216000",
+            "display": "Human parturition, function (observable entity)"
+          },
+          {
+            "code": "386394001",
+            "display": "Pregnancy termination care (regime/therapy)"
+          },
+          {
+            "code": "386478007",
+            "display": "Triage: emergency center (procedure)"
+          },
+          {
+            "code": "386510005",
+            "display": "Amputation care (regime/therapy)"
+          },
+          {
+            "code": "386516004",
+            "display": "Anticipatory guidance (procedure)"
+          },
+          {
+            "code": "387685009",
+            "display": "Surgical manipulation of shoulder joint (procedure)"
+          },
+          {
+            "code": "389153003",
+            "display": "Indirect gonioscopy (procedure)"
+          },
+          {
+            "code": "390791001",
+            "display": "Referral for echocardiography (procedure)"
+          },
+          {
+            "code": "392021009",
+            "display": "Lumpectomy of breast (procedure)"
+          },
+          {
+            "code": "392023007",
+            "display": "Excision of lesion of breast (procedure)"
+          },
+          {
+            "code": "392091000",
+            "display": "Care regimes assessment (procedure)"
+          },
+          {
+            "code": "392247006",
+            "display": "Insertion of catheter into artery (procedure)"
+          },
+          {
+            "code": "394894008",
+            "display": "Pre-operative chemotherapy (procedure)"
+          },
+          {
+            "code": "395123002",
+            "display": "Urine screening test for diabetes (procedure)"
+          },
+          {
+            "code": "395142003",
+            "display": "Allergy screening test (procedure)"
+          },
+          {
+            "code": "396487001",
+            "display": "Sentinel lymph node biopsy (procedure)"
+          },
+          {
+            "code": "397539000",
+            "display": "Grid retinal photocoagulation (procedure)"
+          },
+          {
+            "code": "398171003",
+            "display": "Hearing examination (procedure)"
+          },
+          {
+            "code": "399014008",
+            "display": "Administration of vaccine product containing only Bordetella pertussis and Clostridium tetani and Corynebacterium diphtheriae antigens (procedure)"
+          },
+          {
+            "code": "399208008",
+            "display": "Plain X-ray of chest (procedure)"
+          },
+          {
+            "code": "399217008",
+            "display": "Cardioassist by aortic balloon pump (procedure)"
+          },
+          {
+            "code": "404909007",
+            "display": "Injection of botulinum toxin (procedure)"
+          },
+          {
+            "code": "40617009",
+            "display": "Artificial ventilation (regime/therapy)"
+          },
+          {
+            "code": "40701008",
+            "display": "Echocardiography (procedure)"
+          },
+          {
+            "code": "408919008",
+            "display": "Psychosocial care (regime/therapy)"
+          },
+          {
+            "code": "409023009",
+            "display": "Professional / ancillary services care (regime/therapy)"
+          },
+          {
+            "code": "410006001",
+            "display": "Digital examination of rectum (procedure)"
+          },
+          {
+            "code": "410011004",
+            "display": "Administration of anesthesia AND/OR sedation (procedure)"
+          },
+          {
+            "code": "410299006",
+            "display": "Lab findings education, guidance, and counseling (procedure)"
+          },
+          {
+            "code": "410314003",
+            "display": "Health promotion education, guidance, and counseling (procedure)"
+          },
+          {
+            "code": "410401003",
+            "display": "Nursing care/supplementary surveillance (regime/therapy)"
+          },
+          {
+            "code": "410538000",
+            "display": "Scheduling (procedure)"
+          },
+          {
+            "code": "410770002",
+            "display": "Administration of anesthesia for procedure (procedure)"
+          },
+          {
+            "code": "412809002",
+            "display": "Viral hepatitis screening test (procedure)"
+          },
+          {
+            "code": "413107006",
+            "display": "Hepatitis C screening (procedure)"
+          },
+          {
+            "code": "413180006",
+            "display": "Pan retinal photocoagulation for diabetes (procedure)"
+          },
+          {
+            "code": "414088005",
+            "display": "Emergency coronary artery bypass graft (procedure)"
+          },
+          {
+            "code": "415070008",
+            "display": "Percutaneous coronary intervention"
+          },
+          {
+            "code": "415300000",
+            "display": "Review of systems (procedure)"
+          },
+          {
+            "code": "417511005",
+            "display": "Referral to home health care service (procedure)"
+          },
+          {
+            "code": "417656005",
+            "display": "Osteopathic postural examination (procedure)"
+          },
+          {
+            "code": "418824004",
+            "display": "Off-pump coronary artery bypass (procedure)"
+          },
+          {
+            "code": "418891003",
+            "display": "Computed tomography of chest and abdomen (procedure)"
+          },
+          {
+            "code": "423475008",
+            "display": "Heart failure education (procedure)"
+          },
+          {
+            "code": "428211000124100",
+            "display": "Assessment of substance use (procedure)"
+          },
+          {
+            "code": "42825003",
+            "display": "Cannulation (procedure)"
+          },
+          {
+            "code": "42839003",
+            "display": "Repair of myelomeningocele (procedure)"
+          },
+          {
+            "code": "428830000",
+            "display": "Pretransplant evaluation of kidney recipient (procedure)"
+          },
+          {
+            "code": "429609002",
+            "display": "Lung volume reduction surgery (procedure)"
+          },
+          {
+            "code": "430193006",
+            "display": "Medication reconciliation (procedure)"
+          },
+          {
+            "code": "43060002",
+            "display": "Intravenous injection (procedure)"
+          },
+          {
+            "code": "430701006",
+            "display": "Resuscitation using intravenous fluid (procedure)"
+          },
+          {
+            "code": "43075005",
+            "display": "Partial resection of colon (procedure)"
+          },
+          {
+            "code": "431182000",
+            "display": "Placing subject in prone position (procedure)"
+          },
+          {
+            "code": "432231006",
+            "display": "Fine needle aspiration biopsy of lung (procedure)"
+          },
+          {
+            "code": "433112001",
+            "display": "Percutaneous mechanical thrombectomy of portal vein using fluoroscopic guidance with contrast (procedure)"
+          },
+          {
+            "code": "433114000",
+            "display": "Human epidermal growth factor receptor 2 gene detection by immunohistochemistry (procedure)"
+          },
+          {
+            "code": "433236007",
+            "display": "Transthoracic echocardiography (procedure)"
+          },
+          {
+            "code": "434363004",
+            "display": "Human epidermal growth factor receptor 2 gene detection by fluorescence in situ hybridization (procedure)"
+          },
+          {
+            "code": "440546007",
+            "display": "Discussion about pregnancy (procedure)"
+          },
+          {
+            "code": "441550005",
+            "display": "Urinalysis with reflex to microscopy and culture (procedure)"
+          },
+          {
+            "code": "441763001",
+            "display": "Endoscopic exteriorization of third ventricle (procedure)"
+          },
+          {
+            "code": "443497002",
+            "display": "Excision of sentinel lymph node (procedure)"
+          },
+          {
+            "code": "443529005",
+            "display": "Detection of chromosomal aneuploidy in prenatal amniotic fluid specimen using fluorescence in situ hybridization screening technique (procedure)"
+          },
+          {
+            "code": "444260001",
+            "display": "Screen for 20 common genetic mutations of cystic fibrosis using amplification refractory mutation system polymerase chain reaction assay technique (procedure)"
+          },
+          {
+            "code": "445528004",
+            "display": "Treatment changed (situation)"
+          },
+          {
+            "code": "445912000",
+            "display": "Excision of fallopian tube and surgical removal of ectopic pregnancy (procedure)"
+          },
+          {
+            "code": "445988008",
+            "display": "Assessment using health assessment questionnaire (procedure)"
+          },
+          {
+            "code": "44608003",
+            "display": "Blood group typing (procedure)"
+          },
+          {
+            "code": "446573003",
+            "display": "Continuous positive airway pressure titration (procedure)"
+          },
+          {
+            "code": "446987006",
+            "display": "Determination of susceptibility of Human immunodeficiency virus 1 to panel of antiretroviral drugs using genotypic technique (procedure)"
+          },
+          {
+            "code": "447759004",
+            "display": "Brachytherapy of breast (procedure)"
+          },
+          {
+            "code": "448337001",
+            "display": "Telemedicine consultation with patient (procedure)"
+          },
+          {
+            "code": "449214001",
+            "display": "Transfer to stepdown unit (procedure)"
+          },
+          {
+            "code": "45595009",
+            "display": "Laparoscopic cholecystectomy (procedure)"
+          },
+          {
+            "code": "456191000124101",
+            "display": "Postoperative care for dental procedure (regime/therapy)"
+          },
+          {
+            "code": "46028000",
+            "display": "Amputation of hand (procedure)"
+          },
+          {
+            "code": "46706006",
+            "display": "Replacement of contraceptive intrauterine device (procedure)"
+          },
+          {
+            "code": "47020004",
+            "display": "Ventriculoperitoneal shunt (procedure)"
+          },
+          {
+            "code": "47227006",
+            "display": "Excision of submandibular gland (procedure)"
+          },
+          {
+            "code": "473220001",
+            "display": "Hematologic disorder medication review (procedure)"
+          },
+          {
+            "code": "473231009",
+            "display": "Renal disorder medication review (procedure)"
+          },
+          {
+            "code": "47758006",
+            "display": "Hepatitis B surface antigen measurement (procedure)"
+          },
+          {
+            "code": "48387007",
+            "display": "Incision of trachea (procedure)"
+          },
+          {
+            "code": "51116004",
+            "display": "Passive immunization (procedure)"
+          },
+          {
+            "code": "52052004",
+            "display": "Rehabilitation therapy (regime/therapy)"
+          },
+          {
+            "code": "52734007",
+            "display": "Total replacement of hip (procedure)"
+          },
+          {
+            "code": "52765003",
+            "display": "Intubation (procedure)"
+          },
+          {
+            "code": "54550000",
+            "display": "Electroencephalogram (procedure)"
+          },
+          {
+            "code": "55468007",
+            "display": "Ocular slit lamp examination (procedure)"
+          },
+          {
+            "code": "57617002",
+            "display": "Urine specimen collection (procedure)"
+          },
+          {
+            "code": "58000006",
+            "display": "Patient discharge (procedure)"
+          },
+          {
+            "code": "58390007",
+            "display": "Allogeneic bone marrow transplantation (procedure)"
+          },
+          {
+            "code": "58776007",
+            "display": "Autologous bone marrow transplant (procedure)"
+          },
+          {
+            "code": "5880005",
+            "display": "Physical examination procedure (procedure)"
+          },
+          {
+            "code": "58828004",
+            "display": "Application of dressing, sterile (procedure)"
+          },
+          {
+            "code": "60151004",
+            "display": "Neonatal screening (procedure)"
+          },
+          {
+            "code": "60218003",
+            "display": "Urinalysis, protein, qualitative (procedure)"
+          },
+          {
+            "code": "60554003",
+            "display": "Polysomnography (procedure)"
+          },
+          {
+            "code": "609588000",
+            "display": "Prosthetic total arthroplasty of knee joint (procedure)"
+          },
+          {
+            "code": "61594008",
+            "display": "Microbial culture (procedure)"
+          },
+          {
+            "code": "61746007",
+            "display": "Taking patient vital signs (procedure)"
+          },
+          {
+            "code": "61919008",
+            "display": "Giving patient an enema (procedure)"
+          },
+          {
+            "code": "63332003",
+            "display": "History AND physical examination (procedure)"
+          },
+          {
+            "code": "63697000",
+            "display": "Cardiopulmonary bypass operation (procedure)"
+          },
+          {
+            "code": "64544008",
+            "display": "Gingivectomy or gingivoplasty, per tooth (procedure)"
+          },
+          {
+            "code": "65200003",
+            "display": "Insertion of intrauterine contraceptive device (procedure)"
+          },
+          {
+            "code": "65546002",
+            "display": "Extraction of wisdom tooth (procedure)"
+          },
+          {
+            "code": "65575008",
+            "display": "Biopsy of prostate (procedure)"
+          },
+          {
+            "code": "65677008",
+            "display": "Pulmonary catheterization with Swan-Ganz catheter (procedure)"
+          },
+          {
+            "code": "65710008",
+            "display": "Acute respiratory failure (disorder)"
+          },
+          {
+            "code": "67879005",
+            "display": "History and physical examination, limited (procedure)"
+          },
+          {
+            "code": "68071007",
+            "display": "Dental fluoride treatment (procedure)"
+          },
+          {
+            "code": "69212005",
+            "display": "Range of motion testing (procedure)"
+          },
+          {
+            "code": "698314001",
+            "display": "Consultation for treatment (procedure)"
+          },
+          {
+            "code": "698354004",
+            "display": "Magnetic resonance imaging for measurement of brain volume (procedure)"
+          },
+          {
+            "code": "698560000",
+            "display": "Referral to sleep apnea clinic (procedure)"
+          },
+          {
+            "code": "699253003",
+            "display": "Surgical manipulation of joint of knee (procedure)"
+          },
+          {
+            "code": "703423002",
+            "display": "Combined chemotherapy and radiation therapy (procedure)"
+          },
+          {
+            "code": "70536003",
+            "display": "Transplant of kidney (procedure)"
+          },
+          {
+            "code": "709010006",
+            "display": "Liaising with referral source (procedure)"
+          },
+          {
+            "code": "709138001",
+            "display": "Notification of treatment plan (procedure)"
+          },
+          {
+            "code": "709506004",
+            "display": "Assessment of readiness for disclosure of health status (procedure)"
+          },
+          {
+            "code": "709640007",
+            "display": "Doppler ultrasonography of renal vein (procedure)"
+          },
+          {
+            "code": "710824005",
+            "display": "Assessment of health and social care needs (procedure)"
+          },
+          {
+            "code": "710839006",
+            "display": "Assessment of cardiac status using monitoring device (procedure)"
+          },
+          {
+            "code": "710841007",
+            "display": "Assessment of anxiety (procedure)"
+          },
+          {
+            "code": "711018006",
+            "display": "Assessment of social support (procedure)"
+          },
+          {
+            "code": "711069006",
+            "display": "Coordination of care plan (procedure)"
+          },
+          {
+            "code": "711446003",
+            "display": "Transplantation of kidney regime (regime/therapy)"
+          },
+          {
+            "code": "713106006",
+            "display": "Screening for drug abuse (procedure)"
+          },
+          {
+            "code": "714812005",
+            "display": "Induced termination of pregnancy (procedure)"
+          },
+          {
+            "code": "71493000",
+            "display": "Transfusion of packed red blood cells (procedure)"
+          },
+          {
+            "code": "715252007",
+            "display": "Depression screening using Patient Health Questionnaire Nine Item score (procedure)"
+          },
+          {
+            "code": "71651007",
+            "display": "Mammography (procedure)"
+          },
+          {
+            "code": "717778001",
+            "display": "Mouth care (regime/therapy)"
+          },
+          {
+            "code": "722161008",
+            "display": "Diabetic retinal eye exam (procedure)"
+          },
+          {
+            "code": "733863009",
+            "display": "Assessment of readiness for self-management (procedure)"
+          },
+          {
+            "code": "736169004",
+            "display": "Post anesthesia care management (procedure)"
+          },
+          {
+            "code": "73761001",
+            "display": "Colonoscopy (procedure)"
+          },
+          {
+            "code": "737617004",
+            "display": "Referral to prosthetic service (procedure)"
+          },
+          {
+            "code": "74857009",
+            "display": "Hospital admission, short-term, 24 hours (procedure)"
+          },
+          {
+            "code": "76164006",
+            "display": "Biopsy of colon (procedure)"
+          },
+          {
+            "code": "762993000",
+            "display": "Assessment using Morse Fall Scale (procedure)"
+          },
+          {
+            "code": "762998009",
+            "display": "Assessment using New York Heart Association Classification (procedure)"
+          },
+          {
+            "code": "763228001",
+            "display": "Assessment using Canadian Study of Health and Aging Clinical Frailty Scale (procedure)"
+          },
+          {
+            "code": "763302001",
+            "display": "Assessment using Alcohol Use Disorders Identification Test - Consumption (procedure)"
+          },
+          {
+            "code": "76601001",
+            "display": "Intramuscular injection (procedure)"
+          },
+          {
+            "code": "76746007",
+            "display": "Cardiovascular stress testing (procedure)"
+          },
+          {
+            "code": "770695002",
+            "display": "Referral to spinal surgery service (procedure)"
+          },
+          {
+            "code": "772071006",
+            "display": "Referral to dentist (procedure)"
+          },
+          {
+            "code": "773996000",
+            "display": "Transcatheter aortic valve implantation (procedure)"
+          },
+          {
+            "code": "78429003",
+            "display": "Referral to physical rehabilitation service (procedure)"
+          },
+          {
+            "code": "79345008",
+            "display": "Excision of maxillary torus palatinus (procedure)"
+          },
+          {
+            "code": "79733001",
+            "display": "Amputation above-knee (procedure)"
+          },
+          {
+            "code": "80146002",
+            "display": "Excision of appendix (procedure)"
+          },
+          {
+            "code": "81733005",
+            "display": "Dental surgical procedure (procedure)"
+          },
+          {
+            "code": "82078001",
+            "display": "Collection of blood specimen for laboratory (procedure)"
+          },
+          {
+            "code": "82808001",
+            "display": "Sleep apnea monitoring with alarm (regime/therapy)"
+          },
+          {
+            "code": "8290005",
+            "display": "Induced cardioplegia (procedure)"
+          },
+          {
+            "code": "84100007",
+            "display": "History taking (procedure)"
+          },
+          {
+            "code": "84478008",
+            "display": "Occupational therapy (regime/therapy)"
+          },
+          {
+            "code": "84728005",
+            "display": "Neurological examination (procedure)"
+          },
+          {
+            "code": "85548006",
+            "display": "Episiotomy (procedure)"
+          },
+          {
+            "code": "85765000",
+            "display": "Fiberoptic bronchoscopy (procedure)"
+          },
+          {
+            "code": "866146005",
+            "display": "Serum metabolic panel (procedure)"
+          },
+          {
+            "code": "866148006",
+            "display": "Screening for domestic abuse (procedure)"
+          },
+          {
+            "code": "868187001",
+            "display": "Assessment using Car, Relax, Alone, Forget, Friends, Trouble Screening Test (procedure)"
+          },
+          {
+            "code": "86964003",
+            "display": "Cystic fibrosis sweat test (procedure)"
+          },
+          {
+            "code": "88039007",
+            "display": "Transplant of lung (procedure)"
+          },
+          {
+            "code": "88848003",
+            "display": "Psychiatric follow-up (procedure)"
+          },
+          {
+            "code": "9002005",
+            "display": "Manual testing of muscle function (procedure)"
+          },
+          {
+            "code": "90226004",
+            "display": "Cytopathology procedure, preparation of smear, genital source (procedure)"
+          },
+          {
+            "code": "90407005",
+            "display": "Evaluation of psychiatric state of patient (procedure)"
+          },
+          {
+            "code": "90470006",
+            "display": "Prostatectomy (procedure)"
+          },
+          {
+            "code": "91251008",
+            "display": "Physical therapy procedure (regime/therapy)"
+          },
+          {
+            "code": "91602002",
+            "display": "Thoracentesis (procedure)"
+          },
+          {
+            "code": "9564003",
+            "display": "Complete blood count with white cell differential, automated (procedure)"
+          },
+          {
+            "code": "9905009",
+            "display": "Loop colostomy (procedure)"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,181 @@
+{
+  "resourceType": "ValueSet",
+  "id": "careplan_sct",
+  "url": "http://example.org/synthea/ValueSet/careplan_sct",
+  "title": "Synthea careplan codes (sct)",
+  "description": "Codes extracted from Synthea modules for category 'careplan', system http://snomed.info/sct.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "133901003",
+            "display": "Burn care (regime/therapy)"
+          },
+          {
+            "code": "134435003",
+            "display": "Routine antenatal care (regime/therapy)"
+          },
+          {
+            "code": "170836005",
+            "display": "Allergic disorder monitoring (regime/therapy)"
+          },
+          {
+            "code": "182964004",
+            "display": "Terminal care (regime/therapy)"
+          },
+          {
+            "code": "183401008",
+            "display": "Anti-suicide psychotherapy (regime/therapy)"
+          },
+          {
+            "code": "208748005",
+            "display": "Open dislocation of jaw (disorder)"
+          },
+          {
+            "code": "225358003",
+            "display": "Wound care (regime/therapy)"
+          },
+          {
+            "code": "276239002",
+            "display": "Therapy (regime/therapy)"
+          },
+          {
+            "code": "384758001",
+            "display": "Self-care interventions (procedure)"
+          },
+          {
+            "code": "385691007",
+            "display": "Fracture care (regime/therapy)"
+          },
+          {
+            "code": "386257007",
+            "display": "Dementia management (regime/therapy)"
+          },
+          {
+            "code": "386490009",
+            "display": "Urinary retention care (regime/therapy)"
+          },
+          {
+            "code": "386522008",
+            "display": "Overactivity/inattention behavior management (regime/therapy)"
+          },
+          {
+            "code": "389082000",
+            "display": "Constipation care (regime/therapy)"
+          },
+          {
+            "code": "408869004",
+            "display": "Musculoskeletal care (regime/therapy)"
+          },
+          {
+            "code": "443402002",
+            "display": "Lifestyle education regarding hypertension (procedure)"
+          },
+          {
+            "code": "47387005",
+            "display": "Head injury rehabilitation (regime/therapy)"
+          },
+          {
+            "code": "53950000",
+            "display": "Respiratory therapy (procedure)"
+          },
+          {
+            "code": "699728000",
+            "display": "Asthma self management (regime/therapy)"
+          },
+          {
+            "code": "703040004",
+            "display": "Agreeing on diabetes care plan (procedure)"
+          },
+          {
+            "code": "711282006",
+            "display": "Skin condition care (regime/therapy)"
+          },
+          {
+            "code": "718347000",
+            "display": "Mental health care plan (record artifact)"
+          },
+          {
+            "code": "718361005",
+            "display": "Weight management program (regime/therapy)"
+          },
+          {
+            "code": "734163000",
+            "display": "Care plan (record artifact)"
+          },
+          {
+            "code": "735321000",
+            "display": "Surgical inpatient care plan (record artifact)"
+          },
+          {
+            "code": "735984001",
+            "display": "Heart failure self management plan (record artifact)"
+          },
+          {
+            "code": "735985000",
+            "display": "Diabetes self management plan (record artifact)"
+          },
+          {
+            "code": "736252007",
+            "display": "Cancer care plan (record artifact)"
+          },
+          {
+            "code": "736254008",
+            "display": "Psychiatry care plan (record artifact)"
+          },
+          {
+            "code": "736283006",
+            "display": "Chronic obstructive pulmonary disease clinical management plan (record artifact)"
+          },
+          {
+            "code": "736285004",
+            "display": "Hyperlipidemia clinical management plan (record artifact)"
+          },
+          {
+            "code": "736353004",
+            "display": "Inpatient care plan (record artifact)"
+          },
+          {
+            "code": "736372004",
+            "display": "Discharge care plan (record artifact)"
+          },
+          {
+            "code": "736376001",
+            "display": "Infectious disease care plan (record artifact)"
+          },
+          {
+            "code": "736690008",
+            "display": "Dialysis care plan (record artifact)"
+          },
+          {
+            "code": "737434004",
+            "display": "Major depressive disorder clinical management plan (record artifact)"
+          },
+          {
+            "code": "737471002",
+            "display": "Minor surgery care management (procedure)"
+          },
+          {
+            "code": "737567002",
+            "display": "Major surgery care management (procedure)"
+          },
+          {
+            "code": "75162002",
+            "display": "Spinal cord injury rehabilitation (regime/therapy)"
+          },
+          {
+            "code": "773513001",
+            "display": "Physiotherapy care plan (record artifact)"
+          },
+          {
+            "code": "781087000",
+            "display": "Medical care (regime/therapy)"
+          }
+        ]
+      }
+    ]
+  }
+}

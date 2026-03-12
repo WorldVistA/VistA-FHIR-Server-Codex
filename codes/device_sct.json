@@ -1,0 +1,149 @@
+{
+  "resourceType": "ValueSet",
+  "id": "device_sct",
+  "url": "http://example.org/synthea/ValueSet/device_sct",
+  "title": "Synthea device codes (sct)",
+  "description": "Codes extracted from Synthea modules for category 'device', system http://snomed.info/sct.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "1255320005",
+            "display": "Wheeled walker (physical object)"
+          },
+          {
+            "code": "129113006",
+            "display": "Intra-aortic balloon pump, device (physical object)"
+          },
+          {
+            "code": "14106009",
+            "display": "Cardiac pacemaker, device (physical object)"
+          },
+          {
+            "code": "170615005",
+            "display": "Home nebulizer (physical object)"
+          },
+          {
+            "code": "225738002",
+            "display": "Operating room (environment)"
+          },
+          {
+            "code": "228869008",
+            "display": "Manual wheelchair (physical object)"
+          },
+          {
+            "code": "261323006",
+            "display": "Portable oxygen cylinder (physical object)"
+          },
+          {
+            "code": "272265001",
+            "display": "Appliance for sleep apnea (physical object)"
+          },
+          {
+            "code": "336621006",
+            "display": "Oxygen concentrator (physical object)"
+          },
+          {
+            "code": "337414009",
+            "display": "Blood glucose meter (physical object)"
+          },
+          {
+            "code": "360008003",
+            "display": "Commode (physical object)"
+          },
+          {
+            "code": "360064003",
+            "display": "Ventricular assist device (physical object)"
+          },
+          {
+            "code": "360066001",
+            "display": "Left ventricular assist device (physical object)"
+          },
+          {
+            "code": "36965003",
+            "display": "Hemodialysis machine, device (physical object)"
+          },
+          {
+            "code": "448907002",
+            "display": "Videolaryngoscope (physical object)"
+          },
+          {
+            "code": "449071006",
+            "display": "Mechanical ventilator (physical object)"
+          },
+          {
+            "code": "464173000",
+            "display": "Portable oxygen concentrator (physical object)"
+          },
+          {
+            "code": "701077002",
+            "display": "Respiratory apnea monitoring system (physical object)"
+          },
+          {
+            "code": "701100002",
+            "display": "Polysomnography analyzer (physical object)"
+          },
+          {
+            "code": "702172008",
+            "display": "Home continuous positive airway pressure unit (physical object)"
+          },
+          {
+            "code": "705417005",
+            "display": "Wheelchair accessory (physical object)"
+          },
+          {
+            "code": "705427004",
+            "display": "Power-assisted wheelchair (physical object)"
+          },
+          {
+            "code": "705991002",
+            "display": "Mechanical cardiac valve prosthesis (physical object)"
+          },
+          {
+            "code": "706004007",
+            "display": "Implantable cardiac pacemaker (physical object)"
+          },
+          {
+            "code": "706112002",
+            "display": "Patient lifting system (physical object)"
+          },
+          {
+            "code": "706180003",
+            "display": "Respiratory humidifier (physical object)"
+          },
+          {
+            "code": "706298007",
+            "display": "Dental x-ray system (physical object)"
+          },
+          {
+            "code": "706449001",
+            "display": "Valve (physical object)"
+          },
+          {
+            "code": "720253003",
+            "display": "Home-use sleep apnea recording system (physical object)"
+          },
+          {
+            "code": "74566002",
+            "display": "Crutch, device (physical object)"
+          },
+          {
+            "code": "8060009",
+            "display": "Denture, device (physical object)"
+          },
+          {
+            "code": "860577005",
+            "display": "Aortic valve bioprosthesis (physical object)"
+          },
+          {
+            "code": "91537007",
+            "display": "Hospital bed, device (physical object)"
+          }
+        ]
+      }
+    ]
+  }
+}

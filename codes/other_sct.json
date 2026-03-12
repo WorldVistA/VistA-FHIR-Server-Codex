@@ -1,0 +1,561 @@
+{
+  "resourceType": "ValueSet",
+  "id": "other_sct",
+  "url": "http://example.org/synthea/ValueSet/other_sct",
+  "title": "Synthea other codes (sct)",
+  "description": "Codes extracted from Synthea modules for category 'other', system http://snomed.info/sct.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "10029008",
+            "display": "Suicide precautions (procedure)"
+          },
+          {
+            "code": "103744005",
+            "display": "Administration of intravenous fluids (procedure)"
+          },
+          {
+            "code": "1055207008",
+            "display": "Decreased fat and oil diet (regime/therapy)"
+          },
+          {
+            "code": "10888001",
+            "display": "Liquid diet (finding)"
+          },
+          {
+            "code": "1149222004",
+            "display": "Overdose (disorder)"
+          },
+          {
+            "code": "1151000175103",
+            "display": "Dietary Approaches to Stop Hypertension diet (regime/therapy)"
+          },
+          {
+            "code": "1156892006",
+            "display": "Scheduling of follow up appointment (procedure)"
+          },
+          {
+            "code": "1171000175109",
+            "display": "Increased physical activity (finding)"
+          },
+          {
+            "code": "11816003",
+            "display": "Diet education (procedure)"
+          },
+          {
+            "code": "133918004",
+            "display": "Comfort measures (regime/therapy)"
+          },
+          {
+            "code": "135892000",
+            "display": "Antenatal education (procedure)"
+          },
+          {
+            "code": "15081005",
+            "display": "Pulmonary rehabilitation (regime/therapy)"
+          },
+          {
+            "code": "15220000",
+            "display": "Laboratory test (procedure)"
+          },
+          {
+            "code": "160670007",
+            "display": "Diabetic diet (finding)"
+          },
+          {
+            "code": "170615005",
+            "display": "Home nebulizer (physical object)"
+          },
+          {
+            "code": "182678001",
+            "display": "Allergen immunotherapy (regime/therapy)"
+          },
+          {
+            "code": "182809008",
+            "display": "Renal function monitoring (regime/therapy)"
+          },
+          {
+            "code": "182810003",
+            "display": "Intensive care monitoring (regime/therapy)"
+          },
+          {
+            "code": "183051005",
+            "display": "Recommendation to rest (procedure)"
+          },
+          {
+            "code": "183063000",
+            "display": "Low salt diet education (procedure)"
+          },
+          {
+            "code": "183301007",
+            "display": "Physical exercises (regime/therapy)"
+          },
+          {
+            "code": "183401008",
+            "display": "Anti-suicide psychotherapy (regime/therapy)"
+          },
+          {
+            "code": "183402001",
+            "display": "Potential suicide care (regime/therapy)"
+          },
+          {
+            "code": "183835003",
+            "display": "Referral for angiography (procedure)"
+          },
+          {
+            "code": "225130001",
+            "display": "Application of moisturizer to skin (procedure)"
+          },
+          {
+            "code": "225302006",
+            "display": "Insulin regime (regime/therapy)"
+          },
+          {
+            "code": "225317005",
+            "display": "Restriction of movement (regime/therapy)"
+          },
+          {
+            "code": "225323000",
+            "display": "Smoking cessation education (procedure)"
+          },
+          {
+            "code": "225337009",
+            "display": "Suicide risk assessment (procedure)"
+          },
+          {
+            "code": "225358003",
+            "display": "Wound care (regime/therapy)"
+          },
+          {
+            "code": "226007004",
+            "display": "Post-surgical wound care (regime/therapy)"
+          },
+          {
+            "code": "226029000",
+            "display": "Exercises (regime/therapy)"
+          },
+          {
+            "code": "226060000",
+            "display": "Stress management (procedure)"
+          },
+          {
+            "code": "226138001",
+            "display": "Alcohol-free diet (finding)"
+          },
+          {
+            "code": "226164007",
+            "display": "Very low sodium diet (finding)"
+          },
+          {
+            "code": "226234005",
+            "display": "Healthy diet (finding)"
+          },
+          {
+            "code": "228557008",
+            "display": "Cognitive and behavioral therapy (regime/therapy)"
+          },
+          {
+            "code": "229065009",
+            "display": "Exercise therapy (regime/therapy)"
+          },
+          {
+            "code": "229070002",
+            "display": "Stretching exercises (regime/therapy)"
+          },
+          {
+            "code": "229152003",
+            "display": "Lower limb exercises (regime/therapy)"
+          },
+          {
+            "code": "229298005",
+            "display": "Breathing control (regime/therapy)"
+          },
+          {
+            "code": "229578001",
+            "display": "Ice bath treatment (regime/therapy)"
+          },
+          {
+            "code": "229580007",
+            "display": "Ice therapy (procedure)"
+          },
+          {
+            "code": "229586001",
+            "display": "Rest, ice, compression and elevation treatment program (regime/therapy)"
+          },
+          {
+            "code": "230690007",
+            "display": "Cerebrovascular accident (disorder)"
+          },
+          {
+            "code": "24165007",
+            "display": "Alcoholism counseling (procedure)"
+          },
+          {
+            "code": "243072006",
+            "display": "Cancer education (procedure)"
+          },
+          {
+            "code": "243077000",
+            "display": "Recommendation to limit sexual activity (procedure)"
+          },
+          {
+            "code": "261323006",
+            "display": "Portable oxygen cylinder (physical object)"
+          },
+          {
+            "code": "266694003",
+            "display": "Heat therapy (procedure)"
+          },
+          {
+            "code": "266707007",
+            "display": "Drug addiction therapy (regime/therapy)"
+          },
+          {
+            "code": "266753000",
+            "display": "Referral for laboratory tests (procedure)"
+          },
+          {
+            "code": "272265001",
+            "display": "Appliance for sleep apnea (physical object)"
+          },
+          {
+            "code": "304510005",
+            "display": "Recommendation to avoid exercise (procedure)"
+          },
+          {
+            "code": "304822001",
+            "display": "Psychodynamic-interpersonal psychotherapy (regime/therapy)"
+          },
+          {
+            "code": "308113006",
+            "display": "Self-monitoring of blood glucose (procedure)"
+          },
+          {
+            "code": "308461008",
+            "display": "Referral to radiology service (procedure)"
+          },
+          {
+            "code": "311401005",
+            "display": "Patient education (procedure)"
+          },
+          {
+            "code": "312404004",
+            "display": "Antenatal blood tests (procedure)"
+          },
+          {
+            "code": "313071005",
+            "display": "Counseling for substance abuse (procedure)"
+          },
+          {
+            "code": "315043002",
+            "display": "Long term social support (regime/therapy)"
+          },
+          {
+            "code": "336621006",
+            "display": "Oxygen concentrator (physical object)"
+          },
+          {
+            "code": "361235007",
+            "display": "Isolation of infected patient (procedure)"
+          },
+          {
+            "code": "370771002",
+            "display": "Maintenance of invasive device (procedure)"
+          },
+          {
+            "code": "370864003",
+            "display": "Activity care (regime/therapy)"
+          },
+          {
+            "code": "371605008",
+            "display": "Deep breathing and coughing exercises (regime/therapy)"
+          },
+          {
+            "code": "385486001",
+            "display": "Postoperative complication (disorder)"
+          },
+          {
+            "code": "385715006",
+            "display": "Cardiac care (regime/therapy)"
+          },
+          {
+            "code": "385724002",
+            "display": "Coping support management (procedure)"
+          },
+          {
+            "code": "385949008",
+            "display": "Dressing change management (procedure)"
+          },
+          {
+            "code": "386294003",
+            "display": "Joint mobility exercises (regime/therapy)"
+          },
+          {
+            "code": "386373004",
+            "display": "Nutrition therapy (regime/therapy)"
+          },
+          {
+            "code": "386463000",
+            "display": "Prescribed activity/exercise education (procedure)"
+          },
+          {
+            "code": "386619000",
+            "display": "Low sodium diet (finding)"
+          },
+          {
+            "code": "387760006",
+            "display": "Infusion care (regime/therapy)"
+          },
+          {
+            "code": "388976009",
+            "display": "Weight reduction regimen (regime/therapy)"
+          },
+          {
+            "code": "392020005",
+            "display": "Peripherally inserted central catheter care (procedure)"
+          },
+          {
+            "code": "401303003",
+            "display": "Acute ST segment elevation myocardial infarction (disorder)"
+          },
+          {
+            "code": "405783006",
+            "display": "Psychological assessment (procedure)"
+          },
+          {
+            "code": "405784000",
+            "display": "Pharmacological assessment (procedure)"
+          },
+          {
+            "code": "406185000",
+            "display": "Trauma therapy (regime/therapy)"
+          },
+          {
+            "code": "408580007",
+            "display": "Physical activity target light exercise (finding)"
+          },
+          {
+            "code": "408935001",
+            "display": "Substance abuse prevention education (procedure)"
+          },
+          {
+            "code": "408936000",
+            "display": "Substance abuse prevention management (procedure)"
+          },
+          {
+            "code": "408957008",
+            "display": "Chronic pain control management (procedure)"
+          },
+          {
+            "code": "409002",
+            "display": "Food allergy diet (finding)"
+          },
+          {
+            "code": "409063005",
+            "display": "Counseling (procedure)"
+          },
+          {
+            "code": "409524006",
+            "display": "Airborne precautions (procedure)"
+          },
+          {
+            "code": "409526008",
+            "display": "Personal protective equipment (physical object)"
+          },
+          {
+            "code": "410207002",
+            "display": "Respiratory care management (procedure)"
+          },
+          {
+            "code": "410429000",
+            "display": "Cardiac arrest (disorder)"
+          },
+          {
+            "code": "413473000",
+            "display": "Counseling about alcohol consumption (procedure)"
+          },
+          {
+            "code": "414667000",
+            "display": "Meningomyelocele (disorder)"
+          },
+          {
+            "code": "415665002",
+            "display": "Suicide prevention (procedure)"
+          },
+          {
+            "code": "419822006",
+            "display": "Warning. Avoid alcoholic drink (qualifier value)"
+          },
+          {
+            "code": "422972009",
+            "display": "Advance diet as tolerated (regime/therapy)"
+          },
+          {
+            "code": "425680009",
+            "display": "Cognitive behavioral therapy by multidisciplinary team (regime/therapy)"
+          },
+          {
+            "code": "426990007",
+            "display": "Home oxygen therapy (procedure)"
+          },
+          {
+            "code": "439101000124101",
+            "display": "Easy to chew diet (regime/therapy)"
+          },
+          {
+            "code": "439121000124106",
+            "display": "Pureed diet (regime/therapy)"
+          },
+          {
+            "code": "439830001",
+            "display": "Behavior to prevent infection (observable entity)"
+          },
+          {
+            "code": "440381005",
+            "display": "Behavior to prevent sun exposure (observable entity)"
+          },
+          {
+            "code": "444908001",
+            "display": "Isolation nursing in negative pressure isolation environment (regime/therapy)"
+          },
+          {
+            "code": "448813005",
+            "display": "Sepsis caused by Pseudomonas (disorder)"
+          },
+          {
+            "code": "46177005",
+            "display": "End-stage renal disease (disorder)"
+          },
+          {
+            "code": "464173000",
+            "display": "Portable oxygen concentrator (physical object)"
+          },
+          {
+            "code": "47545007",
+            "display": "Continuous positive airway pressure ventilation treatment (regime/therapy)"
+          },
+          {
+            "code": "48428001",
+            "display": "Cardiovascular monitoring (regime/therapy)"
+          },
+          {
+            "code": "56251003",
+            "display": "Nebulizer therapy (procedure)"
+          },
+          {
+            "code": "58332002",
+            "display": "Allergy education (procedure)"
+          },
+          {
+            "code": "60112009",
+            "display": "Drug addiction counseling (procedure)"
+          },
+          {
+            "code": "61480009",
+            "display": "Drug detoxification (regime/therapy)"
+          },
+          {
+            "code": "65710008",
+            "display": "Acute respiratory failure (disorder)"
+          },
+          {
+            "code": "702172008",
+            "display": "Home continuous positive airway pressure unit (physical object)"
+          },
+          {
+            "code": "703993001",
+            "display": "Colonoscopy planned (situation)"
+          },
+          {
+            "code": "706180003",
+            "display": "Respiratory humidifier (physical object)"
+          },
+          {
+            "code": "708409001",
+            "display": "Home nebulizer therapy (procedure)"
+          },
+          {
+            "code": "710081004",
+            "display": "Smoking cessation therapy (regime/therapy)"
+          },
+          {
+            "code": "710125008",
+            "display": "Promotion of use of memory skills (procedure)"
+          },
+          {
+            "code": "710818004",
+            "display": "Inhaled steroid therapy (procedure)"
+          },
+          {
+            "code": "710971000",
+            "display": "Maintaining clear airway (procedure)"
+          },
+          {
+            "code": "711446003",
+            "display": "Transplantation of kidney regime (regime/therapy)"
+          },
+          {
+            "code": "713076009",
+            "display": "Antenatal risk assessment (procedure)"
+          },
+          {
+            "code": "718451004",
+            "display": "Management of vascular system care (procedure)"
+          },
+          {
+            "code": "719858009",
+            "display": "Telehealth monitoring (regime/therapy)"
+          },
+          {
+            "code": "736767005",
+            "display": "Perioperative care management (procedure)"
+          },
+          {
+            "code": "76168009",
+            "display": "Group psychotherapy (regime/therapy)"
+          },
+          {
+            "code": "768835002",
+            "display": "Depression care management (procedure)"
+          },
+          {
+            "code": "77476009",
+            "display": "Application of back brace (procedure)"
+          },
+          {
+            "code": "77806000",
+            "display": "Calorie restricted diet (finding)"
+          },
+          {
+            "code": "79094001",
+            "display": "Initial psychiatric interview with mental status and evaluation (procedure)"
+          },
+          {
+            "code": "88848003",
+            "display": "Psychiatric follow-up (procedure)"
+          },
+          {
+            "code": "91251008",
+            "display": "Physical therapy procedure (regime/therapy)"
+          },
+          {
+            "code": "91302008",
+            "display": "Sepsis (disorder)"
+          },
+          {
+            "code": "91861009",
+            "display": "Acute myeloid leukemia (disorder)"
+          },
+          {
+            "code": "95281009",
+            "display": "Sudden cardiac death (disorder)"
+          }
+        ]
+      }
+    ]
+  }
+}

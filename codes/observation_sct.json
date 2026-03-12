@@ -1,0 +1,45 @@
+{
+  "resourceType": "ValueSet",
+  "id": "observation_sct",
+  "url": "http://example.org/synthea/ValueSet/observation_sct",
+  "title": "Synthea observation codes (sct)",
+  "description": "Codes extracted from Synthea modules for category 'observation', system http://snomed.info/sct.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "271605009",
+            "display": "Position of body and posture (observable entity)"
+          },
+          {
+            "code": "285285000",
+            "display": "Cobb angle (observable entity)"
+          },
+          {
+            "code": "29303009",
+            "display": "Electrocardiographic procedure (procedure)"
+          },
+          {
+            "code": "413077008",
+            "display": "LogMAR visual acuity left eye (observable entity)"
+          },
+          {
+            "code": "413078003",
+            "display": "LogMAR visual acuity right eye (observable entity)"
+          },
+          {
+            "code": "41633001",
+            "display": "Intraocular pressure (observable entity)"
+          },
+          {
+            "code": "870537001",
+            "display": "Risser sign (finding)"
+          }
+        ]
+      }
+    ]
+  }
+}

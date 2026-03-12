@@ -1,0 +1,257 @@
+{
+  "resourceType": "ValueSet",
+  "id": "encounter_sct",
+  "url": "http://example.org/synthea/ValueSet/encounter_sct",
+  "title": "Synthea encounter codes (sct)",
+  "description": "Codes extracted from Synthea modules for category 'encounter', system http://snomed.info/sct.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "108219001",
+            "display": "Physician visit with evaluation AND/OR management service (procedure)"
+          },
+          {
+            "code": "1505002",
+            "display": "Hospital admission for isolation (procedure)"
+          },
+          {
+            "code": "16602611000119108",
+            "display": "Awaiting transplantation of lung (situation)"
+          },
+          {
+            "code": "169762003",
+            "display": "Postnatal visit (regime/therapy)"
+          },
+          {
+            "code": "170837001",
+            "display": "Allergic disorder initial assessment (regime/therapy)"
+          },
+          {
+            "code": "170838006",
+            "display": "Allergic disorder follow-up assessment (regime/therapy)"
+          },
+          {
+            "code": "183452005",
+            "display": "Emergency hospital admission (procedure)"
+          },
+          {
+            "code": "183460006",
+            "display": "Obstetric emergency hospital admission (procedure)"
+          },
+          {
+            "code": "183478001",
+            "display": "Emergency hospital admission for asthma (procedure)"
+          },
+          {
+            "code": "183495009",
+            "display": "Non-urgent orthopedic admission (procedure)"
+          },
+          {
+            "code": "183646003",
+            "display": "Postoperative visit (finding)"
+          },
+          {
+            "code": "183801001",
+            "display": "Inpatient stay 3 days (finding)"
+          },
+          {
+            "code": "185316007",
+            "display": "Indirect encounter (procedure)"
+          },
+          {
+            "code": "185317003",
+            "display": "Telephone encounter (procedure)"
+          },
+          {
+            "code": "185345009",
+            "display": "Encounter for symptom (procedure)"
+          },
+          {
+            "code": "185347001",
+            "display": "Encounter for problem (procedure)"
+          },
+          {
+            "code": "185349003",
+            "display": "Encounter for check up (procedure)"
+          },
+          {
+            "code": "185387006",
+            "display": "New patient consultation (procedure)"
+          },
+          {
+            "code": "185389009",
+            "display": "Follow-up visit (procedure)"
+          },
+          {
+            "code": "210098006",
+            "display": "Domiciliary or rest home patient evaluation and management (procedure)"
+          },
+          {
+            "code": "223484005",
+            "display": "Discussion about treatment (procedure)"
+          },
+          {
+            "code": "270427003",
+            "display": "Patient-initiated encounter (procedure)"
+          },
+          {
+            "code": "281036007",
+            "display": "Follow-up consultation (procedure)"
+          },
+          {
+            "code": "305336008",
+            "display": "Admission to hospice (procedure)"
+          },
+          {
+            "code": "305342007",
+            "display": "Admission to ward (procedure)"
+          },
+          {
+            "code": "305351004",
+            "display": "Admission to intensive care unit (procedure)"
+          },
+          {
+            "code": "305408004",
+            "display": "Admission to surgical department (procedure)"
+          },
+          {
+            "code": "305411003",
+            "display": "Admission to thoracic surgery department (procedure)"
+          },
+          {
+            "code": "305432006",
+            "display": "Admission to surgical transplant department (procedure)"
+          },
+          {
+            "code": "308251003",
+            "display": "Admission to clinical oncology department (procedure)"
+          },
+          {
+            "code": "308335008",
+            "display": "Patient encounter procedure (procedure)"
+          },
+          {
+            "code": "308540004",
+            "display": "Inpatient stay (finding)"
+          },
+          {
+            "code": "310061009",
+            "display": "Gynecology service (qualifier value)"
+          },
+          {
+            "code": "32485007",
+            "display": "Hospital admission (procedure)"
+          },
+          {
+            "code": "36228007",
+            "display": "Ophthalmic examination and evaluation (procedure)"
+          },
+          {
+            "code": "371883000",
+            "display": "Outpatient procedure (procedure)"
+          },
+          {
+            "code": "386395000",
+            "display": "Preoperative coordination (regime/therapy)"
+          },
+          {
+            "code": "387713003",
+            "display": "Surgical procedure (procedure)"
+          },
+          {
+            "code": "390906007",
+            "display": "Follow-up encounter (procedure)"
+          },
+          {
+            "code": "394701000",
+            "display": "Asthma follow-up (regime/therapy)"
+          },
+          {
+            "code": "397821002",
+            "display": "Patient transfer to intensive care unit (procedure)"
+          },
+          {
+            "code": "40274000",
+            "display": "General outpatient clinic admission (procedure)"
+          },
+          {
+            "code": "410410006",
+            "display": "Screening surveillance (regime/therapy)"
+          },
+          {
+            "code": "424441002",
+            "display": "Prenatal initial visit (regime/therapy)"
+          },
+          {
+            "code": "424619006",
+            "display": "Prenatal visit (regime/therapy)"
+          },
+          {
+            "code": "439708006",
+            "display": "Home visit (procedure)"
+          },
+          {
+            "code": "439740005",
+            "display": "Postoperative follow-up visit (procedure)"
+          },
+          {
+            "code": "448337001",
+            "display": "Telemedicine consultation with patient (procedure)"
+          },
+          {
+            "code": "449214001",
+            "display": "Transfer to stepdown unit (procedure)"
+          },
+          {
+            "code": "4525004",
+            "display": "Emergency department patient visit (procedure)"
+          },
+          {
+            "code": "453131000124105",
+            "display": "Videotelephony encounter (procedure)"
+          },
+          {
+            "code": "47505003",
+            "display": "Posttraumatic stress disorder (disorder)"
+          },
+          {
+            "code": "50849002",
+            "display": "Emergency room admission (procedure)"
+          },
+          {
+            "code": "56876005",
+            "display": "Drug rehabilitation and detoxification (regime/therapy)"
+          },
+          {
+            "code": "67799006",
+            "display": "Cystic fibrosis, prenatal detection (procedure)"
+          },
+          {
+            "code": "698314001",
+            "display": "Consultation for treatment (procedure)"
+          },
+          {
+            "code": "711495003",
+            "display": "Patient transfer to coronary care unit (procedure)"
+          },
+          {
+            "code": "76464004",
+            "display": "Hospital admission, for observation (procedure)"
+          },
+          {
+            "code": "79094001",
+            "display": "Initial psychiatric interview with mental status and evaluation (procedure)"
+          },
+          {
+            "code": "86013001",
+            "display": "Periodic reevaluation and management of healthy individual (procedure)"
+          }
+        ]
+      }
+    ]
+  }
+}

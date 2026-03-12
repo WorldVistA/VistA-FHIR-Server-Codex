@@ -1,0 +1,101 @@
+{
+  "resourceType": "ValueSet",
+  "id": "allergy_rxnorm",
+  "url": "http://example.org/synthea/ValueSet/allergy_rxnorm",
+  "title": "Synthea allergy codes (rxnorm)",
+  "description": "Codes extracted from Synthea modules for category 'allergy', system http://www.nlm.nih.gov/research/umls/rxnorm.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+        "concept": [
+          {
+            "code": "10831",
+            "display": "Sulfamethoxazole / Trimethoprim"
+          },
+          {
+            "code": "1191",
+            "display": "Aspirin"
+          },
+          {
+            "code": "18867",
+            "display": "benazepril"
+          },
+          {
+            "code": "1998",
+            "display": "Captopril"
+          },
+          {
+            "code": "20481",
+            "display": "cefepime"
+          },
+          {
+            "code": "20489",
+            "display": "cefpodoxime"
+          },
+          {
+            "code": "2176",
+            "display": "Cefaclor"
+          },
+          {
+            "code": "2180",
+            "display": "Cefazolin"
+          },
+          {
+            "code": "2189",
+            "display": "Cefoxitin"
+          },
+          {
+            "code": "2191",
+            "display": "Ceftazidime"
+          },
+          {
+            "code": "2193",
+            "display": "Ceftriaxone"
+          },
+          {
+            "code": "2194",
+            "display": "Cefuroxime"
+          },
+          {
+            "code": "2231",
+            "display": "Cephalexin"
+          },
+          {
+            "code": "25033",
+            "display": "Cefixime"
+          },
+          {
+            "code": "25037",
+            "display": "cefdinir"
+          },
+          {
+            "code": "29046",
+            "display": "Lisinopril"
+          },
+          {
+            "code": "35208",
+            "display": "quinapril"
+          },
+          {
+            "code": "35296",
+            "display": "Ramipril"
+          },
+          {
+            "code": "3827",
+            "display": "Enalapril"
+          },
+          {
+            "code": "5640",
+            "display": "Ibuprofen"
+          },
+          {
+            "code": "7984",
+            "display": "Penicillin V"
+          }
+        ]
+      }
+    ]
+  }
+}

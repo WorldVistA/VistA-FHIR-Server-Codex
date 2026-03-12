@@ -1,0 +1,69 @@
+{
+  "resourceType": "ValueSet",
+  "id": "other_loinc_org",
+  "url": "http://example.org/synthea/ValueSet/other_loinc_org",
+  "title": "Synthea other codes (loinc.org)",
+  "description": "Codes extracted from Synthea modules for category 'other', system http://loinc.org.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://loinc.org",
+        "concept": [
+          {
+            "code": "61576-5",
+            "display": "PROMIS short form - global - version 1.1"
+          },
+          {
+            "code": "62337-1",
+            "display": "PROMIS item bank - 29 profile"
+          },
+          {
+            "code": "71933-6",
+            "display": "Veterans Rand health survey - 36 item (VR-36)"
+          },
+          {
+            "code": "71934-4",
+            "display": "Veterans Rand health survey - 12 item (VR-12)"
+          },
+          {
+            "code": "72091-2",
+            "display": "Knee injury and Osteoarthritis Outcome Score [KOOS]"
+          },
+          {
+            "code": "72092-0",
+            "display": "Hip Dysfunction and Osteoarthritis Outcome Score [HOOS]"
+          },
+          {
+            "code": "85354-9",
+            "display": "Blood Pressure panel with all children optional"
+          },
+          {
+            "code": "85354-9",
+            "display": "Blood pressure panel with all children optional"
+          },
+          {
+            "code": "86923-0",
+            "display": "Kansas City Cardiomyopathy Questionnaire - 12 item [KCCQ-12]"
+          },
+          {
+            "code": "91148-7",
+            "display": "Pain intensity, Enjoyment of life, General activity scale [PEG]"
+          },
+          {
+            "code": "93025-5",
+            "display": "Protocol for Responding to and Assessing Patients' Assets, Risks, and Experiences [PRAPARE]"
+          },
+          {
+            "code": "99999-0",
+            "display": "DSM-5 Clinical Diagnostic Criteria for Opioid Use Disorder"
+          },
+          {
+            "code": "X9999-0",
+            "display": "Operative Status"
+          }
+        ]
+      }
+    ]
+  }
+}

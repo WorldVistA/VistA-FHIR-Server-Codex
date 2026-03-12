@@ -1,0 +1,197 @@
+{
+  "resourceType": "Bundle",
+  "id": "synthea-snomed-valuesets",
+  "meta": {
+    "lastUpdated": "2026-03-12",
+    "profile": ["http://hl7.org/fhir/StructureDefinition/Bundle"]
+  },
+  "type": "collection",
+  "timestamp": "2026-03-12T00:00:00Z",
+  "title": "Synthea SNOMED CT Code Categories for Synthetic Patients",
+  "description": "ValueSets of SNOMED CT codes that Synthea may include in synthetic patient data, categorized by FHIR resource type. Codes are defined in Synthea module JSON files (Encounter, Procedure, ConditionOnset, AllergyOnset, CarePlanStart, etc.). Full source: https://github.com/synthetichealth/synthea/tree/master/src/main/resources/modules",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:vs-encounter",
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "synthea-encounter-types",
+        "url": "http://example.org/fhir/ValueSet/synthea-encounter-types",
+        "title": "Synthea Encounter Types (SNOMED CT)",
+        "description": "SNOMED CT codes used for Encounter.type or Encounter.reason in Synthea modules.",
+        "status": "active",
+        "compose": {
+          "include": [
+            {
+              "system": "http://snomed.info/sct",
+              "concept": [
+                { "code": "185347001", "display": "Encounter for problem (procedure)" },
+                { "code": "185345009", "display": "Encounter for symptom (procedure)" },
+                { "code": "162673000", "display": "General medicine visit (procedure)" },
+                { "code": "183478001", "display": "Emergency hospital admission for asthma (procedure)" },
+                { "code": "50849002", "display": "Emergency room admission (procedure)" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:vs-condition",
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "synthea-conditions",
+        "url": "http://example.org/fhir/ValueSet/synthea-conditions",
+        "title": "Synthea Conditions (SNOMED CT)",
+        "description": "SNOMED CT codes for Condition resources (ConditionOnset states in modules).",
+        "status": "active",
+        "compose": {
+          "include": [
+            {
+              "system": "http://snomed.info/sct",
+              "concept": [
+                { "code": "195967001", "display": "Asthma (disorder)" },
+                { "code": "233678006", "display": "Childhood asthma (disorder)" },
+                { "code": "609328004", "display": "Allergic disposition (finding)" },
+                { "code": "247472004", "display": "Hypertension (disorder)" },
+                { "code": "44054006", "display": "Type 2 diabetes mellitus (disorder)" },
+                { "code": "73211009", "display": "Diabetes mellitus (disorder)" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:vs-procedure",
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "synthea-procedures",
+        "url": "http://example.org/fhir/ValueSet/synthea-procedures",
+        "title": "Synthea Procedures (SNOMED CT)",
+        "description": "SNOMED CT codes for Procedure resources in Synthea. Includes screenings, tests, and interventions.",
+        "status": "active",
+        "compose": {
+          "include": [
+            {
+              "system": "http://snomed.info/sct",
+              "concept": [
+                { "code": "395142003", "display": "Allergy screening test (procedure)" },
+                { "code": "384758001", "display": "Self-care interventions (procedure)" },
+                { "code": "58332002", "display": "Allergy education (procedure)" },
+                { "code": "171231001", "display": "Asthma screening (procedure)" },
+                { "code": "73761001", "display": "Colonoscopy (procedure)" },
+                { "code": "430193006", "display": "Medication reconciliation (procedure)" },
+                { "code": "14768001", "display": "Plain chest X-ray (procedure)" },
+                { "code": "415300000", "display": "Review of systems (procedure)" },
+                { "code": "162676008", "display": "Brief general examination (procedure)" },
+                { "code": "394701000", "display": "Asthma follow-up (regime/therapy)" },
+                { "code": "699728000", "display": "Asthma self management (regime/therapy)" },
+                { "code": "710818004", "display": "Inhaled steroid therapy (procedure)" },
+                { "code": "708409001", "display": "Home nebulizer therapy (procedure)" },
+                { "code": "229298005", "display": "Breathing control (regime/therapy)" },
+                { "code": "710081004", "display": "Smoking cessation therapy (regime/therapy)" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:vs-observation",
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "synthea-observations",
+        "url": "http://example.org/fhir/ValueSet/synthea-observations",
+        "title": "Synthea Observations (SNOMED CT / LOINC)",
+        "description": "Codes for Observation resources: vitals, labs, and assessments. Synthea uses SNOMED CT for many observations and LOINC for lab results.",
+        "status": "active",
+        "compose": {
+          "include": [
+            {
+              "system": "http://snomed.info/sct",
+              "concept": [
+                { "code": "271649006", "display": "Systolic blood pressure (observable entity)" },
+                { "code": "271650006", "display": "Diastolic blood pressure (observable entity)" },
+                { "code": "50373000", "display": "Body weight (observable entity)" },
+                { "code": "313782003", "display": "Body height (observable entity)" },
+                { "code": "86290005", "display": "Respiratory rate (observable entity)" },
+                { "code": "364075005", "display": "Heart rate (observable entity)" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:vs-allergy",
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "synthea-allergy-reactions",
+        "url": "http://example.org/fhir/ValueSet/synthea-allergy-reactions",
+        "title": "Synthea Allergy / Reaction (SNOMED CT)",
+        "description": "SNOMED CT codes for AllergyIntolerance (allergy type and reactions). Allergen codes may also use RxNorm.",
+        "status": "active",
+        "compose": {
+          "include": [
+            {
+              "system": "http://snomed.info/sct",
+              "concept": [
+                { "code": "609328004", "display": "Allergic disposition (finding)" },
+                { "code": "39579001", "display": "Anaphylaxis (disorder)" },
+                { "code": "247472004", "display": "Allergic reaction (finding)" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:vs-careplan",
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "synthea-careplan-activities",
+        "url": "http://example.org/fhir/ValueSet/synthea-careplan-activities",
+        "title": "Synthea CarePlan Activities (SNOMED CT)",
+        "description": "SNOMED CT codes for CarePlan.activity in Synthea (self-care, therapy regimes).",
+        "status": "active",
+        "compose": {
+          "include": [
+            {
+              "system": "http://snomed.info/sct",
+              "concept": [
+                { "code": "384758001", "display": "Self-care interventions (procedure)" },
+                { "code": "58332002", "display": "Allergy education (procedure)" },
+                { "code": "699728000", "display": "Asthma self management (regime/therapy)" },
+                { "code": "710818004", "display": "Inhaled steroid therapy (procedure)" },
+                { "code": "708409001", "display": "Home nebulizer therapy (procedure)" },
+                { "code": "229298005", "display": "Breathing control (regime/therapy)" },
+                { "code": "710081004", "display": "Smoking cessation therapy (regime/therapy)" }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:vs-immunization",
+      "resource": {
+        "resourceType": "ValueSet",
+        "id": "synthea-immunizations",
+        "url": "http://example.org/fhir/ValueSet/synthea-immunizations",
+        "title": "Synthea Immunization Codes (CVX / SNOMED CT)",
+        "description": "Immunization codes in Synthea; CVX is primary for vaccine product; SNOMED CT may appear for reaction or reason.",
+        "status": "active",
+        "compose": {
+          "include": [
+            {
+              "system": "http://snomed.info/sct",
+              "concept": [
+                { "code": "86198006", "display": "Immunization (procedure)" }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

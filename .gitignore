@@ -1,3 +1,6 @@
 # Python cache artifacts
 __pycache__/
 *.pyc
+
+# Synthea repo clone (used by scripts/extract_synthea_valuesets.py)
+_synthea_clone/

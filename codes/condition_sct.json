@@ -1,0 +1,1385 @@
+{
+  "resourceType": "ValueSet",
+  "id": "condition_sct",
+  "url": "http://example.org/synthea/ValueSet/condition_sct",
+  "title": "Synthea condition codes (sct)",
+  "description": "Codes extracted from Synthea modules for category 'condition', system http://snomed.info/sct.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "1003755004",
+            "display": "Allergy to Hevea brasiliensis latex protein (finding)"
+          },
+          {
+            "code": "10509002",
+            "display": "Acute bronchitis (disorder)"
+          },
+          {
+            "code": "105531004",
+            "display": "Housing unsatisfactory (finding)"
+          },
+          {
+            "code": "108631000119101",
+            "display": "History of autologous bone marrow transplant (situation)"
+          },
+          {
+            "code": "10939881000119105",
+            "display": "Unhealthy alcohol drinking behavior (finding)"
+          },
+          {
+            "code": "109570002",
+            "display": "Primary dental caries (disorder)"
+          },
+          {
+            "code": "109838007",
+            "display": "Overlapping malignant neoplasm of colon (disorder)"
+          },
+          {
+            "code": "109989006",
+            "display": "Multiple myeloma (disorder)"
+          },
+          {
+            "code": "110030002",
+            "display": "Concussion injury of brain (disorder)"
+          },
+          {
+            "code": "110359009",
+            "display": "Intellectual disability (disorder)"
+          },
+          {
+            "code": "111287006",
+            "display": "Tricuspid valve regurgitation (disorder)"
+          },
+          {
+            "code": "1121000119107",
+            "display": "Chronic neck pain (finding)"
+          },
+          {
+            "code": "11218009",
+            "display": "Infection caused by Pseudomonas aeruginosa (disorder)"
+          },
+          {
+            "code": "1149222004",
+            "display": "Overdose (disorder)"
+          },
+          {
+            "code": "11625007",
+            "display": "Torus mandibularis (disorder)"
+          },
+          {
+            "code": "1163220007",
+            "display": "Pressure injury stage II (disorder)"
+          },
+          {
+            "code": "1187604002",
+            "display": "Serving in military service (finding)"
+          },
+          {
+            "code": "119481000119105",
+            "display": "History of aortic valve repair (situation)"
+          },
+          {
+            "code": "120991000119102",
+            "display": "History of undergoing in utero procedure while a fetus (situation)"
+          },
+          {
+            "code": "1231000119100",
+            "display": "History of aortic valve replacement (situation)"
+          },
+          {
+            "code": "124171000119105",
+            "display": "Chronic intractable migraine without aura (disorder)"
+          },
+          {
+            "code": "1255252008",
+            "display": "Resorption of alveolar process due to dental trauma (disorder)"
+          },
+          {
+            "code": "125601008",
+            "display": "Injury of knee (disorder)"
+          },
+          {
+            "code": "125605004",
+            "display": "Fracture of bone (disorder)"
+          },
+          {
+            "code": "126906006",
+            "display": "Neoplasm of prostate (disorder)"
+          },
+          {
+            "code": "127013003",
+            "display": "Disorder of kidney due to diabetes mellitus (disorder)"
+          },
+          {
+            "code": "127294003",
+            "display": "Traumatic or nontraumatic brain injury (disorder)"
+          },
+          {
+            "code": "127295002",
+            "display": "Traumatic brain injury (disorder)"
+          },
+          {
+            "code": "128188000",
+            "display": "Cerebral palsy (disorder)"
+          },
+          {
+            "code": "128302006",
+            "display": "Chronic hepatitis C (disorder)"
+          },
+          {
+            "code": "128613002",
+            "display": "Seizure disorder (disorder)"
+          },
+          {
+            "code": "1290882004",
+            "display": "History of seizure (situation)"
+          },
+          {
+            "code": "129574000",
+            "display": "Postoperative myocardial infarction (disorder)"
+          },
+          {
+            "code": "129721000119106",
+            "display": "Acute renal failure on dialysis (disorder)"
+          },
+          {
+            "code": "132281000119108",
+            "display": "Acute deep venous thrombosis (disorder)"
+          },
+          {
+            "code": "14760008",
+            "display": "Constipation (finding)"
+          },
+          {
+            "code": "1501000119109",
+            "display": "Proliferative diabetic retinopathy due to type II diabetes mellitus"
+          },
+          {
+            "code": "152621000119105",
+            "display": "History of allotransplantation of bone marrow (situation)"
+          },
+          {
+            "code": "153351000119102",
+            "display": "History of peripheral stem cell transplant (situation)"
+          },
+          {
+            "code": "1551000119108",
+            "display": "Nonproliferative diabetic retinopathy due to type II diabetes mellitus"
+          },
+          {
+            "code": "156073000",
+            "display": "Complete miscarriage (disorder)"
+          },
+          {
+            "code": "157141000119108",
+            "display": "Proteinuria due to type 2 diabetes mellitus (disorder)"
+          },
+          {
+            "code": "15724005",
+            "display": "Fracture of vertebral column without spinal cord injury (disorder)"
+          },
+          {
+            "code": "157265008",
+            "display": "Dislocation of hip joint (disorder)"
+          },
+          {
+            "code": "15802004",
+            "display": "Dystonia (disorder)"
+          },
+          {
+            "code": "160701002",
+            "display": "Social migrant (finding)"
+          },
+          {
+            "code": "160903007",
+            "display": "Full-time employment (finding)"
+          },
+          {
+            "code": "160904001",
+            "display": "Part-time employment (finding)"
+          },
+          {
+            "code": "160968000",
+            "display": "Risk activity involvement (finding)"
+          },
+          {
+            "code": "16114001",
+            "display": "Fracture of ankle (disorder)"
+          },
+          {
+            "code": "161621004",
+            "display": "History of upper limb amputation (situation)"
+          },
+          {
+            "code": "161622006",
+            "display": "History of lower limb amputation (situation)"
+          },
+          {
+            "code": "161665007",
+            "display": "History of renal transplant (situation)"
+          },
+          {
+            "code": "161679004",
+            "display": "History of artificial joint (situation)"
+          },
+          {
+            "code": "161744009",
+            "display": "Past pregnancy history of miscarriage (situation)"
+          },
+          {
+            "code": "162573006",
+            "display": "Suspected lung cancer (situation)"
+          },
+          {
+            "code": "162864005",
+            "display": "Body mass index 30+ - obesity (finding)"
+          },
+          {
+            "code": "171131006",
+            "display": "Meningocele (disorder)"
+          },
+          {
+            "code": "1734006",
+            "display": "Fracture of vertebral column with spinal cord injury (disorder)"
+          },
+          {
+            "code": "183996000",
+            "display": "Sterilization requested (situation)"
+          },
+          {
+            "code": "185086009",
+            "display": "Chronic obstructive bronchitis (disorder)"
+          },
+          {
+            "code": "18718003",
+            "display": "Gingival disease (disorder)"
+          },
+          {
+            "code": "190905008",
+            "display": "Cystic fibrosis (disorder)"
+          },
+          {
+            "code": "19169002",
+            "display": "Miscarriage in first trimester (disorder)"
+          },
+          {
+            "code": "192127007",
+            "display": "Child attention deficit disorder (disorder)"
+          },
+          {
+            "code": "195662009",
+            "display": "Acute viral pharyngitis (disorder)"
+          },
+          {
+            "code": "195967001",
+            "display": "Asthma (disorder)"
+          },
+          {
+            "code": "196416002",
+            "display": "Impacted molars (disorder)"
+          },
+          {
+            "code": "197927001",
+            "display": "Recurrent urinary tract infection (disorder)"
+          },
+          {
+            "code": "198992004",
+            "display": "Eclampsia in pregnancy (disorder)"
+          },
+          {
+            "code": "200936003",
+            "display": "Lupus erythematosus (disorder)"
+          },
+          {
+            "code": "201834006",
+            "display": "Localized, primary osteoarthritis of the hand (disorder)"
+          },
+          {
+            "code": "203082005",
+            "display": "Fibromyalgia (disorder)"
+          },
+          {
+            "code": "203646004",
+            "display": "Adolescent idiopathic scoliosis (disorder)"
+          },
+          {
+            "code": "204949001",
+            "display": "Renal dysplasia (disorder)"
+          },
+          {
+            "code": "206523001",
+            "display": "Meconium ileus (disorder)"
+          },
+          {
+            "code": "213020009",
+            "display": "Allergy to egg protein (finding)"
+          },
+          {
+            "code": "213150003",
+            "display": "Kidney transplant failure and rejection (disorder)"
+          },
+          {
+            "code": "221360009",
+            "display": "Spasticity (finding)"
+          },
+          {
+            "code": "22253000",
+            "display": "Pain (finding)"
+          },
+          {
+            "code": "22298006",
+            "display": "Myocardial infarction (disorder)"
+          },
+          {
+            "code": "224295006",
+            "display": "Only received primary school education (finding)"
+          },
+          {
+            "code": "224299000",
+            "display": "Received higher education (finding)"
+          },
+          {
+            "code": "225444004",
+            "display": "At increased risk for suicide (finding)"
+          },
+          {
+            "code": "230265002",
+            "display": "Familial Alzheimer's disease of early onset (disorder)"
+          },
+          {
+            "code": "230690007",
+            "display": "Cerebrovascular accident (disorder)"
+          },
+          {
+            "code": "230745008",
+            "display": "Hydrocephalus (disorder)"
+          },
+          {
+            "code": "232350006",
+            "display": "Allergy to dust mite protein (finding)"
+          },
+          {
+            "code": "232353008",
+            "display": "Perennial allergic rhinitis with seasonal variation (disorder)"
+          },
+          {
+            "code": "233604007",
+            "display": "Pneumonia (disorder)"
+          },
+          {
+            "code": "233678006",
+            "display": "Childhood asthma (disorder)"
+          },
+          {
+            "code": "234466008",
+            "display": "Acquired coagulation disorder (disorder)"
+          },
+          {
+            "code": "235595009",
+            "display": "Gastroesophageal reflux disease (disorder)"
+          },
+          {
+            "code": "235919008",
+            "display": "Gallbladder calculus (disorder)"
+          },
+          {
+            "code": "236077008",
+            "display": "Protracted diarrhea (finding)"
+          },
+          {
+            "code": "237602007",
+            "display": "Metabolic syndrome X (disorder)"
+          },
+          {
+            "code": "239720000",
+            "display": "Tear of meniscus of knee (disorder)"
+          },
+          {
+            "code": "239872002",
+            "display": "Osteoarthritis of hip (disorder)"
+          },
+          {
+            "code": "239873007",
+            "display": "Osteoarthritis of knee (disorder)"
+          },
+          {
+            "code": "24079001",
+            "display": "Atopic dermatitis (disorder)"
+          },
+          {
+            "code": "241929008",
+            "display": "Acute allergic reaction (disorder)"
+          },
+          {
+            "code": "246677007",
+            "display": "Passive conjunctival congestion (finding)"
+          },
+          {
+            "code": "248595008",
+            "display": "Sputum finding (finding)"
+          },
+          {
+            "code": "249497008",
+            "display": "Vomiting symptom (finding)"
+          },
+          {
+            "code": "25064002",
+            "display": "Headache (finding)"
+          },
+          {
+            "code": "254632001",
+            "display": "Small cell carcinoma of lung (disorder)"
+          },
+          {
+            "code": "254637007",
+            "display": "Non-small cell lung cancer (disorder)"
+          },
+          {
+            "code": "254837009",
+            "display": "Malignant neoplasm of breast (disorder)"
+          },
+          {
+            "code": "262521009",
+            "display": "Traumatic injury of spinal cord and/or vertebral column (disorder)"
+          },
+          {
+            "code": "262574004",
+            "display": "Bullet wound (disorder)"
+          },
+          {
+            "code": "263102004",
+            "display": "Fracture subluxation of wrist (disorder)"
+          },
+          {
+            "code": "263172003",
+            "display": "Fracture of mandible (disorder)"
+          },
+          {
+            "code": "266934004",
+            "display": "Transport problem (finding)"
+          },
+          {
+            "code": "266948004",
+            "display": "Has a criminal record (finding)"
+          },
+          {
+            "code": "267020005",
+            "display": "History of tubal ligation (situation)"
+          },
+          {
+            "code": "267036007",
+            "display": "Dyspnea (finding)"
+          },
+          {
+            "code": "267060006",
+            "display": "Diarrhea symptom (finding)"
+          },
+          {
+            "code": "267064002",
+            "display": "Retention of urine (disorder)"
+          },
+          {
+            "code": "267102003",
+            "display": "Sore throat (finding)"
+          },
+          {
+            "code": "267253006",
+            "display": "Fetus with chromosomal abnormality (disorder)"
+          },
+          {
+            "code": "26929004",
+            "display": "Alzheimer's disease (disorder)"
+          },
+          {
+            "code": "271737000",
+            "display": "Anemia (disorder)"
+          },
+          {
+            "code": "271825005",
+            "display": "Respiratory distress (finding)"
+          },
+          {
+            "code": "274531002",
+            "display": "Abnormal findings diagnostic imaging heart+coronary circulat (finding)"
+          },
+          {
+            "code": "275408006",
+            "display": "Postoperative renal failure (disorder)"
+          },
+          {
+            "code": "278365007",
+            "display": "Anticoagulant-induced bleeding (disorder)"
+          },
+          {
+            "code": "278558000",
+            "display": "Dental filling lost (finding)"
+          },
+          {
+            "code": "278588009",
+            "display": "Fractured dental filling (finding)"
+          },
+          {
+            "code": "278598003",
+            "display": "Leaking dental filling (finding)"
+          },
+          {
+            "code": "278602001",
+            "display": "Loose dental filling (finding)"
+          },
+          {
+            "code": "278860009",
+            "display": "Chronic low back pain (finding)"
+          },
+          {
+            "code": "27942005",
+            "display": "Shock (disorder)"
+          },
+          {
+            "code": "283371005",
+            "display": "Laceration of forearm (disorder)"
+          },
+          {
+            "code": "283385000",
+            "display": "Laceration of thigh (disorder)"
+          },
+          {
+            "code": "283545005",
+            "display": "Gunshot wound (disorder)"
+          },
+          {
+            "code": "284549007",
+            "display": "Laceration of hand (disorder)"
+          },
+          {
+            "code": "284551006",
+            "display": "Laceration of foot (disorder)"
+          },
+          {
+            "code": "287182007",
+            "display": "Attempted suicide by suffocation"
+          },
+          {
+            "code": "287185009",
+            "display": "Attempted suicide by cutting or stabbing"
+          },
+          {
+            "code": "287191006",
+            "display": "Suicide by suffocation"
+          },
+          {
+            "code": "287193009",
+            "display": "Suicide using firearm (event)"
+          },
+          {
+            "code": "288959006",
+            "display": "Unable to swallow saliva (finding)"
+          },
+          {
+            "code": "298382003",
+            "display": "Scoliosis deformity of spine (disorder)"
+          },
+          {
+            "code": "302297009",
+            "display": "Congenital deformity of foot (disorder)"
+          },
+          {
+            "code": "302870006",
+            "display": "Hypertriglyceridemia (disorder)"
+          },
+          {
+            "code": "307426000",
+            "display": "Acute infective cystitis (disorder)"
+          },
+          {
+            "code": "307731004",
+            "display": "Injury of tendon of the rotator cuff of shoulder (disorder)"
+          },
+          {
+            "code": "30832001",
+            "display": "Rupture of patellar tendon (disorder)"
+          },
+          {
+            "code": "312157006",
+            "display": "Infectious mediastinitis (disorder)"
+          },
+          {
+            "code": "312608009",
+            "display": "Laceration - injury (disorder)"
+          },
+          {
+            "code": "314529007",
+            "display": "Medication review due (situation)"
+          },
+          {
+            "code": "315268008",
+            "display": "Suspected prostate cancer (situation)"
+          },
+          {
+            "code": "32911000",
+            "display": "Homeless (finding)"
+          },
+          {
+            "code": "33737001",
+            "display": "Fracture of rib (disorder)"
+          },
+          {
+            "code": "359817006",
+            "display": "Closed fracture of hip (disorder)"
+          },
+          {
+            "code": "35999006",
+            "display": "Blighted ovum (disorder)"
+          },
+          {
+            "code": "361055000",
+            "display": "Misuses drugs (finding)"
+          },
+          {
+            "code": "363406005",
+            "display": "Malignant neoplasm of colon (disorder)"
+          },
+          {
+            "code": "367498001",
+            "display": "Seasonal allergic rhinitis (disorder)"
+          },
+          {
+            "code": "368581000119106",
+            "display": "Neuropathy due to type 2 diabetes mellitus (disorder)"
+          },
+          {
+            "code": "36923009",
+            "display": "Major depression, single episode (disorder)"
+          },
+          {
+            "code": "36955009",
+            "display": "Loss of taste (finding)"
+          },
+          {
+            "code": "36971009",
+            "display": "Sinusitis (disorder)"
+          },
+          {
+            "code": "370143000",
+            "display": "Major depressive disorder (disorder)"
+          },
+          {
+            "code": "370247008",
+            "display": "Facial laceration (disorder)"
+          },
+          {
+            "code": "37320007",
+            "display": "Loss of teeth (disorder)"
+          },
+          {
+            "code": "373587001",
+            "display": "Chiari malformation type II (disorder)"
+          },
+          {
+            "code": "37849005",
+            "display": "Congenital uterine anomaly (disorder)"
+          },
+          {
+            "code": "384709000",
+            "display": "Sprain (morphologic abnormality)"
+          },
+          {
+            "code": "386661006",
+            "display": "Fever (finding)"
+          },
+          {
+            "code": "389087006",
+            "display": "Hypoxemia (disorder)"
+          },
+          {
+            "code": "398152000",
+            "display": "Poor muscle tone (finding)"
+          },
+          {
+            "code": "398254007",
+            "display": "Pre-eclampsia (disorder)"
+          },
+          {
+            "code": "39848009",
+            "display": "Whiplash injury to neck (disorder)"
+          },
+          {
+            "code": "39898005",
+            "display": "Sleep disorder (disorder)"
+          },
+          {
+            "code": "399211009",
+            "display": "History of myocardial infarction (situation)"
+          },
+          {
+            "code": "399261000",
+            "display": "History of coronary artery bypass grafting (situation)"
+          },
+          {
+            "code": "40055000",
+            "display": "Chronic sinusitis (disorder)"
+          },
+          {
+            "code": "40095003",
+            "display": "Injury of kidney (disorder)"
+          },
+          {
+            "code": "401303003",
+            "display": "Acute ST segment elevation myocardial infarction (disorder)"
+          },
+          {
+            "code": "401314000",
+            "display": "Acute non-ST segment elevation myocardial infarction (disorder)"
+          },
+          {
+            "code": "40275004",
+            "display": "Contact dermatitis (disorder)"
+          },
+          {
+            "code": "403190006",
+            "display": "Epidermal burn of skin (disorder)"
+          },
+          {
+            "code": "403191005",
+            "display": "Partial thickness burn (disorder)"
+          },
+          {
+            "code": "403192003",
+            "display": "Full thickness burn (disorder)"
+          },
+          {
+            "code": "406602003",
+            "display": "Infection caused by Staphylococcus aureus (disorder)"
+          },
+          {
+            "code": "408512008",
+            "display": "Body mass index 40+ - severely obese (finding)"
+          },
+          {
+            "code": "409089005",
+            "display": "Febrile neutropenia (disorder)"
+          },
+          {
+            "code": "414285001",
+            "display": "Allergy to food (finding)"
+          },
+          {
+            "code": "414545008",
+            "display": "Ischemic heart disease (disorder)"
+          },
+          {
+            "code": "414564002",
+            "display": "Kyphosis deformity of spine (disorder)"
+          },
+          {
+            "code": "414667000",
+            "display": "Meningomyelocele (disorder)"
+          },
+          {
+            "code": "418689008",
+            "display": "Allergy to grass pollen (finding)"
+          },
+          {
+            "code": "419263009",
+            "display": "Allergy to tree pollen (finding)"
+          },
+          {
+            "code": "419474003",
+            "display": "Allergy to mold (finding)"
+          },
+          {
+            "code": "420174000",
+            "display": "Allergy to wheat (finding)"
+          },
+          {
+            "code": "422587007",
+            "display": "Nausea (finding)"
+          },
+          {
+            "code": "422650009",
+            "display": "Social isolation (finding)"
+          },
+          {
+            "code": "422968005",
+            "display": "Non-small cell carcinoma of lung, TNM stage 3 (disorder)"
+          },
+          {
+            "code": "423121009",
+            "display": "Non-small cell carcinoma of lung, TNM stage 4 (disorder)"
+          },
+          {
+            "code": "423315002",
+            "display": "Limited social contact (finding)"
+          },
+          {
+            "code": "424132000",
+            "display": "Non-small cell carcinoma of lung, TNM stage 1 (disorder)"
+          },
+          {
+            "code": "424393004",
+            "display": "Reports of violence in the environment (finding)"
+          },
+          {
+            "code": "425048006",
+            "display": "Non-small cell carcinoma of lung, TNM stage 2 (disorder)"
+          },
+          {
+            "code": "427089005",
+            "display": "Diabetes mellitus due to cystic fibrosis (disorder)"
+          },
+          {
+            "code": "427419006",
+            "display": "Transformed migraine (disorder)"
+          },
+          {
+            "code": "427898007",
+            "display": "Infection of tooth (disorder)"
+          },
+          {
+            "code": "428251008",
+            "display": "History of appendectomy (situation)"
+          },
+          {
+            "code": "428915008",
+            "display": "Toxoplasma gondii antibody detected (finding)"
+          },
+          {
+            "code": "429280009",
+            "display": "History of amputation of foot (situation)"
+          },
+          {
+            "code": "431855005",
+            "display": "Chronic kidney disease stage 1 (disorder)"
+          },
+          {
+            "code": "431856006",
+            "display": "Chronic kidney disease stage 2 (disorder)"
+          },
+          {
+            "code": "431857002",
+            "display": "Chronic kidney disease stage 4 (disorder)"
+          },
+          {
+            "code": "433144002",
+            "display": "Chronic kidney disease stage 3 (disorder)"
+          },
+          {
+            "code": "43724002",
+            "display": "Chill (finding)"
+          },
+          {
+            "code": "43878008",
+            "display": "Streptococcal sore throat (disorder)"
+          },
+          {
+            "code": "44054006",
+            "display": "Diabetes mellitus type 2 (disorder)"
+          },
+          {
+            "code": "44301001",
+            "display": "Suicide (event)"
+          },
+          {
+            "code": "443165006",
+            "display": "Osteoporotic fracture of bone (disorder)"
+          },
+          {
+            "code": "444448004",
+            "display": "Injury of medial collateral ligament of knee (disorder)"
+          },
+          {
+            "code": "444470001",
+            "display": "Injury of anterior cruciate ligament (disorder)"
+          },
+          {
+            "code": "44465007",
+            "display": "Sprain of ankle (disorder)"
+          },
+          {
+            "code": "444814009",
+            "display": "Viral sinusitis (disorder)"
+          },
+          {
+            "code": "446096008",
+            "display": "Perennial allergic rhinitis (disorder)"
+          },
+          {
+            "code": "446654005",
+            "display": "Refugee (person)"
+          },
+          {
+            "code": "448417001",
+            "display": "Sepsis caused by Staphylococcus aureus (disorder)"
+          },
+          {
+            "code": "448813005",
+            "display": "Sepsis caused by Pseudomonas (disorder)"
+          },
+          {
+            "code": "449868002",
+            "display": "Smokes tobacco daily (finding)"
+          },
+          {
+            "code": "4557003",
+            "display": "Preinfarction syndrome (disorder)"
+          },
+          {
+            "code": "45816000",
+            "display": "Pyelonephritis (disorder)"
+          },
+          {
+            "code": "46177005",
+            "display": "End-stage renal disease (disorder)"
+          },
+          {
+            "code": "46752004",
+            "display": "Torus palatinus (disorder)"
+          },
+          {
+            "code": "47200007",
+            "display": "High risk pregnancy (finding)"
+          },
+          {
+            "code": "47318007",
+            "display": "Drug-induced neutropenia (disorder)"
+          },
+          {
+            "code": "473461003",
+            "display": "Educated to high school level (finding)"
+          },
+          {
+            "code": "47505003",
+            "display": "Posttraumatic stress disorder (disorder)"
+          },
+          {
+            "code": "47693006",
+            "display": "Rupture of appendix (disorder)"
+          },
+          {
+            "code": "48333001",
+            "display": "Burn injury (morphologic abnormality)"
+          },
+          {
+            "code": "48724000",
+            "display": "Mitral valve regurgitation (disorder)"
+          },
+          {
+            "code": "49436004",
+            "display": "Atrial fibrillation (disorder)"
+          },
+          {
+            "code": "49727002",
+            "display": "Cough (finding)"
+          },
+          {
+            "code": "49915006",
+            "display": "Tricuspid valve stenosis (disorder)"
+          },
+          {
+            "code": "53827007",
+            "display": "Excessive salivation (disorder)"
+          },
+          {
+            "code": "55822004",
+            "display": "Hyperlipidemia (disorder)"
+          },
+          {
+            "code": "56018004",
+            "display": "Wheezing (finding)"
+          },
+          {
+            "code": "5602001",
+            "display": "Opioid abuse"
+          },
+          {
+            "code": "56786000",
+            "display": "Pulmonic valve stenosis (disorder)"
+          },
+          {
+            "code": "5758002",
+            "display": "Bacteremia (finding)"
+          },
+          {
+            "code": "57676002",
+            "display": "Joint pain"
+          },
+          {
+            "code": "58150001",
+            "display": "Fracture of clavicle (disorder)"
+          },
+          {
+            "code": "59621000",
+            "display": "Essential hypertension (disorder)"
+          },
+          {
+            "code": "60234000",
+            "display": "Aortic valve regurgitation (disorder)"
+          },
+          {
+            "code": "60573004",
+            "display": "Aortic valve stenosis (disorder)"
+          },
+          {
+            "code": "6072007",
+            "display": "Bleeding from anus (disorder)"
+          },
+          {
+            "code": "609496007",
+            "display": "Complication occurring during pregnancy (disorder)"
+          },
+          {
+            "code": "60951000119105",
+            "display": "Blindness due to type 2 diabetes mellitus (disorder)"
+          },
+          {
+            "code": "61804006",
+            "display": "Alveolitis of jaw (disorder)"
+          },
+          {
+            "code": "61977001",
+            "display": "Chronic type B viral hepatitis (disorder)"
+          },
+          {
+            "code": "62106007",
+            "display": "Concussion with no loss of consciousness (disorder)"
+          },
+          {
+            "code": "62479008",
+            "display": "Acquired immune deficiency syndrome (disorder)"
+          },
+          {
+            "code": "62564004",
+            "display": "Concussion with loss of consciousness (disorder)"
+          },
+          {
+            "code": "62718007",
+            "display": "Dribbling from mouth (finding)"
+          },
+          {
+            "code": "6471006",
+            "display": "Suicidal thoughts (finding)"
+          },
+          {
+            "code": "64859006",
+            "display": "Osteoporosis (disorder)"
+          },
+          {
+            "code": "6525002",
+            "display": "Dependent drug abuse (disorder)"
+          },
+          {
+            "code": "65275009",
+            "display": "Acute cholecystitis (disorder)"
+          },
+          {
+            "code": "65363002",
+            "display": "Otitis media (disorder)"
+          },
+          {
+            "code": "65710008",
+            "display": "Acute respiratory failure (disorder)"
+          },
+          {
+            "code": "65966004",
+            "display": "Fracture of forearm (disorder)"
+          },
+          {
+            "code": "66383009",
+            "display": "Gingivitis (disorder)"
+          },
+          {
+            "code": "66857006",
+            "display": "Hemoptysis (finding)"
+          },
+          {
+            "code": "67782005",
+            "display": "Acute respiratory distress syndrome (disorder)"
+          },
+          {
+            "code": "67787004",
+            "display": "Tongue tie (disorder)"
+          },
+          {
+            "code": "67811000119102",
+            "display": "Primary small cell malignant neoplasm of lung, TNM stage 1 (disorder)"
+          },
+          {
+            "code": "67821000119109",
+            "display": "Primary small cell malignant neoplasm of lung, TNM stage 2 (disorder)"
+          },
+          {
+            "code": "67831000119107",
+            "display": "Primary small cell malignant neoplasm of lung, TNM stage 3 (disorder)"
+          },
+          {
+            "code": "67841000119103",
+            "display": "Primary small cell malignant neoplasm of lung, TNM stage 4 (disorder)"
+          },
+          {
+            "code": "68235000",
+            "display": "Nasal congestion (finding)"
+          },
+          {
+            "code": "68496003",
+            "display": "Polyp of colon (disorder)"
+          },
+          {
+            "code": "68566005",
+            "display": "Urinary tract infectious disease (disorder)"
+          },
+          {
+            "code": "68962001",
+            "display": "Muscle pain (finding)"
+          },
+          {
+            "code": "698303004",
+            "display": "Awaiting transplantation of bone marrow (situation)"
+          },
+          {
+            "code": "698306007",
+            "display": "Awaiting transplantation of kidney (situation)"
+          },
+          {
+            "code": "698423002",
+            "display": "History of disarticulation at wrist (situation)"
+          },
+          {
+            "code": "698754002",
+            "display": "Chronic paralysis due to lesion of spinal cord (disorder)"
+          },
+          {
+            "code": "698819004",
+            "display": "Postoperative sepsis (disorder)"
+          },
+          {
+            "code": "69896004",
+            "display": "Rheumatoid arthritis (disorder)"
+          },
+          {
+            "code": "706870000",
+            "display": "Acute pulmonary embolism (disorder)"
+          },
+          {
+            "code": "706893006",
+            "display": "Victim of intimate partner abuse (finding)"
+          },
+          {
+            "code": "70704007",
+            "display": "Sprain of wrist (disorder)"
+          },
+          {
+            "code": "707418001",
+            "display": "Male infertility due to cystic fibrosis (disorder)"
+          },
+          {
+            "code": "707577004",
+            "display": "Female infertility due to cystic fibrosis (disorder)"
+          },
+          {
+            "code": "713197008",
+            "display": "Recurrent rectal polyp (disorder)"
+          },
+          {
+            "code": "713458007",
+            "display": "Lack of access to transportation (finding)"
+          },
+          {
+            "code": "714628002",
+            "display": "Prediabetes (finding)"
+          },
+          {
+            "code": "717234006",
+            "display": "Allergy to animal protein (finding)"
+          },
+          {
+            "code": "7200002",
+            "display": "Alcoholism (disorder)"
+          },
+          {
+            "code": "72892002",
+            "display": "Normal pregnancy (finding)"
+          },
+          {
+            "code": "73430006",
+            "display": "Sleep apnea (disorder)"
+          },
+          {
+            "code": "73438004",
+            "display": "Unemployed (finding)"
+          },
+          {
+            "code": "73595000",
+            "display": "Stress (finding)"
+          },
+          {
+            "code": "741062008",
+            "display": "Not in labor force (finding)"
+          },
+          {
+            "code": "74400008",
+            "display": "Appendicitis (disorder)"
+          },
+          {
+            "code": "75498004",
+            "display": "Acute bacterial sinusitis (disorder)"
+          },
+          {
+            "code": "76571007",
+            "display": "Septic shock (disorder)"
+          },
+          {
+            "code": "76916001",
+            "display": "Spina bifida occulta (disorder)"
+          },
+          {
+            "code": "770349000",
+            "display": "Sepsis caused by virus (disorder)"
+          },
+          {
+            "code": "782594005",
+            "display": "Allergy to soy protein (finding)"
+          },
+          {
+            "code": "78275009",
+            "display": "Obstructive sleep apnea syndrome (disorder)"
+          },
+          {
+            "code": "79586000",
+            "display": "Tubal pregnancy (disorder)"
+          },
+          {
+            "code": "79619009",
+            "display": "Mitral valve stenosis (disorder)"
+          },
+          {
+            "code": "80394007",
+            "display": "Hyperglycemia (disorder)"
+          },
+          {
+            "code": "80583007",
+            "display": "Severe anxiety (panic) (finding)"
+          },
+          {
+            "code": "81629009",
+            "display": "Traumatic dislocation of temporomandibular joint (disorder)"
+          },
+          {
+            "code": "82423001",
+            "display": "Chronic pain (finding)"
+          },
+          {
+            "code": "83664006",
+            "display": "Idiopathic atrophic hypothyroidism (disorder)"
+          },
+          {
+            "code": "840539006",
+            "display": "Disease caused by severe acute respiratory syndrome coronavirus 2 (disorder)"
+          },
+          {
+            "code": "840544004",
+            "display": "Suspected disease caused by Severe acute respiratory coronavirus 2 (situation)"
+          },
+          {
+            "code": "84114007",
+            "display": "Heart failure (disorder)"
+          },
+          {
+            "code": "84229001",
+            "display": "Fatigue (finding)"
+          },
+          {
+            "code": "84757009",
+            "display": "Epilepsy (disorder)"
+          },
+          {
+            "code": "85116003",
+            "display": "Miscarriage in second trimester (disorder)"
+          },
+          {
+            "code": "86175003",
+            "display": "Injury of heart (disorder)"
+          },
+          {
+            "code": "86406008",
+            "display": "Human immunodeficiency virus infection (disorder)"
+          },
+          {
+            "code": "86849004",
+            "display": "Suicidal poisoning (disorder)"
+          },
+          {
+            "code": "87433001",
+            "display": "Pulmonary emphysema (disorder)"
+          },
+          {
+            "code": "87628006",
+            "display": "Bacterial infectious disease (disorder)"
+          },
+          {
+            "code": "876882001",
+            "display": "Died in hospice (finding)"
+          },
+          {
+            "code": "88805009",
+            "display": "Chronic congestive heart failure (disorder)"
+          },
+          {
+            "code": "90460009",
+            "display": "Injury of neck (disorder)"
+          },
+          {
+            "code": "90560007",
+            "display": "Gout"
+          },
+          {
+            "code": "90781000119102",
+            "display": "Microalbuminuria due to type 2 diabetes mellitus (disorder)"
+          },
+          {
+            "code": "91302008",
+            "display": "Sepsis (disorder)"
+          },
+          {
+            "code": "91434003",
+            "display": "Pulmonic valve regurgitation (disorder)"
+          },
+          {
+            "code": "91861009",
+            "display": "Acute myeloid leukemia (disorder)"
+          },
+          {
+            "code": "92691004",
+            "display": "Carcinoma in situ of prostate (disorder)"
+          },
+          {
+            "code": "93143009",
+            "display": "Leukemia, disease (disorder)"
+          },
+          {
+            "code": "93761005",
+            "display": "Primary malignant neoplasm of colon (disorder)"
+          },
+          {
+            "code": "94260004",
+            "display": "Metastatic malignant neoplasm to colon (disorder)"
+          },
+          {
+            "code": "94503003",
+            "display": "Metastatic malignant neoplasm to prostate (disorder)"
+          },
+          {
+            "code": "95417003",
+            "display": "Primary fibromyalgia syndrome (disorder)"
+          },
+          {
+            "code": "97331000119101",
+            "display": "Macular edema and retinopathy due to type 2 diabetes mellitus (disorder)"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "resourceType": "ValueSet",
+  "id": "allergy_sct",
+  "url": "http://example.org/synthea/ValueSet/allergy_sct",
+  "title": "Synthea allergy codes (sct)",
+  "description": "Codes extracted from Synthea modules for category 'allergy', system http://snomed.info/sct.",
+  "status": "active",
+  "compose": {
+    "include": [
+      {
+        "system": "http://snomed.info/sct",
+        "concept": [
+          {
+            "code": "102263004",
+            "display": "Eggs (edible) (substance)"
+          },
+          {
+            "code": "111088007",
+            "display": "Latex (substance)"
+          },
+          {
+            "code": "256277009",
+            "display": "Grass pollen (substance)"
+          },
+          {
+            "code": "256355007",
+            "display": "Glycine max (substance)"
+          },
+          {
+            "code": "260147004",
+            "display": "House dust mite (organism)"
+          },
+          {
+            "code": "264287008",
+            "display": "Animal dander (substance)"
+          },
+          {
+            "code": "288328004",
+            "display": "Bee venom (substance)"
+          },
+          {
+            "code": "3718001",
+            "display": "Cow's milk (substance)"
+          },
+          {
+            "code": "412071004",
+            "display": "Wheat (substance)"
+          },
+          {
+            "code": "442571000124108",
+            "display": "Tree nut (substance)"
+          },
+          {
+            "code": "609328004",
+            "display": "Allergic disposition (finding)"
+          },
+          {
+            "code": "735029006",
+            "display": "Shellfish (substance)"
+          },
+          {
+            "code": "735971005",
+            "display": "Fish (substance)"
+          },
+          {
+            "code": "762952008",
+            "display": "Peanut (substance)"
+          },
+          {
+            "code": "782576004",
+            "display": "Tree pollen (substance)"
+          },
+          {
+            "code": "84489001",
+            "display": "Mold (organism)"
+          }
+        ]
+      }
+    ]
+  }
+}
