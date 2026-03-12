@@ -44,6 +44,18 @@ Use the VistA test VPR endpoint as a quick ground-truth source by patient `dfn`.
 - Base pattern: `http://fhir.vistaplex.org:9080/vpr?dfn=<DFN>`
 - Example: `http://fhir.vistaplex.org:9080/vpr?dfn=1595`
 
+## Container startup note (`%webreq`)
+
+- On some fresh container starts, Docker may publish `9080` but the in-container `%webreq` listener is not yet running.
+- Symptom: external `:9080` returns connection refused/reset even though `docker ps` shows the port mapping.
+- Start `%webreq` inside the running container:
+  - `docker exec fhir bash -lc 'source /home/osehra/etc/env >/dev/null 2>&1; mumps -run %XCMD "d go^%webreq"'`
+- Verify listener inside container:
+  - `docker exec fhir bash -lc 'ss -ltnp | awk "NR==1 || /:9080/"'`
+- Verify endpoint from host/client:
+  - `curl -i http://fhir.vistaplex.org:9080/fhir`
+- If host firewall is enabled, ensure `9080/tcp` is allowed (plus `9430`, `8001`, `2222` when those services are needed).
+
 ## Why this helps
 
 - A single `dfn` request returns broad multi-domain VPR content.

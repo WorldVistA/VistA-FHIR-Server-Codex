@@ -7,7 +7,8 @@ This directory stores detailed project documentation for implementation tracking
 - `VPR_CONTAINER_FHIR_MAPPING.md`: VPR container/domain mapping to FHIR resources with source file numbers.
 - `NAMING_CONVENTIONS.md`: Namespace standards for routines and DDE entities.
 - `BUNDLE_REQUIREMENTS.md`: Single-bundle response behavior and query modes.
-- `TEST_SERVER_VALIDATION.md`: How to use the test VPR endpoint (`dfn`) for bundle parity checks.
+- `TEST_SERVER_VALIDATION.md`: How to use the test VPR endpoint (`dfn`) for bundle parity checks, including `%webreq` startup/listener recovery steps for new containers.
+- `M_WEBSERVER_RUNAWAY_JOBS_ANALYSIS_2026-03-12.md`: Maintainer-facing root-cause analysis and validated hotfix for `%webrsp` runaway `mumps -direct` worker leaks.
 - `STEPS_TAKEN.md`: Chronological log of work completed.
 - `OPEN_QUESTIONS.md`: Questions that still need answers before or during implementation.
 - `UNRESOLVED_ISSUES.md`: Known issues, blockers, and remaining gaps.
