@@ -192,16 +192,24 @@ RPCFHIRA(RTN,FILTER) ; RPC entry point (array params)
 GETFHIR(RTN,FILTER) ; Web service entry point
  ; FILTER contains URL parameters, for example FILTER("dfn")=12345
  ; RTN returns JSON output nodes from ENCODE^XLFJSON
- NEW ERR,REQ,TMP
+ NEW ERR,REQ,TMP,VIEW
  DO ENVINIT
  KILL RTN
  DO MAPFILT(.FILTER,.REQ)
+ SET VIEW=$$UPCASE($SELECT($GET(FILTER("view"))'="":$GET(FILTER("view")),1:$GET(FILTER("VIEW"))))
+ IF VIEW="BROWSER",+$GET(REQ("DFN"))>0 DO  QUIT
+ . SET FILTER("type")="text/html"
+ . DO BROWSER^C0FHIRWS(.RTN,+$GET(REQ("DFN")))
+ . SET HTTPRSP("mime")="text/html"
  IF $GET(REQ("DFN"))="" DO  QUIT
+ . SET FILTER("type")="text/html"
  . DO FHIRIDX(.RTN)
+ . SET HTTPRSP("mime")="text/html"
  SET REQ("MODE")=$$REQMODE(.REQ)
  IF $GET(REQ("MODE"))="" DO  QUIT
  . DO ERR^C0FHIRBU("Cannot determine request mode from URL parameters",.TMP)
  . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
+ SET FILTER("type")="application/json"
  SET HTTPRSP("mime")="application/json"
  DO GETBNDLJ(.REQ,.RTN,.ERR)
  IF $DATA(ERR) DO
@@ -211,12 +219,11 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  ;
 FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  NEW BURL,CNT,DFN,FURL,IEN,JURL,KEY,LURL,NAME,ROOT,ROW,SORT,SUM,VURL
- SET HTTPRSP("mime")="text/html"
  KILL RTN
  DO ADDLN(.RTN,"<!DOCTYPE HTML>")
  DO ADDLN(.RTN,"<html><head><title>FHIR Patient Index</title></head><body>")
  DO ADDLN(.RTN,"<h1>FHIR Patient Index</h1>")
- DO ADDLN(.RTN,"<p>Click Name for interactive browser view.</p>")
+ DO ADDLN(.RTN,"<p>Click Name for interactive browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea).</p>")
  DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
  DO ADDLN(.RTN,"<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>Synthea Json</th><th>Load Log</th><th>VPR</th></tr>")
  SET ROOT=$$GSROOT()
@@ -231,33 +238,76 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . . IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
  . . SET KEY=$$UPCASE(NAME)
  . . SET SORT(KEY,NAME,DFN,IEN)=""
- . SET KEY=""
- . FOR  SET KEY=$ORDER(SORT(KEY)) Q:KEY=""  DO
- . . SET NAME=""
- . . FOR  SET NAME=$ORDER(SORT(KEY,NAME)) Q:NAME=""  DO
- . . . SET DFN=0
- . . . FOR  SET DFN=$ORDER(SORT(KEY,NAME,DFN)) Q:+DFN<1  DO
- . . . . SET IEN=0
- . . . . FOR  SET IEN=$ORDER(SORT(KEY,NAME,DFN,IEN)) Q:+IEN<1  DO
- . . . . . SET CNT=CNT+1
- . . . . . SET FURL="/fhir?dfn="_DFN
- . . . . . SET BURL="/fhir?dfn="_DFN_"&view=browser"
- . . . . . SET VURL="/vpr?dfn="_DFN_"&format=xml"
- . . . . . SET JURL="/showfhir?ien="_IEN
- . . . . . SET LURL=$$LOADLOGURL(ROOT,IEN)
- . . . . . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
- . . . . . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
- . . . . . SET ROW=ROW_"<td>"_DFN_"</td><td>"_IEN_"</td>"
- . . . . . SET ROW=ROW_"<td><a href="""_JURL_""">json</a></td>"
- . . . . . SET ROW=ROW_"<td><a href="""_LURL_""">load</a></td>"
- . . . . . SET ROW=ROW_"<td><a href="""_VURL_""">vpr</a></td></tr>"
- . . . . . DO ADDLN(.RTN,ROW)
- . . . . . SET SUM=$$DOMSUM(ROOT,IEN)
- . . . . . DO ADDLN(.RTN,"<tr><td colspan=""7""><small>"_$$HTMLESC(SUM)_"</small></td></tr>")
- IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan=""7"">No imported patients found in fhir-intake.</td></tr>")
+ . . SET SORT("DFN",DFN)=1
+ DO ADDLRROWS(.SORT)
+ SET KEY=""
+ FOR  SET KEY=$ORDER(SORT(KEY)) Q:KEY=""  DO
+ . SET NAME=""
+ . FOR  SET NAME=$ORDER(SORT(KEY,NAME)) Q:NAME=""  DO
+ . . SET DFN=0
+ . . FOR  SET DFN=$ORDER(SORT(KEY,NAME,DFN)) Q:+DFN<1  DO
+ . . . SET IEN=""
+ . . . FOR  SET IEN=$ORDER(SORT(KEY,NAME,DFN,IEN)) Q:IEN=""  DO
+ . . . . SET CNT=CNT+1
+ . . . . SET FURL="/fhir?dfn="_DFN
+ . . . . SET BURL="/fhir?dfn="_DFN_"&view=browser"
+ . . . . SET VURL="/vpr?dfn="_DFN_"&format=xml"
+ . . . . SET JURL=$SELECT(+IEN>0:"/showfhir?ien="_IEN,1:"")
+ . . . . SET LURL=$SELECT(+IEN>0:$$LOADLOGURL(ROOT,IEN),1:"")
+ . . . . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
+ . . . . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
+ . . . . SET ROW=ROW_"<td>"_DFN_"</td><td>"_$SELECT(+IEN>0:IEN,1:"-")_"</td>"
+ . . . . IF JURL'="" SET ROW=ROW_"<td><a href="""_JURL_""">json</a></td>"
+ . . . . ELSE  SET ROW=ROW_"<td>n/a</td>"
+ . . . . IF LURL'="" SET ROW=ROW_"<td><a href="""_LURL_""">load</a></td>"
+ . . . . ELSE  SET ROW=ROW_"<td>n/a</td>"
+ . . . . SET ROW=ROW_"<td><a href="""_VURL_""">vpr</a></td></tr>"
+ . . . . DO ADDLN(.RTN,ROW)
+ . . . . IF +IEN>0 SET SUM=$$DOMSUM(ROOT,IEN)
+ . . . . ELSE  SET SUM=$$LRSUM(DFN)
+ . . . . DO ADDLN(.RTN,"<tr><td colspan=""7""><small>"_$$HTMLESC(SUM)_"</small></td></tr>")
+ IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan=""7"">No patients with labs were found in graph store or ^LR.</td></tr>")
  DO ADDLN(.RTN,"</table>")
  DO ADDLN(.RTN,"</body></html>")
  QUIT
+ ;
+ADDLRROWS(SORT) ; Add non-Synthea rows discovered via ^LR
+ NEW DFN,KEY,LRDFN,NAME
+ SET DFN=0
+ FOR  SET DFN=$ORDER(^DPT(DFN)) Q:+DFN<1  DO
+ . SET LRDFN=+$GET(^DPT(DFN,"LR"))
+ . IF LRDFN<1 QUIT
+ . IF '$$HASLRLABS(LRDFN) QUIT
+ . IF $GET(SORT("DFN",DFN)) QUIT
+ . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^")
+ . IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
+ . SET KEY=$$UPCASE(NAME)
+ . SET SORT(KEY,NAME,DFN,0)=""
+ . SET SORT("DFN",DFN)=1
+ QUIT
+ ;
+HASLRLABS(LRDFN) ; True when LR node has chemistry or micro data
+ SET LRDFN=+$GET(LRDFN)
+ IF LRDFN<1 QUIT 0
+ IF $DATA(^LR(LRDFN,"CH")) QUIT 1
+ IF $DATA(^LR(LRDFN,"MI")) QUIT 1
+ QUIT 0
+ ;
+LRSUM(DFN) ; Domain summary for non-Synthea rows discovered from ^LR
+ NEW CH,LRDFN,MI,TOT
+ SET LRDFN=+$GET(^DPT(+$GET(DFN),"LR"))
+ IF LRDFN<1 QUIT "labs:0/0 | source:^LR"
+ SET CH=$$LRSUBCNT(LRDFN,"CH")
+ SET MI=$$LRSUBCNT(LRDFN,"MI")
+ SET TOT=CH+MI
+ QUIT "labs:"_TOT_"/"_TOT_" | source:^LR"
+ ;
+LRSUBCNT(LRDFN,SUB) ; Count first-level nodes for one ^LR subdomain
+ NEW CNT,IDT
+ SET CNT=0
+ SET IDT=0
+ FOR  SET IDT=$ORDER(^LR(LRDFN,SUB,IDT)) Q:IDT<1  SET CNT=CNT+1
+ QUIT CNT
  ;
 SHOWROW(ROOT,IEN) ; True when graph has one or more loaded labs
  NEW DOM,LD,ST,ZI
