@@ -40,7 +40,7 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  ;
 GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  ; ENCIEN is expected to be a visit ien from ^AUPNVSIT
- NEW CLASS,ENC,IDX,TYPE
+ NEW CLASS,ENC,ENDDT,IDX
  DO ENVINIT
  SET ENCIEN=+ENCIEN
  IF ENCIEN<1 QUIT
@@ -52,11 +52,175 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  SET CLASS=$SELECT($GET(ENC("patientClass"))="IMP":"IMP",1:"AMB")
  SET RTN("entry",IDX,"resource","class","system")="http://terminology.hl7.org/CodeSystem/v3-ActCode"
  SET RTN("entry",IDX,"resource","class","code")=CLASS
- IF +$GET(DFN)>0 SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ IF +$GET(DFN)>0 DO
+ . SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ . IF $PIECE($GET(^DPT(DFN,0)),U)'="" SET RTN("entry",IDX,"resource","subject","display")=$PIECE($GET(^DPT(DFN,0)),U)
  IF +$GET(ENC("dateTime"))>0 SET RTN("entry",IDX,"resource","period","start")=$$FM2FHIR^C0FHIRBU(ENC("dateTime"))
- IF +$GET(ENC("departureDateTime"))>0 SET RTN("entry",IDX,"resource","period","end")=$$FM2FHIR^C0FHIRBU(ENC("departureDateTime"))
- SET TYPE=$PIECE($GET(ENC("type")),"^",2)
- IF TYPE'="" SET RTN("entry",IDX,"resource","type",1,"text")=TYPE
+ SET ENDDT=+$GET(ENC("departureDateTime"))
+ IF ENDDT<1 SET ENDDT=$$ENCEND(+$GET(DFN),.ENC)
+ IF ENDDT>0 SET RTN("entry",IDX,"resource","period","end")=$$FM2FHIR^C0FHIRBU(ENDDT)
+ DO SETETYP(.RTN,IDX,.ENC)
+ DO SETEPRV(.RTN,IDX,.ENC,+$GET(DFN),ENDDT)
+ DO SETEFAC(.RTN,IDX,.ENC)
+ DO SETELOC(.RTN,IDX,.ENC)
+ DO SETESVC(.RTN,IDX,.ENC)
+ DO SETERSN(.RTN,IDX,.ENC)
+ QUIT
+ ;
+SETETYP(RTN,IDX,ENC) ; Populate Encounter.type from encounter CPT/OS5 when available
+ NEW CODE,TXT,TYPE
+ KILL TYPE
+ DO ENCTYP(.ENC,.TYPE)
+ IF $DATA(TYPE) MERGE RTN("entry",IDX,"resource","type",1)=TYPE QUIT
+ SET CODE=$PIECE($GET(ENC("type")),"^")
+ SET TXT=$PIECE($GET(ENC("type")),"^",2)
+ IF CODE'="" DO
+ . SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://www.ama-assn.org/go/cpt"
+ . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code")=CODE
+ . IF TXT'="" SET RTN("entry",IDX,"resource","type",1,"coding",1,"display")=TXT
+ IF TXT'="" SET RTN("entry",IDX,"resource","type",1,"text")=TXT
+ QUIT
+ ;
+ENCTYP(ENC,TYPE) ; Build encounter type from encounter-like CPT/OS5 rows
+ NEW CODE,DA,ITEM,NAME
+ KILL TYPE
+ SET DA=0
+ FOR  SET DA=$ORDER(ENC("cpt",DA)) Q:DA<1  DO  Q:$DATA(TYPE)
+ . SET ITEM=$GET(ENC("cpt",DA))
+ . SET CODE=$PIECE(ITEM,"^")
+ . SET NAME=$PIECE(ITEM,"^",2,99)
+ . IF '$$ISENCD^C0FHIRP(CODE) QUIT
+ . DO ENCCOD(CODE,NAME,.TYPE)
+ QUIT
+ ;
+ENCCOD(CODE,NAME,TYPE) ; Add encounter coding from OS5/CPT and recovered SNOMED
+ NEW SCT,SDISP
+ KILL TYPE
+ SET CODE=$PIECE($GET(CODE),"^")
+ SET NAME=$GET(NAME)
+ IF CODE="" QUIT
+ DO ENCSNOM(CODE,.SCT,.SDISP)
+ IF SCT'="" DO
+ . SET TYPE("coding",1,"system")="http://snomed.info/sct"
+ . SET TYPE("coding",1,"code")=SCT
+ . IF SDISP'="" SET TYPE("coding",1,"display")=SDISP
+ . SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
+ . SET TYPE("coding",2,"code")=CODE
+ . IF NAME'="" SET TYPE("coding",2,"display")=NAME
+ ELSE  DO
+ . SET TYPE("coding",1,"system")="http://www.ama-assn.org/go/cpt"
+ . SET TYPE("coding",1,"code")=CODE
+ . IF NAME'="" SET TYPE("coding",1,"display")=NAME
+ IF NAME="" SET NAME=SDISP
+ IF NAME'="" SET TYPE("text")=NAME
+ QUIT
+ ;
+ENCSNOM(CODE,SCT,SDISP) ; Recover source SNOMED mapping for one encounter OS5/CPT code
+ NEW HIT
+ SET (SCT,SDISP)=""
+ SET CODE=$PIECE($GET(CODE),"^")
+ IF CODE="" QUIT
+ SET HIT=0
+ FOR  SET SCT=$ORDER(^SYN("2002.030","sct2os5","inverse",CODE,SCT)) Q:SCT=""  DO  Q:HIT
+ . IF '$$ISENCS^C0FHIRP(SCT) QUIT
+ . IF $$ISDUALS^C0FHIRP(SCT) QUIT
+ . SET SDISP=$GET(^SYN("2002.030","sct2os5","inverse",CODE,SCT))
+ . SET HIT=1
+ QUIT
+ ;
+ENCEND(DFN,ENC) ; Recover outpatient end time from clinic appointment checkout
+ NEW APDT,CLIEN,ENDDT,IEN
+ SET ENDDT=0
+ SET DFN=+$GET(DFN)
+ SET APDT=+$GET(ENC("dateTime"))
+ SET CLIEN=$$ENCCLIN(.ENC)
+ IF DFN<1!(APDT<1)!(CLIEN<1) QUIT 0
+ SET IEN=0
+ FOR  SET IEN=$ORDER(^SC(CLIEN,"S",APDT,1,IEN)) Q:IEN<1!(ENDDT>0)  DO
+ . IF +$GET(^SC(CLIEN,"S",APDT,1,IEN,0))'=DFN QUIT
+ . SET ENDDT=$$GET1^DIQ(44.003,IEN_","_APDT_","_CLIEN_",",303,"I")
+ . IF ENDDT<1 SET ENDDT=$$GET1^DIQ(44.003,IEN_","_APDT_","_CLIEN_",",306,"I")
+ QUIT ENDDT
+ ;
+ENCCLIN(ENC) ; Return clinic ien from visit string
+ QUIT +$PIECE($GET(ENC("visitString")),";",1)
+ ;
+SETEPRV(RTN,IDX,ENC,DFN,ENDDT) ; Add encounter participants from VistA provider data
+ NEW I,N,PROV,RAW,ROLE,STARTDT
+ SET STARTDT=+$GET(ENC("dateTime"))
+ SET N=0,I=0
+ FOR  SET I=$ORDER(ENC("provider",I)) Q:I<1  DO
+ . SET RAW=$GET(ENC("provider",I))
+ . SET PROV=$$PROV^C0FHIRP(RAW)
+ . IF $PIECE(PROV,U,2)="" QUIT
+ . SET N=N+1
+ . SET RTN("entry",IDX,"resource","participant",N,"individual","display")=$PIECE(PROV,U,2)
+ . IF +$PIECE(PROV,U)>0 DO
+ . . SET RTN("entry",IDX,"resource","participant",N,"individual","identifier","system")="urn:va:user"
+ . . SET RTN("entry",IDX,"resource","participant",N,"individual","identifier","value")=+$PIECE(PROV,U)
+ . IF STARTDT>0 SET RTN("entry",IDX,"resource","participant",N,"period","start")=$$FM2FHIR^C0FHIRBU(STARTDT)
+ . IF ENDDT>0 SET RTN("entry",IDX,"resource","participant",N,"period","end")=$$FM2FHIR^C0FHIRBU(ENDDT)
+ . SET ROLE=$$PROL($PIECE(RAW,U,3),+$PIECE(RAW,U,4))
+ . IF $PIECE(ROLE,U)'="" DO
+ . . SET RTN("entry",IDX,"resource","participant",N,"type",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/v3-ParticipationType"
+ . . SET RTN("entry",IDX,"resource","participant",N,"type",1,"coding",1,"code")=$PIECE(ROLE,U)
+ . . SET RTN("entry",IDX,"resource","participant",N,"type",1,"coding",1,"display")=$PIECE(ROLE,U,2)
+ . . SET RTN("entry",IDX,"resource","participant",N,"type",1,"text")=$PIECE(ROLE,U,2)
+ QUIT
+ ;
+PROL(CODE,PRIMARY) ; Map VistA visit provider role to participation type
+ SET CODE=$$UPCASE($GET(CODE))
+ IF +$GET(PRIMARY)=1!(CODE="P") QUIT "PPRF^primary performer"
+ IF CODE="A" QUIT "ATND^attender"
+ QUIT ""
+ ;
+SETEFAC(RTN,IDX,ENC) ; Add serviceProvider from VistA facility when available
+ NEW FAC,NAME,STA
+ SET FAC=$GET(ENC("facility"))
+ SET STA=$PIECE(FAC,U)
+ SET NAME=$PIECE(FAC,U,2)
+ IF STA="",NAME="" QUIT
+ IF NAME'="" SET RTN("entry",IDX,"resource","serviceProvider","display")=NAME
+ IF STA'="" DO
+ . SET RTN("entry",IDX,"resource","serviceProvider","identifier","system")="urn:va:station"
+ . SET RTN("entry",IDX,"resource","serviceProvider","identifier","value")=STA
+ . SET RTN("entry",IDX,"resource","serviceProvider","identifier","value","\s")=""
+ QUIT
+ ;
+SETELOC(RTN,IDX,ENC) ; Add clinic/location display in the correct Encounter field
+ NEW CLIEN
+ SET CLIEN=$$ENCCLIN(.ENC)
+ IF $GET(ENC("location"))'="" SET RTN("entry",IDX,"resource","location",1,"location","display")=$GET(ENC("location"))
+ IF CLIEN>0 DO
+ . SET RTN("entry",IDX,"resource","location",1,"location","identifier","system")="urn:va:clinic"
+ . SET RTN("entry",IDX,"resource","location",1,"location","identifier","value")=CLIEN
+ . SET RTN("entry",IDX,"resource","location",1,"location","identifier","value","\s")=""
+ QUIT
+ ;
+SETESVC(RTN,IDX,ENC) ; Add service text when available
+ NEW CODE,TXT
+ IF $GET(ENC("service"))'="" SET RTN("entry",IDX,"resource","serviceType","text")=$GET(ENC("service"))
+ SET CODE=$PIECE($GET(ENC("stopCode")),U)
+ SET TXT=$PIECE($GET(ENC("stopCode")),U,2)
+ IF CODE'="" DO
+ . SET RTN("entry",IDX,"resource","serviceType","coding",1,"system")="urn:va:stop-code"
+ . SET RTN("entry",IDX,"resource","serviceType","coding",1,"code")=CODE
+ . IF TXT'="" SET RTN("entry",IDX,"resource","serviceType","coding",1,"display")=TXT
+ QUIT
+ ;
+SETERSN(RTN,IDX,ENC) ; Add encounter reason from VistA POV data when available
+ NEW CODE,NARR,NAME,SYS
+ SET CODE=$PIECE($GET(ENC("reason")),U)
+ SET NAME=$PIECE($GET(ENC("reason")),U,2)
+ SET SYS=$PIECE($GET(ENC("reason")),U,3)
+ SET NARR=$PIECE($GET(ENC("reason")),U,4)
+ IF CODE=""&(NARR="")&(NAME="") QUIT
+ IF CODE'="" DO
+ . SET RTN("entry",IDX,"resource","reasonCode",1,"coding",1,"code")=CODE
+ . SET RTN("entry",IDX,"resource","reasonCode",1,"coding",1,"system")=$$CONDSYS($GET(SYS))
+ . IF NAME'="" SET RTN("entry",IDX,"resource","reasonCode",1,"coding",1,"display")=NAME
+ IF NARR="" SET NARR=NAME
+ IF NARR'="" SET RTN("entry",IDX,"resource","reasonCode",1,"text")=NARR
  QUIT
  ;
 GETCOND(RTN,DFN,BEG,END,MAX) ; Add Condition resources for patient/date range
