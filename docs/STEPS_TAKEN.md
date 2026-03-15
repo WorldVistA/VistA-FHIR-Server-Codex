@@ -42,6 +42,14 @@ Use this file as a chronological log of concrete implementation work.
 - Refactored oversized `C0FHIR` logic into helper routines (`C0FHIRD`, `C0FHIRM`, `C0FHIRL`) while preserving public entry points in `C0FHIR`.
 - Added first-pass `Procedure` resource builders (surgery, radiology, clinical procedures, and V-CPT sources) and wired `procedures` domain filtering into encounter/date-range bundle generation, RPC descriptions, and requirements docs.
 
+## 2026-03-15
+- Filtered encounter-coded V CPT rows out of exported FHIR `Procedure` resources in `src/C0FHIRP.m`, including `410620009` (`Well child visit`) in the encounter-only filter set.
+- Added `410620009` to `codes/encounter_sct.json` so the repo-level encounter code list matches observed Synthea source data used in validation.
+- Diagnosed and validated complementary SYN loader fixes in `VistA-FHIR-Data-Loader` for encounter CPT happy-path behavior: `SYNDHP61` mapping/blank-index guards, `SYNQLDM` GT.M-safe `MAPERR`, and `SYNOS5D4` mapping `410620009 -> 3282K` while retaining the existing `6456Q` fallback for genuinely unmapped encounter codes.
+- Revalidated current patient `DFN 1642` and confirmed `/fhir` no longer exports encounter placeholder rows such as `OUTPATIENT ENCOUNTER` as `Procedure`.
+- Loaded a fresh cloned Cody-based patient (`DFN 1645`) through the normal `FILE^SYNFHIR` path and confirmed `encounters 58/58`, `procedures 49/49`, exported placeholder procedures `0`, exported `6456Q` procedures `0`, and raw V CPT `6456Q` rows `0`.
+- Added `docs/CPT_HAPPY_PATH_VALIDATION_2026-03-15.md` to capture the cross-repo fixes, runtime deployment steps, and fresh-patient validation evidence for this work.
+
 ## Template For New Entries
 - Date:
 - Change:

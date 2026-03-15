@@ -183,6 +183,10 @@
             "display": "Screening surveillance (regime/therapy)"
           },
           {
+            "code": "410620009",
+            "display": "Well child visit (procedure)"
+          },
+          {
             "code": "424441002",
             "display": "Prenatal initial visit (regime/therapy)"
           },
