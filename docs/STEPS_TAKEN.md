@@ -50,6 +50,13 @@ Use this file as a chronological log of concrete implementation work.
 - Loaded a fresh cloned Cody-based patient (`DFN 1645`) through the normal `FILE^SYNFHIR` path and confirmed `encounters 58/58`, `procedures 49/49`, exported placeholder procedures `0`, exported `6456Q` procedures `0`, and raw V CPT `6456Q` rows `0`.
 - Added `docs/CPT_HAPPY_PATH_VALIDATION_2026-03-15.md` to capture the cross-repo fixes, runtime deployment steps, and fresh-patient validation evidence for this work.
 
+## 2026-03-16
+- Deployed the current `FHIR` and `SYN` routine set directly into the VEHU `fhirdev` container at `/home/vehu/p`, ran `XINDEX`, and completed the direct-copy post-deploy rebuild with `EN^SYNGBLLD`.
+- Verified on VEHU that the OS5 reload restored `$$COUNT^SYNOS5LD=1041`, `410620009 -> 3282K`, file `81` IEN `200000319`, and Lex IEN `3000000320`, and confirmed the host-local FHIR listener returned HTTP `200`.
+- Added `docs/VEHU_NEW_PATIENT_RUNBOOK_2026-03-16.md` to document the exact VEHU deployment path, the `addPatient` registration and host-local POST workflow, Dockerized Synthea generation, and the live import notes from real VEHU runs.
+- Confirmed two live-run findings while preparing a fresh patient test: `Sergio619 Manzanares924` already existed on VEHU as `DFN 101088`, and `Abbie917 Leighann368 Harris789` exposed a SYN lab-loader bug that was later fixed in `SYNDHP63`.
+- Successfully imported `Francesco636 Daugherty69` into VEHU as `DFN 101090` / `ICN 4263043815V188953`, then verified `GET /fhir?dfn=101090` returned `Patient 1`, `Encounter 34`, `Condition 19`, `Observation 156`, `DiagnosticReport 14`, `MedicationRequest 2`, `Immunization 5`, `Procedure 103`, with exported placeholder procedures `0`.
+
 ## Template For New Entries
 - Date:
 - Change:
