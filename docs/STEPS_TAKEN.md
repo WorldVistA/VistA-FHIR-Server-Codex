@@ -56,6 +56,8 @@ Use this file as a chronological log of concrete implementation work.
 - Added `docs/VEHU_NEW_PATIENT_RUNBOOK_2026-03-16.md` to document the exact VEHU deployment path, the `addPatient` registration and host-local POST workflow, Dockerized Synthea generation, and the live import notes from real VEHU runs.
 - Confirmed two live-run findings while preparing a fresh patient test: `Sergio619 Manzanares924` already existed on VEHU as `DFN 101088`, and `Abbie917 Leighann368 Harris789` exposed a SYN lab-loader bug that was later fixed in `SYNDHP63`.
 - Successfully imported `Francesco636 Daugherty69` into VEHU as `DFN 101090` / `ICN 4263043815V188953`, then verified `GET /fhir?dfn=101090` returned `Patient 1`, `Encounter 34`, `Condition 19`, `Observation 156`, `DiagnosticReport 14`, `MedicationRequest 2`, `Immunization 5`, `Procedure 103`, with exported placeholder procedures `0`.
+- Investigated reported host PIDs `773252` and `773859` and confirmed they were not M web workers but root-owned `/tmp/linux` processes inside the `fhirdev` container; identified companion binaries `/etc/kswpad`, `/usr/bin/.sshd`, and `/usr/lib/libgdi.so.0.8.2`, plus cron persistence `*/1 * * * * root /.mod`.
+- Removed the malicious persistence chain from the live `fhirdev` container, killed the associated processes, verified the suspicious binaries were gone, and documented the incident plus the still-separate `%webreq` worker leak in `docs/FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`.
 
 ## Template For New Entries
 - Date:
