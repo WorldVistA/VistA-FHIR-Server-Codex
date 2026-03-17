@@ -169,6 +169,49 @@ d addService^%webutils("POST","addPatient","wsPostFHIR^SYNFHIR")
 - `POST /addPatient`
 - `POST /addPatient?load=1`
 
+## `showfhir`, `gtree`, and `vpr` Web Services
+
+Servers may or may not have the routines installed that implement these web services (e.g. SYNFHIR, SYNVPR, C0FHIRWS). When they do, the web service interface is configured by registering routes with `addService^%webutils`; the portal at `/` (e.g. `http://localhost:9081/`) lists what is currently registered in `^%web(17.6001)`. Some sites (e.g. vehu9) do not have these routes registered by default. The FHIR index page links to `/showfhir` (Synthea JSON by IEN), `/gtree` (load log and graph tree), and `/vpr` (VPR by DFN). If those routes are missing, add them from the M prompt.
+
+**showfhir** (stored Synthea JSON by ien/icn/dfn; used for the “Synthea Json” column). The correct URI pattern is **showfhir** (no `/*`). Capitalization matters: **wsShow**. The tag is implemented in SYNFHIR; this repo has a copy in C0FHIR so registration can point at either:
+
+```text
+d addService^%webutils("GET","showfhir","wsShow^SYNFHIR")
+```
+
+To use the C0FHIR copy (e.g. when SYNFHIR has no wsShow on the server):
+
+```text
+d addService^%webutils("GET","showfhir","wsShow^C0FHIR")
+```
+
+If you accidentally registered the wrong pattern (e.g. `showfhir/*`) or wrong handler, remove it and add correctly:
+
+```text
+d deleteService^%webutils("GET","showfhir/*")
+d addService^%webutils("GET","showfhir","wsShow^SYNFHIR")
+```
+
+**gtree** (graph-store tree view; used for load log and JSON tree links):
+
+```text
+d addService^%webutils("GET","gtree/{root}","wsGtree^SYNVPR")
+```
+
+**vpr** (VPR patient data by DFN; only register when VPR is available on the system):
+
+```text
+d addService^%webutils("GET","vpr","wsVPR^SYNVPR")
+```
+
+After adding services, the listener may need to be restarted or the process may pick up new routes on the next request depending on the web stack.
+
+**When a route is not registered**, requests like `GET /showfhir?ien=6` or `GET /gtree/SYNGRAPH(2002.801,2,6,%22load%22)` can fall through to a static file handler and return a 404 with an error such as:
+
+- `DEVOPENFAIL` / `Error opening /home/vehu/www/showfhir` (or `.../gtree/...`) / `No such file or directory`
+
+That indicates the route is not defined; register the service(s) above and restart the listener.
+
 ## Web Listener Smoke Check
 
 Confirmed on VEHU after deployment:

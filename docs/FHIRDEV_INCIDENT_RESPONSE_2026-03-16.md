@@ -147,14 +147,24 @@ That means the earlier `$Q` traversal bug is **not** absent from the live code.
 The current smaller leak pattern likely comes from a different path, with the
 gzip branch and/or socket shutdown handling still under investigation.
 
+## Post–sleep check (2026-03-16)
+
+After the client side was closed overnight, a recheck of `fhirdev` showed:
+
+- **Sockets**: One LISTEN on `9080`; **six connections in CLOSE_WAIT** (four from the user’s public IP, one from another client). So the clients had closed; the server-side workers had not.
+- **Processes**: Seven `mumps -direct` (one listener, six workers) with high CPU (~28–67%) and long runtimes.
+- **Conclusion**: The leak is **server-side**: workers do not close their side of the socket and exit when the client disconnects, so connections stay in CLOSE_WAIT and workers keep running.
+
+A fix outline is documented in **`docs/M_WEBSERVER_CLOSE_WAIT_FIX_OUTLINE.md`**: detect disconnect/timeout in the WAIT read loop, close the socket, and exit the worker (ETDC) so CLOSE_WAIT does not accumulate.
+
 ## Operational Takeaway
 
 At this point there are two separate action tracks:
 
 1. the malicious root-level persistence in the `fhirdev` container has been
    removed from the live runtime
-2. the smaller `%webreq` / `%webrsp` runaway-worker pattern still needs further
-   debugging
+2. the `%webreq` / `%webrsp` CLOSE_WAIT leak has an outlined fix in
+   `docs/M_WEBSERVER_CLOSE_WAIT_FIX_OUTLINE.md` (WAIT/ETDC and timeout handling)
 
 Even though the live runtime was cleaned, this incident should be treated as a
 container compromise. Rebuilding the container from a trusted image and

@@ -386,15 +386,21 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  QUIT
  ;
 FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
- NEW BURL,CNT,DFN,FURL,IEN,JURL,KEY,LURL,NAME,ROOT,ROW,SORT,SUM,VURL
+ NEW BURL,CNT,DFN,FURL,HASGRAPH,HASVPR,IEN,JURL,KEY,LURL,NAME,NCOLS,ROOT,ROW,SORT,SUM,VURL
  KILL RTN
+ SET ROOT=$$GSROOT()
+ SET HASGRAPH=0 IF $L($G(ROOT))>0,$DATA(@ROOT@("DFN")) SET HASGRAPH=1
+ SET HASVPR=$$VPROK()
+ SET NCOLS=4+$SELECT(HASGRAPH:2,1:0)+$SELECT(HASVPR:1,1:0)
  DO ADDLN(.RTN,"<!DOCTYPE HTML>")
  DO ADDLN(.RTN,"<html><head><title>FHIR Patient Index</title></head><body>")
  DO ADDLN(.RTN,"<h1>FHIR Patient Index</h1>")
  DO ADDLN(.RTN,"<p>Click Name for interactive browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea).</p>")
  DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
- DO ADDLN(.RTN,"<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>Synthea Json</th><th>Load Log</th><th>VPR</th></tr>")
- SET ROOT=$$GSROOT()
+ SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th>"
+ IF HASGRAPH SET ROW=ROW_"<th>Synthea Json</th><th>Load Log</th>"
+ IF HASVPR SET ROW=ROW_"<th>VPR</th>"
+ DO ADDLN(.RTN,ROW_"</tr>")
  SET CNT=0
  IF $DATA(@ROOT@("DFN")) DO
  . SET DFN=0
@@ -420,21 +426,23 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . . . . SET FURL="/fhir?dfn="_DFN
  . . . . SET BURL="/fhir?dfn="_DFN_"&view=browser"
  . . . . SET VURL="/vpr?dfn="_DFN_"&format=xml"
- . . . . SET JURL=$SELECT(+IEN>0:"/showfhir?ien="_IEN,1:"")
- . . . . SET LURL=$SELECT(+IEN>0:$$LOADLOGURL(ROOT,IEN),1:"")
+ . . . . SET JURL=$SELECT(HASGRAPH&(+IEN>0):"/showfhir?ien="_IEN,1:"")
+ . . . . SET LURL=$SELECT(HASGRAPH&(+IEN>0):$$LOADLOGURL(ROOT,IEN),1:"")
  . . . . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
  . . . . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
  . . . . SET ROW=ROW_"<td>"_DFN_"</td><td>"_$SELECT(+IEN>0:IEN,1:"-")_"</td>"
- . . . . IF JURL'="" SET ROW=ROW_"<td><a href="""_JURL_""">json</a></td>"
- . . . . ELSE  SET ROW=ROW_"<td>n/a</td>"
- . . . . IF LURL'="" SET ROW=ROW_"<td><a href="""_LURL_""">load</a></td>"
- . . . . ELSE  SET ROW=ROW_"<td>n/a</td>"
- . . . . SET ROW=ROW_"<td><a href="""_VURL_""">vpr</a></td></tr>"
+ . . . . IF HASGRAPH DO
+ . . . . . IF JURL'="" SET ROW=ROW_"<td><a href="""_JURL_""">json</a></td>"
+ . . . . . ELSE  SET ROW=ROW_"<td>n/a</td>"
+ . . . . . IF LURL'="" SET ROW=ROW_"<td><a href="""_LURL_""">load</a></td>"
+ . . . . . ELSE  SET ROW=ROW_"<td>n/a</td>"
+ . . . . IF HASVPR SET ROW=ROW_"<td><a href="""_VURL_""">vpr</a></td>"
+ . . . . SET ROW=ROW_"</tr>"
  . . . . DO ADDLN(.RTN,ROW)
  . . . . IF +IEN>0 SET SUM=$$DOMSUM(ROOT,IEN)
  . . . . ELSE  SET SUM=$$LRSUM(DFN)
- . . . . DO ADDLN(.RTN,"<tr><td colspan=""7""><small>"_$$HTMLESC(SUM)_"</small></td></tr>")
- IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan=""7"">No patients with labs were found in graph store or ^LR.</td></tr>")
+ . . . . DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_"""><small>"_$$HTMLESC(SUM)_"</small></td></tr>")
+ IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_""">No patients with labs were found in graph store or ^LR.</td></tr>")
  DO ADDLN(.RTN,"</table>")
  DO ADDLN(.RTN,"</body></html>")
  QUIT
@@ -527,16 +535,46 @@ DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
  QUIT TXT
  ;
 GSROOT() ; Resolve graph-store root across deployments
- NEW PROOT
- ; Some deployments do not permit % globals and store graph data in ^SYNGRAPH.
+ ; Use SYNWD when present so graph location matches loader (^%wd vs ^SYNGRAPH).
+ NEW PROOT,R
+ IF $T(setroot^SYNWD)'="" DO
+ . SET R=$$setroot^SYNWD("fhir-intake")
+ . IF $L(R),$DATA(@R@("DFN")) SET PROOT=R QUIT
+ . SET PROOT=""
+ IF $G(PROOT)'="" QUIT PROOT
+ ; Fallback: detect which backend has the graph.
  IF $DATA(^SYNGRAPH(2002.801,2,"DFN")) QUIT "^SYNGRAPH(2002.801,2)"
- ;
- ; Standard C0 path in environments that use ^%wd.
  SET PROOT="^"_$CHAR(37)_"wd(17.040801,3)"
  IF $DATA(@PROOT@("DFN")) QUIT PROOT
- ;
- ; Fallback preserves prior behavior if DFN xref is absent.
  QUIT PROOT
+ ;
+VPROK() ; True when VPR is available on this system (so /vpr link works)
+ IF '$D(^VA(200)) QUIT 0
+ IF $T(EN1^VPRDVSIT)="" QUIT 0
+ QUIT 1
+ ;
+wsShow(OUT,FILTER) ; Serve stored Synthea JSON (copied from SYNFHIR). Resolve by ien, icn, or dfn; optional filter("type"). Register as wsShow^C0FHIR.
+ NEW TYPE,ROOT,IEN,JROOT,JTMP,JUSE,TMP,ERR
+ IF '$D(DT) N DIQUIET S DIQUIET=1 D DT^DICRW
+ SET TYPE=$G(FILTER("type"))
+ SET ROOT=$$GSROOT^C0FHIR
+ QUIT:$L($G(ROOT))=0
+ SET IEN=+$G(FILTER("ien"))
+ IF IEN=0 DO
+ . N ICN S ICN=$G(FILTER("icn")) Q:ICN=""
+ . S IEN=$O(@ROOT@("ICN",ICN,""))
+ IF IEN=0 DO
+ . N DFN S DFN=$G(FILTER("dfn")) Q:DFN=""
+ . S IEN=$O(@ROOT@("DFN",DFN,""))
+ QUIT:IEN=0
+ SET JROOT=$NA(@ROOT@(IEN,"json"))
+ QUIT:'$D(@JROOT)
+ SET JUSE=JROOT
+ IF TYPE'="",$T(getIntakeFhir^SYNFHIR)'="" DO getIntakeFhir^SYNFHIR("JTMP",$G(FILTER("bundle")),TYPE,IEN,1) SET JUSE="JTMP"
+ IF $T(encode^SYNJSON)'="" DO encode^SYNJSON(JUSE,"OUT") SET HTTPRSP("mime")="application/json" QUIT
+ MERGE TMP=@JUSE DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
+ SET HTTPRSP("mime")="application/json"
+ QUIT
  ;
 LOADLOGURL(ROOT,IEN) ; Build /gtree URL for load log node
  NEW URLROOT

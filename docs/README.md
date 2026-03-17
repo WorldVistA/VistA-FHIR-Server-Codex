@@ -10,8 +10,9 @@ This directory stores detailed project documentation for implementation tracking
 - `TEST_SERVER_VALIDATION.md`: How to use the test VPR endpoint (`dfn`) for bundle parity checks, including `%webreq` startup/listener recovery steps for new containers.
 - `CPT_HAPPY_PATH_VALIDATION_2026-03-15.md`: Cross-repo encounter/procedure CPT happy-path fixes and fresh-patient validation results, including confirmation that fallback remains available while `410620009` now maps to `3282K`.
 - `VEHU_NEW_PATIENT_RUNBOOK_2026-03-16.md`: Exact VEHU direct-deploy, file `81`/Lex refresh, `addPatient` registration, Dockerized Synthea generation, and host-local import workflow used to prepare for a fresh patient test.
-- `FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`: Incident note covering the root-level malicious binaries found inside `fhirdev`, the cron persistence chain removed from the container, and the still-separate `%webreq` worker leak that remains under investigation.
-- `M_WEBSERVER_RUNAWAY_JOBS_ANALYSIS_2026-03-12.md`: Maintainer-facing root-cause analysis and validated hotfix for `%webrsp` runaway `mumps -direct` worker leaks.
+- `FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`: Incident note covering the root-level malicious binaries found inside `fhirdev`, the cron persistence chain removed from the container, and the separate `%webreq` CLOSE_WAIT worker leak.
+- `M_WEBSERVER_CLOSE_WAIT_FIX_OUTLINE.md`: Fix outline for the server-side CLOSE_WAIT leak (WAIT/ETDC and timeout handling so workers close and exit when the client disconnects).
+- `M_WEBSERVER_RUNAWAY_JOBS_ANALYSIS_2026-03-12.md`: Maintainer-facing root-cause analysis and validated hotfix for `%webrsp` runaway `mumps -direct` worker leaks (SENDATA traversal).
 - `STEPS_TAKEN.md`: Chronological log of work completed.
 - `OPEN_QUESTIONS.md`: Questions that still need answers before or during implementation.
 - `UNRESOLVED_ISSUES.md`: Known issues, blockers, and remaining gaps.
