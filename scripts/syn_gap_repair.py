@@ -88,6 +88,7 @@ def select_ien(iens: List[int], mode: str) -> int:
 
 
 def source_counts_from_showfhir(base_url: str, dfn: int) -> Dict[str, int]:
+    """Bundle counts from stored source JSON via GET showfhir -> wsShow^SYNFHIR."""
     text = http_get(base_url, f"/showfhir?dfn={dfn}")
     payload = json.loads(text)
     counts = Counter()

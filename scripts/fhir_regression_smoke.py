@@ -58,7 +58,7 @@ def parse_index_rows(index_html: str) -> List[Row]:
         r'<tr><td><a href="/fhir\?dfn=(?P<dfn>\d+)&view=browser">[^<]*</a></td>'
         r'<td><a href="/fhir\?dfn=\d+">fhir</a></td>'
         r"<td>\d+</td><td>(?P<ien>\d+)</td>"
-        r'<td><a href="/showfhir\?ien=\d+">json</a></td>'
+        r'<td><a href="/tfhir\?ien=\d+">json</a></td>'
         r'<td><a href="[^"]+">load</a></td>'
         r'<td><a href="(?P<vpr>/vpr\?dfn=\d+[^"]*)">vpr</a></td></tr>',
         re.IGNORECASE,

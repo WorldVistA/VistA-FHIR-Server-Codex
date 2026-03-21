@@ -169,27 +169,48 @@ d addService^%webutils("POST","addPatient","wsPostFHIR^SYNFHIR")
 - `POST /addPatient`
 - `POST /addPatient?load=1`
 
-## `showfhir`, `gtree`, and `vpr` Web Services
+## `showfhir`, `tfhir`, `gtree`, and `vpr` Web Services
 
-Servers may or may not have the routines installed that implement these web services (e.g. SYNFHIR, SYNVPR, C0FHIRWS). When they do, the web service interface is configured by registering routes with `addService^%webutils`; the portal at `/` (e.g. `http://localhost:9081/`) lists what is currently registered in `^%web(17.6001)`. Some sites (e.g. vehu9) do not have these routes registered by default. The FHIR index page links to `/showfhir` (Synthea JSON by IEN), `/gtree` (load log and graph tree), and `/vpr` (VPR by DFN). If those routes are missing, add them from the M prompt.
+Servers may or may not have the routines installed that implement these web services (e.g. SYNFHIR, SYNVPR, C0FHIRWS). When they do, the web service interface is configured by registering routes with `addService^%webutils`; the portal at `/` (e.g. `http://localhost:9081/`) lists what is currently registered in `^%web(17.6001)`. Some sites (e.g. vehu9) do not have these routes registered by default.
 
-**showfhir** (stored Synthea JSON by ien/icn/dfn; used for the “Synthea Json” column). The correct URI pattern is **showfhir** (no `/*`). Capitalization matters: **wsShow**. The tag is implemented in SYNFHIR; this repo has a copy in C0FHIR so registration can point at either:
+**Two different endpoints and routines:** Do **not** change **`showfhir`**. Keep it registered to **`wsShow^SYNFHIR`** only. Add **`tfhir`** separately, registered to **`wsShow^C0FHIR`** only. They are **not** interchangeable paths to the same M tag.
+
+**showfhir** → **`wsShow^SYNFHIR`** (routine **`SYNFHIR`**; not in this repo). Stored Synthea JSON by **`ien`** / **`icn`** / **`dfn`**. URI pattern **`showfhir`** (no `/*`).
 
 ```text
 d addService^%webutils("GET","showfhir","wsShow^SYNFHIR")
 ```
 
-To use the C0FHIR copy (e.g. when SYNFHIR has no wsShow on the server):
+**tfhir** → **`wsShow^C0FHIR`** (in-repo). **`wsShow^C0FHIR`** calls **`wsShow^SYNFHIR`** so the JSON comes from the same graph-store path as **`showfhir`**; **`FILTER("format")`** is removed before that call so **`SYNFHIR`** does not see **`tjson`**. If **`format=tjson`**, **`C0FHIR`** runs **`tjson^%wd`** on the **`OUT`** line array, wraps the TJSON in **`&lt;html&gt;&lt;pre&gt;` … `&lt;/pre&gt;&lt;/html&gt;`**, and sets **`text/html; charset=utf-8`**. If **`SYNFHIR`** is missing (rare), **`WSSHOWFB^C0FHIR`** uses the older **`$$GSROOT^C0FHIR`** / **`encode^SYNJSON`** / **`TOJSON^C0FHIRBU`** path. URI pattern **`tfhir`** (no `/*`).
 
 ```text
-d addService^%webutils("GET","showfhir","wsShow^C0FHIR")
+d addService^%webutils("GET","tfhir","wsShow^C0FHIR")
 ```
 
-If you accidentally registered the wrong pattern (e.g. `showfhir/*`) or wrong handler, remove it and add correctly:
+**In-repo shortcut:** after **`ZLINK`** current **`C0FHIR.m`**, run **`D REGTFHIR^C0FHIR`** (same registration; removes **`GET tfhir/*`** if present). Convenience script: **`~/ops/scripts/register-tfhir-route.sh`** (use **`HOST=local`** for Docker container **`fhir`**).
+
+The in-repo FHIR index (**`FHIRIDX^C0FHIR`**) links the “Synthea Json” column to **`/tfhir?ien=…`** so the portal uses the **C0FHIR** implementation.
+
+**TJSON:** only on **`tfhir`** with **`wsShow^C0FHIR`**: **`FILTER("format")="tjson"`** → **`text/html; charset=utf-8`** with **`&lt;html&gt;&lt;pre&gt;` … `&lt;/pre&gt;&lt;/html&gt;`** around the TJSON. Example: **`/tfhir?ien=…&format=tjson`**.
+
+If **`tfhir`** was registered wrong (e.g. `tfhir/*` or pointed at **`SYNFHIR`**), fix **`tfhir`** only — leave **`showfhir`** → **`SYNFHIR`** unchanged:
 
 ```text
-d deleteService^%webutils("GET","showfhir/*")
-d addService^%webutils("GET","showfhir","wsShow^SYNFHIR")
+d deleteService^%webutils("GET","tfhir/*")
+d addService^%webutils("GET","tfhir","wsShow^C0FHIR")
+```
+
+**Test after adding `tfhir`** (replace host/port and **`ien`**). **`showfhir`** = **`SYNFHIR`**; **`tfhir`** = **`C0FHIR`** (404 until **`tfhir`** is registered):
+
+```bash
+curl -sS -o /dev/null -w "showfhir(SYNFHIR) %{http_code}\n" "http://fhir.vistaplex.org:9080/showfhir?ien=1534"
+curl -sS -o /dev/null -w "tfhir(C0FHIR)     %{http_code}\n" "http://fhir.vistaplex.org:9080/tfhir?ien=1534"
+```
+
+**`format=tjson`** applies only to **`tfhir`** (**`C0FHIR`**). Expect **`Content-Type: text/html; charset=utf-8`**:
+
+```bash
+curl -sS -D - "http://fhir.vistaplex.org:9080/tfhir?ien=1534&format=tjson" -o /dev/null | head -5
 ```
 
 **gtree** (graph-store tree view; used for load log and JSON tree links):
@@ -206,13 +227,24 @@ d addService^%webutils("GET","vpr","wsVPR^SYNVPR")
 
 After adding services, the listener may need to be restarted or the process may pick up new routes on the next request depending on the web stack.
 
-**When a route is not registered**, requests like `GET /showfhir?ien=6` or `GET /gtree/SYNGRAPH(2002.801,2,6,%22load%22)` can fall through to a static file handler and return a 404 with an error such as:
+**When a route is not registered**, requests like `GET /tfhir?ien=6` or `GET /gtree/SYNGRAPH(2002.801,2,6,%22load%22)` can fall through to a static file handler and return a 404 with an error such as:
 
-- `DEVOPENFAIL` / `Error opening /home/vehu/www/showfhir` (or `.../gtree/...`) / `No such file or directory`
+- `DEVOPENFAIL` / `Error opening /home/vehu/www/tfhir` (or `.../gtree/...`) / `No such file or directory`
 
 That indicates the route is not defined; register the service(s) above and restart the listener.
 
 ## Web Listener Smoke Check
+
+**Every `docker restart` of the FHIR/VistA container:** restart the M listener (**`%webreq`**); it often does not come back on its own. Canonical copy: **`~/ops/agent-context/vista-container-developer-guide.md`** §10 (same commands as below).
+
+In **`mumps -direct`** (as the container’s VistA user):
+
+```text
+d stop^%webreq
+d go^%webreq
+```
+
+Quick check: `zwr ^%webhttp(0,"listener")` → `"running"`.
 
 Confirmed on VEHU after deployment:
 

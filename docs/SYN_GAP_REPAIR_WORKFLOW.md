@@ -33,7 +33,7 @@ python3 scripts/syn_gap_repair.py --dfn 29
 
 Output columns:
 
-- `source`: count from stored source bundle (`/showfhir`)
+- `source`: count from stored source bundle (`/showfhir` → `wsShow^SYNFHIR`)
 - `loaded`: count with `loadstatus="loaded"` in graph load log
 - `gap`: `max(source - loaded, 0)`
 - `status_summary`: per-category status buckets (`loaded`, `readytoload`, `cannotload`, etc.)

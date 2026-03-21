@@ -25,6 +25,7 @@ Repo-specific overrides:
 - Current test SSH target: `osehra@127.0.0.1:2223`
 - Current test SSH key: `/home/glilly/.ssh/id_ed25519_cursor_agent_test`
 - Current test routine directory: `/home/osehra/p`
+- After **`docker restart`** of the test container: restart the M web listener before HTTP smoke tests — see **`~/ops/agent-context/vista-container-developer-guide.md`** §10 (**`stop^%webreq`** / **`go^%webreq`**, **`^%webhttp`** check).
 
 Required gate before commit:
 
