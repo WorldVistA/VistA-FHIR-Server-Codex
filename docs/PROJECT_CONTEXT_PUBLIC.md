@@ -48,6 +48,17 @@ This file is the shareable, repository-safe project context for implementation a
 - One multi-domain FHIR `Bundle` is returned per request.
 - `ENCODE^XLFJSON` is the standard serializer for bundle JSON output.
 
+## `/tfhir` and `format=tjson` (troubleshooting)
+
+- **`format=tjson`** on **`/tfhir`** returns **`Content-Type: text/html; charset=utf-8`** and renders the stored bundle in a browser-friendly **`&lt;pre&gt;`** via the shared `%wd` / `%wdgraph` tooling.
+- Use **`&`** between query parameters: `.../tfhir?ien=1524&format=tjson` (not a second **`?`**).
+- Shared `tjson` internals, `%wd` / `%wdgraph` maintainer notes, deploy scripts, and the Rust shim now live outside this repo in the sibling local repo **`tjson-tools`**.
+- If a site override still sets **`^%WDG("tjson-args")="-C"`**, clear it unless that specific **`tjson`** build implements **`-C`**.
+
+## Docker restart and the M web listener (`%webreq`)
+
+After **`docker restart …`**, restart **`%webreq`** before HTTP checks; **`GET /showfhir`**, **`/tfhir`**, **`/fhir`**, etc. on the mapped port may reset until you do. **Canonical steps** (M commands, `docker exec` one-liner, **`^%webhttp`** check): **`~/ops/agent-context/vista-container-developer-guide.md`** — **§10** (and **§9** troubleshooting bullet).
+
 ## Related Documentation
 
 - `docs/BUNDLE_REQUIREMENTS.md`

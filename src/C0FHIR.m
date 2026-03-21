@@ -553,9 +553,21 @@ VPROK() ; True when VPR is available on this system (so /vpr link works)
  IF $T(EN1^VPRDVSIT)="" QUIT 0
  QUIT 1
  ;
-wsShow(OUT,FILTER) ; Serve stored Synthea JSON (copied from SYNFHIR). Resolve by ien, icn, or dfn; optional filter("type"). Register as wsShow^C0FHIR.
- NEW TYPE,ROOT,IEN,JROOT,JTMP,JUSE,TMP,ERR
+wsShow(OUT,FILTER) ; GET tfhir: delegate to wsShow^SYNFHIR (graph JSON by ref); if FILTER("format")=tjson, tjson^%wd transforms OUT. showfhir stays wsShow^SYNFHIR only.
+ NEW SAVEFMT,FORMAT
  IF '$D(DT) N DIQUIET S DIQUIET=1 D DT^DICRW
+ SET SAVEFMT=$GET(FILTER("format"))
+ SET FORMAT=$$UPCASE(SAVEFMT)
+ KILL FILTER("format")
+ IF $T(wsShow^SYNFHIR)'="" DO wsShow^SYNFHIR(.OUT,.FILTER)
+ ELSE  DO WSSHOWFB^C0FHIR(.OUT,.FILTER)
+ IF SAVEFMT'="" SET FILTER("format")=SAVEFMT
+ IF FORMAT="TJSON" DO WSSHOWJSON2TJSON^C0FHIR(FORMAT,.OUT)
+ SET HTTPRSP("mime")=$$WSSHOWMIME^C0FHIR(FORMAT)
+ QUIT
+ ;
+WSSHOWFB(OUT,FILTER) ; Fallback when wsShow^SYNFHIR missing: old C0FHIR graph path + encode
+ NEW TYPE,ROOT,IEN,JROOT,JTMP,JUSE,TMP,ERR
  SET TYPE=$G(FILTER("type"))
  SET ROOT=$$GSROOT^C0FHIR
  QUIT:$L($G(ROOT))=0
@@ -571,9 +583,68 @@ wsShow(OUT,FILTER) ; Serve stored Synthea JSON (copied from SYNFHIR). Resolve by
  QUIT:'$D(@JROOT)
  SET JUSE=JROOT
  IF TYPE'="",$T(getIntakeFhir^SYNFHIR)'="" DO getIntakeFhir^SYNFHIR("JTMP",$G(FILTER("bundle")),TYPE,IEN,1) SET JUSE="JTMP"
- IF $T(encode^SYNJSON)'="" DO encode^SYNJSON(JUSE,"OUT") SET HTTPRSP("mime")="application/json" QUIT
+ IF $T(encode^SYNJSON)'="" DO encode^SYNJSON(JUSE,"OUT") QUIT
  MERGE TMP=@JUSE DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
- SET HTTPRSP("mime")="application/json"
+ QUIT
+ ;
+WSSHOWMIME(FMT) ; Mime type for wsShow: JSON default; format=tjson -> HTML wrapper around TJSON in <pre>
+ QUIT $SELECT($$UPCASE($GET(FMT))="TJSON":"text/html; charset=utf-8",1:"application/json")
+ ;
+WSSHOWJSON2TJSON(FMT,ARY) ; If FMT is TJSON, wrap tjson^%wd output in HTML5 + CSS (no %webrsp changes).
+ ; HTML TJSON: flex column, vertical scroll in <main>. pre-wrap + overflow-wrap:anywhere so few-\n tjson output fills the viewport.
+ QUIT:$$UPCASE($GET(FMT))'="TJSON"
+ NEW TIN,TOUT,WRAP,WI,ZI,HPRE,HSUF
+ QUIT:'$DATA(ARY)
+ MERGE TIN=ARY
+ KILL ARY
+ IF $T(tjson^%wd)="" MERGE ARY=TIN QUIT
+ DO tjson^%wd("TIN","TOUT")
+ SET HPRE=""
+ SET HPRE=HPRE_"<!DOCTYPE html>"_$CHAR(10)
+ SET HPRE=HPRE_"<html lang=""en"">"_$CHAR(10)
+ SET HPRE=HPRE_"<head>"_$CHAR(10)
+ SET HPRE=HPRE_"<meta charset=""utf-8""/>"_$CHAR(10)
+ SET HPRE=HPRE_"<meta name=""viewport"" content=""width=device-width,initial-scale=1""/>"_$CHAR(10)
+ SET HPRE=HPRE_"<meta name=""color-scheme"" content=""dark""/>"_$CHAR(10)
+ SET HPRE=HPRE_"<title>FHIR · TJSON</title>"_$CHAR(10)
+ SET HPRE=HPRE_"<style type=""text/css"">"_$CHAR(10)
+ SET HPRE=HPRE_":root{--bg:#051626;--fg:#e8ecf1;--hdr:#030d18;--bd:#0d2844;--muted:#a8b8cc;--accent:#8ec5ff;}"_$CHAR(10)
+ SET HPRE=HPRE_"html,body{height:100%;margin:0;}"_$CHAR(10)
+ SET HPRE=HPRE_"body{background:var(--bg);color:var(--fg);color-scheme:dark;display:flex;flex-direction:column;font-family:system-ui,Segoe UI,Roboto,sans-serif;}"_$CHAR(10)
+ SET HPRE=HPRE_"header.hdr{flex:0 0 auto;padding:8px 16px;background:var(--hdr);border-bottom:1px solid var(--bd);font-size:12px;line-height:1.35;}"_$CHAR(10)
+ SET HPRE=HPRE_"header.hdr .t{font-weight:600;color:var(--accent);letter-spacing:.03em;}"_$CHAR(10)
+ SET HPRE=HPRE_"header.hdr .h{color:var(--muted);font-weight:400;}"_$CHAR(10)
+ SET HPRE=HPRE_"main.main{flex:1 1 auto;min-height:0;min-width:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg);}"_$CHAR(10)
+ SET HPRE=HPRE_"pre.tjson{margin:0;padding:12px 18px 28px;box-sizing:border-box;width:100%;max-width:100%;min-width:0;"_$CHAR(10)
+ SET HPRE=HPRE_"background:var(--bg);color:var(--fg);"_$CHAR(10)
+ SET HPRE=HPRE_"font-family:Consolas,'Courier New',ui-monospace,'Cascadia Mono',Menlo,monospace;"_$CHAR(10)
+ SET HPRE=HPRE_"font-size:14px;line-height:1.5;tab-size:2;-moz-tab-size:2;"_$CHAR(10)
+ SET HPRE=HPRE_"white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;"_$CHAR(10)
+ SET HPRE=HPRE_"font-variant-ligatures:none;font-feature-settings:'liga' 0;}"_$CHAR(10)
+ SET HPRE=HPRE_"pre.tjson .hl-uuid{color:#c45c3a;}"_$CHAR(10)
+ SET HPRE=HPRE_"pre.tjson .hl-synthea{color:#b39ddb;}"_$CHAR(10)
+ SET HPRE=HPRE_"</style></head>"_$CHAR(10)
+ SET HPRE=HPRE_"<body>"_$CHAR(10)
+ SET HPRE=HPRE_"<header class=""hdr""><span class=""t"">TJSON</span> <span class=""h"">FHIR bundle (rust tjson); long lines wrap — scroll vertically</span></header>"_$CHAR(10)
+ SET HPRE=HPRE_"<main class=""main""><pre class=""tjson"" spellcheck=""false"" translate=""no"">"
+ SET HSUF="</pre></main><script>document.addEventListener('DOMContentLoaded',function(){var p=document.querySelector('pre.tjson');if(!p)return;var t=p.textContent;"
+ SET HSUF=HSUF_"function e(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}var r=/urn:uuid:[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}|\\bSynthea\\b/g,m,o='',l=0;"
+ SET HSUF=HSUF_"while((m=r.exec(t))!==null){o+=e(t.slice(l,m.index));if(m[0]==='Synthea')o+=`<span class=""hl-synthea"">Synthea</span>`;else o+=`<span class=""hl-uuid"">${e(m[0])}</span>`;l=r.lastIndex;}"
+ SET HSUF=HSUF_"o+=e(t.slice(l));p.innerHTML=o;});</script></body></html>"
+ SET WRAP(1)=HPRE
+ SET WI=1,ZI=""
+ FOR  SET ZI=$ORDER(TOUT(ZI)) QUIT:ZI=""  DO
+ . SET WI=WI+1,WRAP(WI)=TOUT(ZI)
+ SET WI=WI+1,WRAP(WI)=HSUF
+ MERGE ARY=WRAP
+ QUIT
+ ;
+REGTFHIR ; Register GET /tfhir -> wsShow^C0FHIR (^%web 17.6001). Does not alter showfhir (SYNFHIR).
+ ; Programmer once per site (or after image rebuild): D REGTFHIR^C0FHIR
+ ; Removes wrong pattern tfhir/* if present; see docs/VEHU_NEW_PATIENT_RUNBOOK_2026-03-16.md
+ IF $T(addService^%webutils)="" QUIT
+ IF $T(deleteService^%webutils)'="" DO deleteService^%webutils("GET","tfhir/*")
+ DO addService^%webutils("GET","tfhir","wsShow^C0FHIR")
  QUIT
  ;
 LOADLOGURL(ROOT,IEN) ; Build /gtree URL for load log node
