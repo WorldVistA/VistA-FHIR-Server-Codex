@@ -25,9 +25,10 @@ GETPROC(RTN,DFN,BEG,END,MAX) ; Add Procedure resources
  QUIT
  ;
 GETSR(RTN,DFN,BEG,END,MAX,CNT) ; Add surgery procedures
- NEW NUM,ROOT,SHOWADD,SURG,VPRY
+ NEW NUM,ROOT,SHOWADD,SURG,VPRTEXT,VPRY
  IF CNT'<MAX QUIT
  SET SHOWADD=1
+ SET VPRTEXT=1
  DO LIST^SROESTV(.ROOT,DFN,BEG,END,MAX,1)
  SET VPRY=$GET(ROOT)
  IF VPRY="" QUIT
@@ -43,10 +44,11 @@ GETSR(RTN,DFN,BEG,END,MAX,CNT) ; Add surgery procedures
  QUIT
  ;
 GETRA(RTN,DFN,BEG,END,MAX,CNT) ; Add radiology procedures
- NEW EXAM,ID,RAQMAX
+ NEW EXAM,ID,RAQMAX,VPRTEXT
  IF CNT'<MAX QUIT
  SET RAQMAX=MAX-CNT
  IF RAQMAX<1 SET RAQMAX=1
+ SET VPRTEXT=1
  KILL ^TMP($J,"RAE1")
  DO EN1^RAO7PC1(DFN,BEG,END,RAQMAX)
  SET ID=""
@@ -233,7 +235,20 @@ SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resourc
  IF CAT'="" SET RTN("entry",IDX,"resource","category","text")=CAT
  SET RTN("entry",IDX,"resource","identifier",1,"system")="urn:va:procedure-source-id"
  SET RTN("entry",IDX,"resource","identifier",1,"value")=$GET(SRC)_":"_$GET(PROC("id"))
+ DO PROCNOTE(.RTN,.PROC,IDX)
  QUIT
+ ;
+PROCNOTE(RTN,PROC,IDX) ; Add procedure note/interpretation text when available
+ NEW I,TXT
+ IF $GET(PROC("interpretation"))'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,"Interpretation: "_$GET(PROC("interpretation")))
+ SET I=0
+ FOR  SET I=$ORDER(PROC("document",I)) Q:I<1  DO
+ . SET TXT=$$DOCTXT($GET(PROC("document",I)),$GET(PROC("document",I,"content")))
+ . IF TXT'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT)
+ QUIT
+ ;
+DOCTXT(DOC,CONT) ; Build readable note text from VPR document metadata/body
+ QUIT $$DOCNOTE^C0FHIRBU($GET(DOC),$GET(CONT))
  ;
 PCAT(SRC) ; Map source token to procedure category text
  SET SRC=$$UPCASE^C0FHIR($GET(SRC))

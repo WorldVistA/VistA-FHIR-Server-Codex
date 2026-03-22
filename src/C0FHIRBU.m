@@ -146,6 +146,51 @@ RANDHEX(N) ; Return N random lowercase hex characters
 PATREF(DFN) ; Return the patient fullUrl reference
  QUIT $$REFURL("Patient",+$GET(DFN))
  ;
+ADDNOTE(RTN,IDX,TXT,DT,AUTHOR) ; Append one Annotation note to a resource
+ NEW N
+ SET IDX=+$GET(IDX)
+ SET TXT=$GET(TXT)
+ IF IDX<1!(TXT="") QUIT
+ SET N=$ORDER(RTN("entry",IDX,"resource","note",""),-1)+1
+ SET RTN("entry",IDX,"resource","note",N,"text")=TXT
+ IF +$GET(DT)>0 SET RTN("entry",IDX,"resource","note",N,"time")=$$FM2FHIR($GET(DT))
+ IF $GET(AUTHOR)'="" SET RTN("entry",IDX,"resource","note",N,"authorString")=$GET(AUTHOR)
+ QUIT
+ ;
+DOCNOTE(DOC,CONT) ; Build one readable note from document metadata/body
+ NEW BODY,HEAD,TXT
+ SET HEAD=$$DOCHEAD($GET(DOC))
+ SET BODY=$$DOCTEXT($GET(CONT))
+ IF BODY="" QUIT HEAD
+ IF HEAD="" QUIT BODY
+ SET TXT=HEAD_$CHAR(10)_$CHAR(10)_BODY
+ QUIT TXT
+ ;
+DOCHEAD(DOC) ; Build readable document header from VPR metadata
+ NEW STAT,TITLE,TXT
+ SET DOC=$GET(DOC)
+ IF DOC="" QUIT ""
+ SET TITLE=$PIECE(DOC,"^",2)
+ IF TITLE="" SET TITLE=$PIECE(DOC,"^",3)
+ SET TITLE=$$TRIM^C0FHIR(TITLE)
+ IF TITLE="" QUIT ""
+ SET TXT="Document: "_TITLE
+ SET STAT=$$TRIM^C0FHIR($PIECE(DOC,"^",5))
+ IF STAT'="" SET TXT=TXT_" ("_STAT_")"
+ QUIT TXT
+ ;
+DOCTEXT(ROOT) ; Flatten a VPR text array reference into one note string
+ NEW I,LINE,TXT
+ SET ROOT=$GET(ROOT)
+ IF ROOT="" QUIT ""
+ IF '$DATA(@ROOT) QUIT ""
+ SET I=0,TXT=""
+ FOR  SET I=$ORDER(@ROOT@(I)) Q:I<1  DO
+ . SET LINE=$TRANSLATE($GET(@ROOT@(I)),$CHAR(13))
+ . IF TXT'="" SET TXT=TXT_$CHAR(10)
+ . SET TXT=TXT_LINE
+ QUIT TXT
+ ;
 SAFE(X) ; Light normalization for ids used in keys/fullUrl
  NEW Y
  SET Y=$GET(X)

@@ -65,6 +65,7 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  IF +$GET(PROB("onset"))>0 SET RTN("entry",IDX,"resource","onsetDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("onset")))
  IF +$GET(PROB("entered"))>0 SET RTN("entry",IDX,"resource","recordedDate")=$$FM2FHIR^C0FHIRBU($GET(PROB("entered")))
  IF +$GET(PROB("resolved"))>0 SET RTN("entry",IDX,"resource","abatementDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("resolved")))
+ DO CONDNOTE(.RTN,.PROB,IDX)
  QUIT
  ;
 CONDSYS(X) ; Map VPR coding system token to FHIR system URL
@@ -218,14 +219,23 @@ ALGREAC(RTN,REAC,IDX,SEV) ; Add reaction manifestations
  QUIT
  ;
 ALGNOTE(RTN,REAC,IDX) ; Add allergy comments as note entries
- NEW I,N,TXT
- SET (I,N)=0
+ NEW AUTHOR,DT,I,TXT
+ SET I=0
  FOR  SET I=$ORDER(REAC("comment",I)) Q:I<1  DO
- . SET N=N+1
- . SET TXT=$PIECE($GET(REAC("comment",I)),"^",4)
- . IF TXT'="" SET RTN("entry",IDX,"resource","note",N,"text")=TXT
- . IF +$PIECE($GET(REAC("comment",I)),"^",2)>0 SET RTN("entry",IDX,"resource","note",N,"time")=$$FM2FHIR^C0FHIRBU($PIECE($GET(REAC("comment",I)),"^",2))
- . IF $PIECE($GET(REAC("comment",I)),"^",1)'="" SET RTN("entry",IDX,"resource","note",N,"authorString")=$PIECE($GET(REAC("comment",I)),"^",1)
+ . SET DT=+$PIECE($GET(REAC("comment",I)),"^",2)
+ . SET AUTHOR=$PIECE($GET(REAC("comment",I)),"^",1)
+ . SET TXT=$PIECE($GET(REAC("comment",I)),"^",4,99)
+ . DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT,DT,AUTHOR)
+ QUIT
+ ;
+CONDNOTE(RTN,PROB,IDX) ; Add problem comments as note entries
+ NEW AUTHOR,DT,I,TXT
+ SET I=0
+ FOR  SET I=$ORDER(PROB("comment",I)) Q:I<1  DO
+ . SET DT=+$PIECE($GET(PROB("comment",I)),"^",1)
+ . SET AUTHOR=$PIECE($GET(PROB("comment",I)),"^",2)
+ . SET TXT=$PIECE($GET(PROB("comment",I)),"^",3,99)
+ . DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT,DT,AUTHOR)
  QUIT
  ;
 ALGSEV(X) ; Map allergy severity to FHIR reaction severity

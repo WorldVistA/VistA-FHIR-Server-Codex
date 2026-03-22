@@ -96,7 +96,7 @@ MILINE(VPRIDT,VPRP,X0) ; Return normalized microbiology line
  QUIT LINE
  ;
 SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
- NEW ID,IDX,LOINC,NAME,RES,RID,UNIT,VUID
+ NEW CMT,ID,IDX,LOINC,NAME,RES,RID,UNIT,VUID
  SET ID=$PIECE($GET(LINE),"^",1)
  IF ID="" QUIT ""
  SET RID=$$LABID(ID)
@@ -123,8 +123,10 @@ SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
  . SET RTN("entry",IDX,"resource","valueQuantity","value")=+RES
  . IF UNIT'="" SET RTN("entry",IDX,"resource","valueQuantity","unit")=UNIT
  . DO LABMETA(.RTN,IDX,LINE,ORD)
+ . DO LABNOTE(.RTN,IDX,DFN,SUB,ID)
  IF RES'="" SET RTN("entry",IDX,"resource","valueString")=RES
  DO LABMETA(.RTN,IDX,LINE,ORD)
+ DO LABNOTE(.RTN,IDX,DFN,SUB,ID)
  QUIT RID
  ;
 TRACKPAN(PAN,LINE,OBSRID) ; Collect lab observations by accession for panel reports
@@ -184,10 +186,27 @@ LABMETA(RTN,IDX,LINE,ORD) ; Add lab interpretation/range/order metadata
  SET LOW=$PIECE($GET(LINE),"^",6),HI=$PIECE($GET(LINE),"^",7)
  IF LOW'=""!(HI'="") SET RTN("entry",IDX,"resource","referenceRange",1,"text")=LOW_" - "_HI
  IF $GET(ORD)="" SET ORD=$PIECE($GET(LINE),"^",11)
- IF ORD'="" SET RTN("entry",IDX,"resource","note",1,"text")="Lab order ID: "_ORD
+ IF ORD'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,"Lab order ID: "_ORD)
  SET PERF=$PIECE($GET(LINE),"^",12)
  IF PERF'="" SET RTN("entry",IDX,"resource","performer",1,"display")=PERF
  QUIT
+ ;
+LABNOTE(RTN,IDX,DFN,SUB,ID) ; Add lab comment text when present
+ NEW TXT
+ SET TXT=$$LBCMT($GET(DFN),$GET(SUB),$GET(ID))
+ IF TXT'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT)
+ QUIT
+ ;
+LBCMT(DFN,SUB,ID) ; Return one lab comment string from ^TMP("LRRR")
+ NEW CMMT,TXT,VPRIDT
+ SET DFN=+$GET(DFN)
+ SET VPRIDT=+$PIECE($GET(ID),";",2)
+ SET SUB=$GET(SUB)
+ IF DFN<1!(VPRIDT<1)!(SUB="") QUIT ""
+ IF '$DATA(^TMP("LRRR",$J,DFN,SUB,VPRIDT,"N")) QUIT ""
+ MERGE CMMT=^TMP("LRRR",$J,DFN,SUB,VPRIDT,"N")
+ SET TXT=$$STRING^VPRD(.CMMT)
+ QUIT $$TRIM^C0FHIR(TXT)
  ;
 LABDT(X) ; Convert inverse FM date piece from lab id to FHIR dateTime
  NEW Y

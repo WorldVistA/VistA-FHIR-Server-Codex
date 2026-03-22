@@ -40,10 +40,11 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  ;
 GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  ; ENCIEN is expected to be a visit ien from ^AUPNVSIT
- NEW CLASS,ENC,ENDDT,IDX
+ NEW CLASS,ENC,ENDDT,IDX,VPRTEXT
  DO ENVINIT
  SET ENCIEN=+ENCIEN
  IF ENCIEN<1 QUIT
+ SET VPRTEXT=1
  DO EN1^VPRDVSIT(ENCIEN,.ENC)
  DO ADDRES^C0FHIRBU(.RTN,"Encounter","E"_ENCIEN,.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="Encounter"
@@ -65,6 +66,7 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  DO SETELOC(.RTN,IDX,.ENC)
  DO SETESVC(.RTN,IDX,.ENC)
  DO SETERSN(.RTN,IDX,.ENC)
+ DO SETENOTE(.RTN,IDX,.ENC)
  QUIT
  ;
 SETETYP(RTN,IDX,ENC) ; Populate Encounter.type from encounter CPT/OS5 when available
@@ -221,6 +223,16 @@ SETERSN(RTN,IDX,ENC) ; Add encounter reason from VistA POV data when available
  . IF NAME'="" SET RTN("entry",IDX,"resource","reasonCode",1,"coding",1,"display")=NAME
  IF NARR="" SET NARR=NAME
  IF NARR'="" SET RTN("entry",IDX,"resource","reasonCode",1,"text")=NARR
+ QUIT
+ ;
+SETENOTE(RTN,IDX,ENC) ; Add encounter-linked TIU note text when available
+ NEW CONT,DOC,I,TXT
+ SET I=0
+ FOR  SET I=$ORDER(ENC("document",I)) Q:I<1  DO
+ . SET DOC=$GET(ENC("document",I))
+ . SET CONT=$GET(ENC("document",I,"content"))
+ . SET TXT=$$DOCNOTE^C0FHIRBU(DOC,CONT)
+ . IF TXT'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT)
  QUIT
  ;
 GETCOND(RTN,DFN,BEG,END,MAX) ; Add Condition resources for patient/date range

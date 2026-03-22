@@ -57,7 +57,25 @@ SETMED(RTN,MED,DFN) ; Map one VPR medication entry to FHIR MedicationRequest
  . SET RTN("entry",IDX,"resource","dispenseRequest","expectedSupplyDuration","value")=+$GET(MED("daysSupply"))
  . SET RTN("entry",IDX,"resource","dispenseRequest","expectedSupplyDuration","unit")="days"
  IF +$GET(MED("fillsAllowed"))>0 SET RTN("entry",IDX,"resource","dispenseRequest","numberOfRepeatsAllowed")=+$GET(MED("fillsAllowed"))
+ DO MEDNOTE(.RTN,.MED,IDX)
  QUIT
+ ;
+MEDNOTE(RTN,MED,IDX) ; Add medication notes from patient instructions/comments
+ NEW CMT,PTI,SIG
+ SET PTI=$$TRIM^C0FHIR($GET(MED("ptInstructions")))
+ IF PTI'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,PTI)
+ SET CMT=$$MEDCOMM($GET(MED("id")))
+ SET SIG=$$TRIM^C0FHIR($GET(MED("sig")))
+ IF CMT'="",CMT'=PTI,CMT'=SIG DO ADDNOTE^C0FHIRBU(.RTN,IDX,CMT)
+ QUIT
+ ;
+MEDCOMM(ID) ; Return medication order comment text when present
+ NEW RESP,TXT
+ SET ID=+$GET(ID)
+ IF ID<1 QUIT ""
+ DO RESP^VPRDPSOR(ID,.RESP)
+ SET TXT=$$TRIM^C0FHIR($GET(RESP("COMMENT",1)))
+ QUIT TXT
  ;
 MEDCODE(RTN,MED,IDX) ; Add medication coding details when available
  NEW PROD,VUID
@@ -143,10 +161,10 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  . SET RTN("entry",IDX,"resource","doseQuantity","value")=+DOSE
  . IF UNITS'="" SET RTN("entry",IDX,"resource","doseQuantity","unit")=UNITS
  IF $GET(IMM("series"))'="" SET RTN("entry",IDX,"resource","protocolApplied",1,"seriesDosesString")=$GET(IMM("series"))
- IF $GET(IMM("reaction"))'="" SET RTN("entry",IDX,"resource","note",1,"text")="Reaction: "_$GET(IMM("reaction"))
- IF $GET(IMM("comment"))'="" SET RTN("entry",IDX,"resource","note",2,"text")=$GET(IMM("comment"))
+ IF $GET(IMM("reaction"))'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,"Reaction: "_$GET(IMM("reaction")))
+ IF $GET(IMM("comment"))'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,$GET(IMM("comment")))
  IF $GET(IMM("source"))'="" DO
  . SET SRC=$SELECT($PIECE($GET(IMM("source")),"^",2)'="":$PIECE($GET(IMM("source")),"^",2),$PIECE($GET(IMM("source")),"^",1)'="":$PIECE($GET(IMM("source")),"^",1),1:$GET(IMM("source")))
- . SET RTN("entry",IDX,"resource","note",3,"text")="Source: "_SRC
+ . DO ADDNOTE^C0FHIRBU(.RTN,IDX,"Source: "_SRC)
  QUIT
  ;
