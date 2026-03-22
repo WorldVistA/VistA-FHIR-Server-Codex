@@ -4,6 +4,8 @@ Source analyzed: `/home/glilly/FHIR-source-files/vpr-containers.txt` (24 contain
 
 This mapping is the first implementation target map for FHIR R4 resource alignment.
 
+For the narrower set of bundle domains currently emitted by the in-repo `C0FHIR*` routines, see `docs/CURRENT_DOMAIN_EXTRACTION_NOTES.md`. That document tracks the active extraction surface; this file remains the broader VPR-container roadmap.
+
 | # | VPR Container | VistA Source File(s) | VPR Update Entity(ies) | Proposed FHIR Domain/Resource(s) | Notes |
 | --- | --- | --- | --- | --- | --- |
 | 1 | `PATIENT` | `2` | `VPR PATIENT` | `Patient` | Core demographics and identifiers. |
@@ -33,4 +35,5 @@ This mapping is the first implementation target map for FHIR R4 resource alignme
 
 ## Immediate Build Priority
 - Phase 1 is unchanged: `Patient`, `Encounter`, `Observation`, `Condition`, `AllergyIntolerance`, `MedicationRequest`.
+- Current in-repo extraction now extends beyond the original Phase 1 baseline to include `Immunization`, `Procedure`, and lab-result `Observation` / panel `DiagnosticReport`; see `docs/CURRENT_DOMAIN_EXTRACTION_NOTES.md` for the implemented bundle-domain behavior.
 - The remaining container mappings in this document define the extension roadmap after Phase 1 parity.
