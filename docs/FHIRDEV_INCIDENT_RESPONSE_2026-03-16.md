@@ -122,6 +122,8 @@ So the cleanup did not take down the VEHU FHIR service.
 
 ## Separate M Web Worker Leak
 
+A **2026-03-25** follow-up with **GT.M System Status (ZSY)** snapshots — workers stuck in **`MATCHR+8^%webrsp`** with growing CPU time while **`LOOP+19^%webreq`** stays on **`BG-S9080`** — is documented in **`docs/FHIRDEV_MATCHR_WEBRSP_WORKERS_2026-03-25.md`**.
+
 The FHIR listener still shows a separate issue on `9080`:
 
 - `mumps -direct` workers under `PPID=1`

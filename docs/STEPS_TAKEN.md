@@ -60,6 +60,12 @@ Use this file as a chronological log of concrete implementation work.
 - Removed the malicious persistence chain from the live `fhirdev` container, killed the associated processes, verified the suspicious binaries were gone, and documented the incident plus the still-separate `%webreq` worker leak in `docs/FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`.
 - Rechecked `fhirdev` after client closure: confirmed six sockets in CLOSE_WAIT and six hot workers (server-side leak). Added `docs/M_WEBSERVER_CLOSE_WAIT_FIX_OUTLINE.md` outlining the fix (WAIT/ETDC, timeout, disconnect handling) and updated the incident doc with post–sleep findings and a pointer to the outline.
 
+## 2026-03-25
+- Deployed the full current `C0FHIR` routine set (nine `src/C0FHIR*.m` files) into the VEHU `fhirdev` container at `/home/vehu/p` via `scp` to the host and `docker cp` into `fhirdev` (host staging under `/tmp/c0fhir-deploy-*`).
+- Ran `QUICK^XINDX6` in two batches (M direct-mode line-length limit) so all `C0FHIR*` routines were cross-referenced; second batch reported no errors or warnings; first batch reported the usual `C0FHIR` SACC/size and cross-reference notices consistent with prior runs.
+- Smoke-tested from the host: `GET http://127.0.0.1:9080/fhir` and `GET http://127.0.0.1:9080/fhir?dfn=101090` both returned HTTP `200` with a JSON bundle prefix on the bundle request.
+- Captured GT.M ZSY on `fhirdev` showing multiple `BG-0` workers in `MATCHR+8^%webrsp` (and briefly `URLDEC^%webutils`) with rising CPU times while `LOOP+19^%webreq` held `BG-S9080`; documented the characterization in `docs/FHIRDEV_MATCHR_WEBRSP_WORKERS_2026-03-25.md` and cross-linked from `docs/FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`.
+
 ## Template For New Entries
 - Date:
 - Change:
