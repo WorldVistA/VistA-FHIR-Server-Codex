@@ -9,6 +9,7 @@ It complements:
 - **`docs/FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`** — malicious root persistence (separate issue) and introduction of the `%webreq` worker leak
 - **`docs/M_WEBSERVER_CLOSE_WAIT_FIX_OUTLINE.md`** — server-side disconnect / `WAIT` / `ETDC` strategy so workers close sockets and exit
 - **`docs/M_WEBSERVER_RUNAWAY_JOBS_ANALYSIS_2026-03-12.md`** — `%webrsp` **`SENDATA`** global-traversal runaway (different code path)
+- **`docs/FHIRDEV22_FRESH_START_ZSY_SNAPSHOT_2026-03-27.md`** — post-cutover baseline on container **`fhirdev22`** without a **`MATCHR`** pile (for contrast)
 
 ---
 

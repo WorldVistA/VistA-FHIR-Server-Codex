@@ -66,6 +66,9 @@ Use this file as a chronological log of concrete implementation work.
 - Smoke-tested from the host: `GET http://127.0.0.1:9080/fhir` and `GET http://127.0.0.1:9080/fhir?dfn=101090` both returned HTTP `200` with a JSON bundle prefix on the bundle request.
 - Captured GT.M ZSY on `fhirdev` showing multiple `BG-0` workers in `MATCHR+8^%webrsp` (and briefly `URLDEC^%webutils`) with rising CPU times while `LOOP+19^%webreq` held `BG-S9080`; documented the characterization in `docs/FHIRDEV_MATCHR_WEBRSP_WORKERS_2026-03-25.md` and cross-linked from `docs/FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`.
 
+## 2026-03-27
+- Documented a fresh-start GT.M ZSY baseline for live container `fhirdev22` on `fhirdev.vistaplex.org` (single `LOOP+19^%webreq` on `BG-S9080`, no `MATCHR^%webrsp` pile, TaskMan/Mailman/HL7 `HLCSTCP1` on link 5001) in `docs/FHIRDEV22_FRESH_START_ZSY_SNAPSHOT_2026-03-27.md` for comparison to the 2026-03-25 incident snapshot and future regressions.
+
 ## Template For New Entries
 - Date:
 - Change:
