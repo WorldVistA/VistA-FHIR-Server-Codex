@@ -428,3 +428,16 @@ The direct-copy VEHU preparation path that worked was:
 6. confirm `http://127.0.0.1:9080/fhir` returns `200`
 7. generate a fresh patient locally with Dockerized Synthea
 8. `POST` the patient JSON to VEHU from the remote host
+
+## Helper scripts (repo `scripts/`)
+
+- **`synthea-one-patient.sh`** — one numeric-seed patient, FHIR export under `-o` (wraps the Docker + `./run_synthea` flow above; prints `BUNDLE=...`).
+- **`fhirdev-addpatient.sh`** — `scp` bundle to `fhirdev`, optional `--register` for `POST addPatient`, default listener restart after register, `curl` with `Expect:` cleared (avoids `100 Continue` / HTTP 0.9 curl errors). Env: `FHIRDEV_HOST`, `FHIRDEV_CONTAINER` (default `fhirdev22`).
+
+Example:
+
+```bash
+OUT="$HOME/FHIR-source-files/synthea-run-$(date +%s)"
+./scripts/synthea-one-patient.sh -o "$OUT"
+./scripts/fhirdev-addpatient.sh --register "$(find "$OUT/fhir" -maxdepth 1 -name '*.json' ! -name 'hospitalInformation*' | head -1)"
+```
