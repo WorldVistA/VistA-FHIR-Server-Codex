@@ -169,6 +169,31 @@ d addService^%webutils("POST","addPatient","wsPostFHIR^SYNFHIR")
 - `POST /addPatient`
 - `POST /addPatient?load=1`
 
+## `replayIntake` — reload domains from graph JSON (skip Patient)
+
+Re-`POST`ing the same Synthea bundle hits **Duplicate SSN** during patient filing before labs/encounters/etc. run. If the POST still created a **graph row** with decoded JSON (you have an **`ien`** from the error response or from the FHIR index), rerun **all non-Patient loaders** against that stored bundle:
+
+- method: `GET`
+- route: `replayIntake`
+- query: **`ien`** (graph IEN, required unless **`dfn`** alone resolves a unique IEN), optional **`dfn`** (existing VistA patient — **required** when the graph row is orphan after duplicate SSN), optional **`reindex`** (`1` default: rebuild FHIR type index; `0` to skip)
+- entrypoint: `wsReplayIntake^SYNFHIR`
+
+Registration:
+
+```text
+d addService^%webutils("GET","replayIntake","wsReplayIntake^SYNFHIR")
+```
+
+Example (orphan graph **IEN 12**, existing patient **DFN 101088**):
+
+```bash
+curl -sS -G "http://127.0.0.1:9080/replayIntake" \
+  --data-urlencode "ien=12" \
+  --data-urlencode "dfn=101088"
+```
+
+In-repo helper: **`scripts/fhirdev-replay-intake.sh`** (sets `FHIRDEV_BASE_URL`, passes `ien`/`dfn`/`reindex`).
+
 ## `showfhir`, `tfhir`, `gtree`, and `vpr` Web Services
 
 Servers may or may not have the routines installed that implement these web services (e.g. SYNFHIR, SYNVPR, C0FHIRWS). When they do, the web service interface is configured by registering routes with `addService^%webutils`; the portal at `/` (e.g. `http://localhost:9081/`) lists what is currently registered in `^%web(17.6001)`. Some sites (e.g. vehu9) do not have these routes registered by default.
@@ -433,6 +458,7 @@ The direct-copy VEHU preparation path that worked was:
 
 - **`synthea-one-patient.sh`** — one numeric-seed patient, FHIR export under `-o` (wraps the Docker + `./run_synthea` flow above; prints `BUNDLE=...`).
 - **`fhirdev-addpatient.sh`** — `scp` bundle to `fhirdev`, optional `--register` for `POST addPatient`, default listener restart after register, `curl` with `Expect:` cleared (avoids `100 Continue` / HTTP 0.9 curl errors). Env: `FHIRDEV_HOST`, `FHIRDEV_CONTAINER` (default `fhirdev22`).
+- **`fhirdev-replay-intake.sh`** — `GET /replayIntake` with `ien`/`dfn` to rerun labs..careplan from stored graph JSON when `addPatient` cannot be repeated (duplicate SSN). Register `wsReplayIntake^SYNFHIR` once (see **`replayIntake`** above).
 
 Example:
 
