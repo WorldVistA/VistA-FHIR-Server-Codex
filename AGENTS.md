@@ -24,6 +24,7 @@ Repo-specific overrides:
 - If there is a conflict, this repo's explicit instructions take precedence.
 - Current test SSH target: `osehra@127.0.0.1:2223`
 - Current test SSH key: `/home/glilly/.ssh/id_ed25519_cursor_agent_test`
+- Agent note: a full SSH session to this target often takes **40+ seconds**; the default agent command wait is **30s**, so SSH can be backgrounded and look “stuck” before it finishes. Use **`block_until_ms` ≥ 60000** (or read the terminal file after backgrounding) and request **`network`** permission when running SSH from the agent.
 - Current test routine directory: `/home/osehra/p`
 - After **`docker restart`** of the test container: restart the M web listener before HTTP smoke tests — see **`~/ops/agent-context/vista-container-developer-guide.md`** §10 (**`stop^%webreq`** / **`go^%webreq`**, **`^%webhttp`** check).
 
