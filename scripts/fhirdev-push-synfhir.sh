@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Copy SYNFHIR.m from VistA-FHIR-Data-Loader (or any path) into fhirdev22 routine directory.
+# Copy SYNFHIR.m (any path; often VistA-FHIR-Data-Loader master or the same file as fhir/vehu9) into fhirdev22.
 # Does not compile in M — run ZL/ZS or your reload + XINDEX on the container after copy.
-# Verifies with GET http://<host>:9080/r/SYNFHIR (should list wsShow, replayIntake, IMPORTFHIRDOMS).
+# fhirdev22 may track an integration branch whose SYNFHIR omits wsShow; master (and fhir/vehu9) include it.
+# After deploy, GET http://<host>:9080/r/SYNFHIR should list wsShow.
 set -euo pipefail
 
 FHIRDEV_SSH="${FHIRDEV_SSH:-root@fhirdev.vistaplex.org}"
