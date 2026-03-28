@@ -459,6 +459,7 @@ The direct-copy VEHU preparation path that worked was:
 - **`synthea-one-patient.sh`** — one numeric-seed patient, FHIR export under `-o` (wraps the Docker + `./run_synthea` flow above; prints `BUNDLE=...`).
 - **`fhirdev-addpatient.sh`** — `scp` bundle to `fhirdev`, optional `--register` for `POST addPatient`, default listener restart after register, `curl` with `Expect:` cleared (avoids `100 Continue` / HTTP 0.9 curl errors). Env: `FHIRDEV_HOST`, `FHIRDEV_CONTAINER` (default `fhirdev22`).
 - **`fhirdev-replay-intake.sh`** — `GET /replayIntake` with `ien`/`dfn` to rerun labs..careplan from stored graph JSON when `addPatient` cannot be repeated (duplicate SSN). Register `wsReplayIntake^SYNFHIR` once (see **`replayIntake`** above).
+- **`fhirdev-push-synfhir.sh`** — `scp` + `docker cp` **`SYNFHIR.m`** from **`VistA-FHIR-Data-Loader`** into the fhirdev container routine dir (default **`/home/osehra/p`**; set **`FHIRDEV_ROUTINE_DIR`** if your image uses **`/home/vehu/p`**). After copy, reload the routine in M and **`XINDEX SYNFHIR`**. The public host [fhirdev `/r/SYNFHIR`](http://fhirdev.vistaplex.org:9080/r/SYNFHIR) can lag the git tree; if **`showfhir`** fails with **`LABELMISSING wsShow`**, push the current **`src/SYNFHIR.m`** and recompile.
 
 Example:
 
