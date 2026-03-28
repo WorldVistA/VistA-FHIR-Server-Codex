@@ -4,7 +4,8 @@ Smoke checks for no-DFN /fhir index and related views.
 
 Checks:
 - /fhir returns HTML
-- rendered VPR links include format=xml
+- rendered VPR links omit format=xml (default VPR output)
+- patient rows are ordered by DFN descending (newest DFN first)
 - each listed patient has labs loaded > 0 in summary row
 - /fhir?dfn=<sample> returns JSON Bundle
 - /fhir?dfn=<sample>&view=browser returns HTML
@@ -58,7 +59,7 @@ def parse_index_rows(index_html: str) -> List[Row]:
         r'<tr><td><a href="/fhir\?dfn=(?P<dfn>\d+)&view=browser">[^<]*</a></td>'
         r'<td><a href="/fhir\?dfn=\d+">fhir</a></td>'
         r"<td>\d+</td><td>(?P<ien>\d+)</td>"
-        r'<td><a href="/tfhir\?ien=\d+">json</a></td>'
+        r'<td><a href="/(?:showfhir|tfhir)\?ien=\d+">json</a></td>'
         r'<td><a href="[^"]+">load</a></td>'
         r'<td><a href="(?P<vpr>/vpr\?dfn=\d+[^"]*)">vpr</a></td></tr>',
         re.IGNORECASE,
@@ -90,10 +91,9 @@ def parse_index_rows(index_html: str) -> List[Row]:
     return parsed
 
 
-def vpr_link_is_xml(link: str) -> bool:
-    parsed = urllib.parse.urlparse(link)
-    query = urllib.parse.parse_qs(parsed.query)
-    return query.get("format", [""])[0].lower() == "xml"
+def vpr_link_omits_format_xml(link: str) -> bool:
+    """True when the link does not force VPR format=xml."""
+    return "format=xml" not in link.lower()
 
 
 def labs_loaded_from_summary(summary: str) -> int:
@@ -132,10 +132,15 @@ def check_index(base_url: str, timeout: int) -> List[Row]:
     )
 
     rows = parse_index_rows(body)
+    dfns_in_order = [r.dfn for r in rows]
+    ensure(
+        dfns_in_order == sorted(dfns_in_order, reverse=True),
+        f"/fhir index rows not sorted by DFN descending: {dfns_in_order}",
+    )
     for row in rows:
         ensure(
-            vpr_link_is_xml(row.vpr_link),
-            f"VPR link missing format=xml: {row.vpr_link}",
+            vpr_link_omits_format_xml(row.vpr_link),
+            f"VPR link should not include format=xml: {row.vpr_link}",
         )
         ensure(
             labs_loaded_from_summary(row.summary) > 0,
@@ -180,8 +185,12 @@ def check_browser(base_url: str, timeout: int, dfn: int) -> None:
     )
     ensure("C0FHIR Browser" in body, "Browser page marker missing.")
     ensure(
-        f"/vpr?dfn={dfn}&format=xml" in body,
-        f"Browser page missing XML VPR link for DFN {dfn}.",
+        f"/vpr?dfn={dfn}" in body,
+        f"Browser page missing VPR link for DFN {dfn}.",
+    )
+    ensure(
+        f"/vpr?dfn={dfn}&format=xml" not in body.lower(),
+        f"Browser page should not use format=xml on VPR link for DFN {dfn}.",
     )
     ensure(
         f"/fhir?dfn={dfn}" in body,

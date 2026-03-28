@@ -398,7 +398,7 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  QUIT
  ;
 FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
- NEW BURL,CNT,DFN,FURL,HASGRAPH,HASVPR,IEN,JURL,KEY,LURL,NAME,NCOLS,ROOT,ROW,SORT,SUM,VURL
+ NEW BURL,CNT,DFN,FURL,HASGRAPH,HASVPR,IEN,JURL,KEY,LURL,NAME,NCOLS,ROOT,ROW,SORT,SUM,TBYDFN,VURL
  KILL RTN
  SET ROOT=$$GSROOT()
  SET HASGRAPH=0 IF $L($G(ROOT))>0,$DATA(@ROOT@("DFN")) SET HASGRAPH=1
@@ -428,32 +428,39 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  DO ADDLRROWS(.SORT)
  SET KEY=""
  FOR  SET KEY=$ORDER(SORT(KEY)) Q:KEY=""  DO
+ . IF KEY="DFN" QUIT
  . SET NAME=""
  . FOR  SET NAME=$ORDER(SORT(KEY,NAME)) Q:NAME=""  DO
  . . SET DFN=0
  . . FOR  SET DFN=$ORDER(SORT(KEY,NAME,DFN)) Q:+DFN<1  DO
  . . . SET IEN=""
  . . . FOR  SET IEN=$ORDER(SORT(KEY,NAME,DFN,IEN)) Q:IEN=""  DO
- . . . . SET CNT=CNT+1
- . . . . SET FURL="/fhir?dfn="_DFN
- . . . . SET BURL="/fhir?dfn="_DFN_"&view=browser"
- . . . . SET VURL="/vpr?dfn="_DFN_"&format=xml"
- . . . . SET JURL=$SELECT(HASGRAPH&(+IEN>0):"/showfhir?ien="_IEN,1:"")
- . . . . SET LURL=$SELECT(HASGRAPH&(+IEN>0):$$LOADLOGURL(ROOT,IEN),1:"")
- . . . . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
- . . . . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
- . . . . SET ROW=ROW_"<td>"_DFN_"</td><td>"_$SELECT(+IEN>0:IEN,1:"-")_"</td>"
- . . . . IF HASGRAPH DO
- . . . . . IF JURL'="" SET ROW=ROW_"<td><a href="""_JURL_""">json</a></td>"
- . . . . . ELSE  SET ROW=ROW_"<td>n/a</td>"
- . . . . . IF LURL'="" SET ROW=ROW_"<td><a href="""_LURL_""">load</a></td>"
- . . . . . ELSE  SET ROW=ROW_"<td>n/a</td>"
- . . . . IF HASVPR SET ROW=ROW_"<td><a href="""_VURL_""">vpr</a></td>"
- . . . . SET ROW=ROW_"</tr>"
- . . . . DO ADDLN(.RTN,ROW)
- . . . . IF +IEN>0 SET SUM=$$DOMSUM(ROOT,IEN)
- . . . . ELSE  SET SUM=$$LRSUM(DFN)
- . . . . DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_"""><small>"_$$HTMLESC(SUM)_"</small></td></tr>")
+ . . . . SET TBYDFN(DFN,"NAME")=NAME
+ . . . . SET TBYDFN(DFN,"IEN")=IEN
+ SET DFN=""
+ FOR  SET DFN=$ORDER(TBYDFN(DFN),-1) Q:+DFN<1  DO
+ . SET NAME=$GET(TBYDFN(DFN,"NAME"))
+ . SET IEN=$GET(TBYDFN(DFN,"IEN"))
+ . SET CNT=CNT+1
+ . SET FURL="/fhir?dfn="_DFN
+ . SET BURL="/fhir?dfn="_DFN_"&view=browser"
+ . SET VURL="/vpr?dfn="_DFN
+ . SET JURL=$SELECT(HASGRAPH&(+IEN>0):"/showfhir?ien="_IEN,1:"")
+ . SET LURL=$SELECT(HASGRAPH&(+IEN>0):$$LOADLOGURL(ROOT,IEN),1:"")
+ . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
+ . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
+ . SET ROW=ROW_"<td>"_DFN_"</td><td>"_$SELECT(+IEN>0:IEN,1:"-")_"</td>"
+ . IF HASGRAPH DO
+ . . IF JURL'="" SET ROW=ROW_"<td><a href="""_JURL_""">json</a></td>"
+ . . ELSE  SET ROW=ROW_"<td>n/a</td>"
+ . . IF LURL'="" SET ROW=ROW_"<td><a href="""_LURL_""">load</a></td>"
+ . . ELSE  SET ROW=ROW_"<td>n/a</td>"
+ . IF HASVPR SET ROW=ROW_"<td><a href="""_VURL_""">vpr</a></td>"
+ . SET ROW=ROW_"</tr>"
+ . DO ADDLN(.RTN,ROW)
+ . IF +IEN>0 SET SUM=$$DOMSUM(ROOT,IEN)
+ . ELSE  SET SUM=$$LRSUM(DFN)
+ . DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_"""><small>"_$$HTMLESC(SUM)_"</small></td></tr>")
  IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_""">No patients with labs were found in graph store or ^LR.</td></tr>")
  DO ADDLN(.RTN,"</table>")
  DO ADDLN(.RTN,"</body></html>")
