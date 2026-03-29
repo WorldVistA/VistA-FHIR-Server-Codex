@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copy a Synthea (or other) FHIR bundle to fhirdev and POST /addPatient.
+# Copy a Synthea (or other) FHIR bundle to fhirdev and POST /addpatient (SYNINIT route; case-sensitive).
 # Register the route if needed; use empty Expect: to avoid curl 100-continue issues.
 # See docs/VEHU_NEW_PATIENT_RUNBOOK_2026-03-16.md
 set -euo pipefail
@@ -16,8 +16,8 @@ HTTP_URL="${FHIRDEV_HTTP:-http://127.0.0.1:9080}"
 
 usage() {
   echo "Usage: $0 [options] LOCAL_BUNDLE.json"
-  echo "  LOCAL_BUNDLE.json   FHIR Bundle file to POST to addPatient"
-  echo "  --register          Run addService^%webutils for POST addPatient (once per site)"
+  echo "  LOCAL_BUNDLE.json   FHIR Bundle file to POST to addpatient"
+  echo "  --register          Run addService^%webutils for POST addpatient (once per site)"
   echo "  --restart-webreq    d stop^%webreq d go^%webreq (implied after --register unless --no-restart-webreq)"
   echo "  --no-restart-webreq Skip listener restart (use with --register if routes already picked up)"
   echo "  --remote-path PATH  Staging path on host (default /tmp/synthea-patient-PID.json)"
@@ -82,11 +82,11 @@ if [[ -z "$RESTART_WEBREQ" ]]; then
 fi
 
 if [[ "$REGISTER" -eq 1 ]]; then
-  echo "register POST addPatient -> wsPostFHIR^SYNFHIR in $FHIRDEV_CONTAINER"
+  echo "register POST addpatient -> wsPostFHIR^SYNFHIR in $FHIRDEV_CONTAINER"
   printf '%s\n' \
     'S DUZ=1 D ^XUP' \
     '^' \
-    'D addService^%webutils("POST","addPatient","wsPostFHIR^SYNFHIR")' \
+    'D addService^%webutils("POST","addpatient","wsPostFHIR^SYNFHIR")' \
     'H' \
     | ssh -o BatchMode=yes "$FHIRDEV_HOST" \
         "docker exec -i -u vehu $FHIRDEV_CONTAINER bash -lc 'source $VEHU_ENV >/dev/null 2>&1; mumps -dir'"
@@ -98,11 +98,11 @@ if [[ "$RESTART_WEBREQ" -ne 0 ]]; then
     "docker exec -u vehu $FHIRDEV_CONTAINER bash -lc 'source $VEHU_ENV >/dev/null 2>&1; mumps -run %XCMD \"d stop^%webreq d go^%webreq\"'"
 fi
 
-echo "POST $HTTP_URL/addPatient (Expect disabled)"
+echo "POST $HTTP_URL/addpatient (Expect disabled)"
 # shellcheck disable=SC2029
 ssh -o BatchMode=yes "$FHIRDEV_HOST" \
   "curl -sS -H 'Expect:' -H 'Content-Type: application/json' \
     --data-binary @\"$REMOTE_USE\" \
-    \"$HTTP_URL/addPatient\""
+    \"$HTTP_URL/addpatient\""
 
 echo ""
