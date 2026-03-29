@@ -6,9 +6,9 @@
 #
 # Order matters: later rows win if two repos ship the same BASENAME.m into the destination.
 #
-# Remote (inside a container or build host) — use your integration branch, not stale defaults:
-# data-loader|https://github.com/example/VistA-FHIR-Data-Loader.git|vaready-wd-compat|src
-# server-codex|https://github.com/example/VistA-FHIR-Server-Codex.git|vaready-wd-compat|src
+# Remote (inside a container or build host) — orgs and branches can differ (vehu10_bootstrap default):
+# data-loader|https://github.com/glilly/VistA-FHIR-Data-Loader.git|vaready-wd-compat|src
+# server-codex|https://github.com/WorldVistA/VistA-FHIR-Server-Codex.git|master|src
 #
 # Local working copies (development host):
 # data-loader|/home/you/VistA-FHIR-Data-Loader|vaready-wd-compat|src
