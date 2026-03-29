@@ -14,6 +14,7 @@ EN ; Register (or refresh) routes — idempotent for same method+pattern
  IF $T(LOADHAND^SYNINIT)'="" DO LOADHAND^SYNINIT
  ELSE  DO LOADDEF^SYNWEBRG
  IF $T(wsReplayIntake^SYNFHIR)'="" DO addService^%webutils("GET","replayIntake","wsReplayIntake^SYNFHIR")
+ IF $T(wsReplayIntake^SYNFHIR)'="" DO addService^%webutils("GET","replayImport","wsReplayIntake^SYNFHIR")
  IF $T(wsIntakeVitals^SYNFVIT)'="" DO addService^%webutils("POST","addvitals","wsIntakeVitals^SYNFVIT")
  IF $T(wsIntakeEncounters^SYNFENC)'="" DO addService^%webutils("POST","addencounter","wsIntakeEncounters^SYNFENC")
  IF $T(wsIntakeConditions^SYNFCON)'="" DO addService^%webutils("POST","addcondition","wsIntakeConditions^SYNFCON")

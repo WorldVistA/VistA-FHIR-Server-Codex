@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Rerun SYN domain loaders (labs, vitals, encounters, …) from graph-stored JSON
 # without POST /addPatient (avoids Duplicate SSN when the bundle was already ingested once).
-# Prereq: register GET replayIntake -> wsReplayIntake^SYNFHIR once per site.
+# Prereq: register GET replayIntake (and optional alias replayImport) -> wsReplayIntake^SYNFHIR.
 set -euo pipefail
 
 FHIRDEV_HOST="${FHIRDEV_HOST:-root@fhirdev.vistaplex.org}"
 BASE_URL="${FHIRDEV_BASE_URL:-http://fhirdev.vistaplex.org:9080}"
+# Path segment: replayIntake (default) or replayImport (alias to same handler; see SYNWEBRG EN^SYNWEBRG)
+REPLAY_ROUTE="${FHIRDEV_REPLAY_ROUTE:-replayIntake}"
 IEN=""
 DFN=""
 REINDEX=1
@@ -16,7 +18,7 @@ usage() {
   echo "  --dfn     Existing VistA patient; required when the graph row is orphan (e.g. Duplicate SSN)."
   echo "  --reindex 1 (default) rebuild type index from json; 0 to skip."
   echo "Or only --dfn to use dfn2ien^SYNFUTL (patient already linked to a graph row)."
-  echo "Env: FHIRDEV_HOST (ssh unused here), FHIRDEV_BASE_URL (default $BASE_URL)"
+  echo "Env: FHIRDEV_HOST (ssh unused), FHIRDEV_BASE_URL (default $BASE_URL), FHIRDEV_REPLAY_ROUTE (default $REPLAY_ROUTE)"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -40,5 +42,5 @@ q=()
 [[ -n "$DFN" ]] && q+=(--data-urlencode "dfn=$DFN")
 q+=(--data-urlencode "reindex=$REINDEX")
 
-curl -sS -G "$BASE_URL/replayIntake" "${q[@]}"
+curl -sS -G "$BASE_URL/$REPLAY_ROUTE" "${q[@]}"
 echo ""
