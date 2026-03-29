@@ -184,6 +184,8 @@ Registration:
 d addService^%webutils("GET","replayIntake","wsReplayIntake^SYNFHIR")
 ```
 
+If `GET /replayIntake` returns **404** and the JSON error mentions opening a path like `.../www/replayIntake` (file not found), the route is **not** in `^%web(17.6001)` yet — run the `addService` line above (and restart or reload the listener if your site requires it after route changes).
+
 Example (orphan graph **IEN 12**, existing patient **DFN 101088**):
 
 ```bash
