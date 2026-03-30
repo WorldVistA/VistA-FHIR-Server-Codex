@@ -5,6 +5,9 @@ inside the container, sync src/*.m to the M routine directory, optionally ZL + D
 
 Typical vehu10 HTTP base: http://127.0.0.1:9085/
 
+For a quick **Server-Codex-only** sync (no git clone inside the container), use
+**scripts/vehu10-fhir-sync.sh** — same host/port/user/routine dir as this bootstrap.
+
 Requires: docker CLI, container user with git and bash (git often present on vehu images).
 
 Example:
