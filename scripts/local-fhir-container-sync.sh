@@ -71,6 +71,10 @@ DFN="${1:-}"
 if [[ -z "$DFN" ]]; then
   echo "==> Smoke: GET $FHIR_HTTP_BASE/fhir (index HTML, no dfn)"
   curl -sS -o /tmp/fhir-smoke-index.html -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/fhir" | tail -1
+  echo "==> Smoke: GET $FHIR_HTTP_BASE/tiuvpatients?limit=2 (visit-linked TIU DFN sample)"
+  curl -sS -o /tmp/fhir-smoke-tiuv.json -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/tiuvpatients?limit=2" | tail -1
+  head -c 400 /tmp/fhir-smoke-tiuv.json | cat
+  echo
 else
   echo "==> Smoke: GET $FHIR_HTTP_BASE/fhir?dfn=$DFN"
   curl -sS -o /tmp/fhir-smoke-fhir.json -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/fhir?dfn=$DFN" | tail -1

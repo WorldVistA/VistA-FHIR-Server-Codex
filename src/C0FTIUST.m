@@ -1,7 +1,9 @@
 C0FTIUST ; VEHU/Codex - Read-only TIU / visit linkage stats (dev diagnostics)
  ;;0.1;C0FHIR PROJECT;;Mar 27, 2026
  ;
- ; JSON GET endpoint: /tiustats?dfn= (integer patient DFN)
+ ; JSON GET endpoints:
+ ;   /tiustats?dfn= (integer patient DFN)
+ ;   /tiuvpatients?limit=n&dfn= (optional) — distinct DFNs with ^TIU(8925,"V",vst,...)
  ; Counts PCE visits via ^AUPNVSIT("AET",...) and TIU documents linked on the
  ; visit xref ^TIU(8925,"V",visitIEN,...). Patient-wide TIU count uses the
  ; standard ^TIU(8925,"C",dfn,...) index when present (shape may vary by site).
@@ -20,6 +22,48 @@ wsTIUStats(OUT,FILTER) ; %web GET handler; OUT, FILTER by reference
  DO STATS(DFN,.TMP)
  DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
  SET HTTPRSP("mime")="application/json"
+ QUIT
+ ;
+wsTIUVPatients(OUT,FILTER) ; GET tiuvpatients?limit=&dfn=
+ ; limit: max rows in patients[] (0 = count only). Capped at 500.
+ ; dfn: optional; adds hasVisitLinkedTiu true/false for that DFN after scan.
+ NEW TMP,ERR,LIM,CHK
+ IF '$DATA(DT) NEW DIQUIET SET DIQUIET=1 DO DT^DICRW
+ KILL OUT
+ SET LIM=+$GET(FILTER("limit"))
+ SET CHK=+$GET(FILTER("dfn"))
+ DO GATHERVP(.TMP,LIM,CHK)
+ DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
+ SET HTTPRSP("mime")="application/json"
+ QUIT
+ ;
+GATHERVP(OUT,LIMIT,CHKDFN) ; Patients with >=1 TIU on ^TIU(8925,"V",visitIEN,docIEN)
+ ; Visit IEN must resolve DFN via $P(^AUPNVSIT(visit,0),"^",5).
+ NEW VST,DFN,TOT,N,MX,CHK0
+ KILL OUT
+ KILL ^TMP($JOB,"C0FTIUST","VP")
+ SET VST=0
+ FOR  SET VST=$ORDER(^TIU(8925,"V",VST)) QUIT:VST=""  QUIT:VST<1  DO
+ . QUIT:'$ORDER(^TIU(8925,"V",VST,0))
+ . SET DFN=+$PIECE($GET(^AUPNVSIT(VST,0)),"^",5) QUIT:DFN<1
+ . SET ^TMP($JOB,"C0FTIUST","VP",DFN)=""
+ SET DFN=0,TOT=0
+ FOR  SET DFN=$ORDER(^TMP($JOB,"C0FTIUST","VP",DFN)) QUIT:DFN<1  SET TOT=TOT+1
+ SET OUT("distinctPatientsWithVisitLinkedTIU")=TOT
+ SET CHK0=+$GET(CHKDFN)
+ IF CHK0>0 DO
+ . SET OUT("checkDfn")=CHK0
+ . IF $DATA(^TMP($JOB,"C0FTIUST","VP",CHK0)) SET OUT("hasVisitLinkedTiu")="true"
+ . ELSE  SET OUT("hasVisitLinkedTiu")="false"
+ SET MX=+$GET(LIMIT)
+ IF MX>500 SET MX=500
+ IF MX>0 DO
+ . SET DFN=0,N=0
+ . FOR  SET DFN=$ORDER(^TMP($JOB,"C0FTIUST","VP",DFN)) QUIT:DFN<1  DO  QUIT:N'<MX
+ .. SET N=N+1
+ .. SET OUT("patients",N,"dfn")=DFN
+ .. SET OUT("patients",N,"name")=$PIECE($GET(^DPT(DFN,0)),"^")
+ KILL ^TMP($JOB,"C0FTIUST","VP")
  QUIT
  ;
 STATS(DFN,OUT) ; Build a flat object for ENCODE^XLFJSON (via TOJSON^C0FHIRBU)
