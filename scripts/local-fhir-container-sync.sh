@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-# Sync VistA-FHIR-Server-Codex src/*.m into the local FHIR Docker container,
+# Sync VistA-FHIR-Server-Codex src/*.m into a local FHIR/VEHU Docker container,
 # restart the M web listener, re-register routes, and smoke-test HTTP.
+#
+# Defaults target the minimal **fhir** image (port 9081, user osehra). For patients
+# with real visit-linked **TIU** notes, use the VEHU dataset instead — see
+# **scripts/vehu10-fhir-sync.sh** (vehu10, port 9085, user vehu, /home/vehu/p).
 #
 # Default transport is docker cp + docker exec (no SSH). Set FHIR_USE_SSH=1 to
 # use scp/ssh instead (same defaults as AGENTS.md).
@@ -9,6 +13,8 @@
 #   FHIR_CONTAINER   (default: fhir)
 #   FHIR_HTTP_BASE   (default: http://127.0.0.1:9081)
 #   FHIR_REMOTE_P    (default: /home/osehra/p)
+#   FHIR_M_USER      (default: osehra) — su - target for ZLINK / %webreq
+#   FHIR_MUMPS       (default: /home/${FHIR_M_USER}/lib/gtm/mumps)
 #   FHIR_USE_SSH=1   FHIR_SSH_HOST PORT USER KEY — scp to container SSH
 set -euo pipefail
 
@@ -18,6 +24,8 @@ SRC="$ROOT/src"
 FHIR_CONTAINER="${FHIR_CONTAINER:-fhir}"
 FHIR_HTTP_BASE="${FHIR_HTTP_BASE:-http://127.0.0.1:9081}"
 FHIR_REMOTE_P="${FHIR_REMOTE_P:-/home/osehra/p}"
+FHIR_M_USER="${FHIR_M_USER:-osehra}"
+FHIR_MUMPS="${FHIR_MUMPS:-/home/${FHIR_M_USER}/lib/gtm/mumps}"
 FHIR_USE_SSH="${FHIR_USE_SSH:-0}"
 
 copy_via_docker() {
@@ -26,6 +34,8 @@ copy_via_docker() {
     [[ -f "$f" ]] || continue
     docker cp "$f" "$FHIR_CONTAINER:$FHIR_REMOTE_P/"
   done
+  # docker cp is often root-owned; M user must read the sources for ZLINK.
+  docker exec "$FHIR_CONTAINER" chown "${FHIR_M_USER}:${FHIR_M_USER}" "$FHIR_REMOTE_P"/*.m 2>/dev/null || true
 }
 
 copy_via_ssh() {
@@ -39,10 +49,12 @@ copy_via_ssh() {
 }
 
 restart_web_and_register() {
-  # su - osehra loads ~/etc/env (gtm_dist, gtmgbldir, gtmroutines). Plain docker exec -u
-  # osehra bash -lc can hit %GTM-E-JOBFAIL from stop^%webreq on some images (nvm/stderr).
-  docker exec "$FHIR_CONTAINER" su - osehra -c '/home/osehra/lib/gtm/mumps -run %XCMD "zlink \"C0FTIUST\" zlink \"SYNWEBRG\" d EN^SYNWEBRG"'
-  docker exec "$FHIR_CONTAINER" su - osehra -c '/home/osehra/lib/gtm/mumps -run %XCMD "d stop^%webreq d go^%webreq"'
+  # su - <user> loads ~/etc/env (gtm_dist, gtmgbldir, gtmroutines).
+  local M="$FHIR_MUMPS"
+  docker exec "$FHIR_CONTAINER" su - "$FHIR_M_USER" -c \
+    "${M} -run %XCMD \"zlink \\\"C0FTIUST\\\" zlink \\\"SYNWEBRG\\\" d EN^SYNWEBRG\""
+  docker exec "$FHIR_CONTAINER" su - "$FHIR_M_USER" -c \
+    "${M} -run %XCMD \"d stop^%webreq d go^%webreq\""
 }
 
 if [[ "$FHIR_USE_SSH" == "1" ]]; then
