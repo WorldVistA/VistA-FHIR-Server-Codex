@@ -20,6 +20,7 @@ EN ; Register (or refresh) routes — idempotent for same method+pattern
  IF $T(wsIntakeConditions^SYNFCON)'="" DO addService^%webutils("POST","addcondition","wsIntakeConditions^SYNFCON")
  IF $T(REGTFHIR^C0FHIR)'="" DO REGTFHIR^C0FHIR
  IF $T(WEB^C0FHIRWS)'="" DO addService^%webutils("GET","fhir","WEB^C0FHIRWS")
+ IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")
  QUIT
  ;
 LOADDEF ; Same routes as SYNINIT LOADHAND^SYNINIT (master) when branch has no LOADHAND
