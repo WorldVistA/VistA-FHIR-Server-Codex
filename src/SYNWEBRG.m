@@ -25,6 +25,7 @@ EN ; Register (or refresh) routes — idempotent for same method+pattern
  QUIT
  ;
 LOADDEF ; Same routes as SYNINIT LOADHAND^SYNINIT (master) when branch has no LOADHAND
+ ; addpatient: new bundle -> new graph row + IMPORTPT. updatepatient: merge bundle into existing row (use ?ien=&dfn=&icn=).
  DO addService^%webutils("POST","addpatient","wsPostFHIR^SYNFHIR")
  DO addService^%webutils("POST","updatepatient","wsUpdatePatient^SYNFHIRU")
  DO addService^%webutils("GET","loadstatus","wsLoadStatus^SYNFHIR")

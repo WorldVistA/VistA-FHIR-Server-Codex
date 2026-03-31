@@ -419,7 +419,7 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN)) Q:+DFN<1  DO
  . . SET IEN=$ORDER(@ROOT@("DFN",DFN,""),-1)
  . . IF IEN<1 QUIT
- . . IF '$$SHOWROW(ROOT,IEN) QUIT
+ . . ; IF '$$SHOWROW(ROOT,IEN) QUIT
  . . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^")
  . . IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
  . . SET KEY=$$UPCASE(NAME)
@@ -461,7 +461,8 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . IF +IEN>0 SET SUM=$$DOMSUM(ROOT,IEN)
  . ELSE  SET SUM=$$LRSUM(DFN)
  . DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_"""><small>"_$$HTMLESC(SUM)_"</small></td></tr>")
- IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_""">No patients with labs were found in graph store or ^LR.</td></tr>")
+ ; IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_""">No patients with labs were found in graph store or ^LR.</td></tr>")
+ IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan="""_NCOLS_""">No patients found in graph store or ^LR.</td></tr>")
  DO ADDLN(.RTN,"</table>")
  DO ADDLN(.RTN,"</body></html>")
  QUIT
@@ -472,7 +473,7 @@ ADDLRROWS(SORT) ; Add non-Synthea rows discovered via ^LR
  FOR  SET DFN=$ORDER(^DPT(DFN)) Q:+DFN<1  DO
  . SET LRDFN=+$GET(^DPT(DFN,"LR"))
  . IF LRDFN<1 QUIT
- . IF '$$HASLRLABS(LRDFN) QUIT
+ . ; IF '$$HASLRLABS(LRDFN) QUIT
  . IF $GET(SORT("DFN",DFN)) QUIT
  . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^")
  . IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
