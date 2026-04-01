@@ -70,7 +70,7 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  DO SETELOC(.RTN,IDX,.ENC)
  DO SETESVC(.RTN,IDX,.ENC)
  DO SETERSN(.RTN,IDX,.ENC)
- DO SETENOTE(.RTN,IDX,.ENC)
+ DO SETENOTE(.RTN,IDX,.ENC,ENCIEN)
  QUIT
  ;
 SETETYP(RTN,IDX,ENC) ; Populate Encounter.type from encounter CPT/OS5 when available
@@ -229,11 +229,18 @@ SETERSN(RTN,IDX,ENC) ; Add encounter reason from VistA POV data when available
  IF NARR'="" SET RTN("entry",IDX,"resource","reasonCode",1,"text")=NARR
  QUIT
  ;
-SETENOTE(RTN,IDX,ENC) ; Add encounter-linked TIU note text when available
+SETENOTE(RTN,IDX,ENC,VIEN) ; Add encounter-linked TIU note text when available
  ; VPRDVSIT TIU^VPRDVSIT skips docs when $$INFO^VPRDTIU<1 (status outside 7-13, etc.).
  ; Merge any visit-linked ^TIU(8925) not already in ENC so /fhir round-trips intake notes.
- NEW CONT,DOC,I,TXT
- IF +$GET(ENC("id"))>0 DO TIUVPRFILL^C0FHIR(ENC("id"),.ENC)
+ ; VIEN = ^AUPNVSIT ien from GETENC (use for TIU "V" index; ENC("id") may be 0 or "E" prefixed).
+ NEW CONT,DOC,I,J,TXT,VST,DA
+ SET VST=$$VISITIEN^C0FHIR(.ENC,+$GET(VIEN))
+ IF VST>0 DO TIUVPRFILL^C0FHIR(VST,.ENC)
+ SET J=0
+ FOR  SET J=$ORDER(ENC("document",J)) Q:J<1  DO
+ . SET DA=+$GET(ENC("document",J))
+ . QUIT:DA<1
+ . SET ENC("document",J,"content")=$$TIUNOTETX^C0FHIR(DA)
  SET I=0
  FOR  SET I=$ORDER(ENC("document",I)) Q:I<1  DO
  . SET DOC=$GET(ENC("document",I))
@@ -241,6 +248,27 @@ SETENOTE(RTN,IDX,ENC) ; Add encounter-linked TIU note text when available
  . SET TXT=$$DOCNOTE^C0FHIRBU(DOC,CONT)
  . IF TXT'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT)
  QUIT
+ ;
+VISITIEN(ENC,VIEN) ; Numeric visit ien for ^TIU(8925,"V",...) / FIND^DIC index
+ IF +$GET(VIEN)>0 QUIT VIEN
+ NEW X
+ SET X=$GET(ENC("id"))
+ IF X?1"E"1N.E QUIT +$EXTRACT(X,2,$LENGTH(X))
+ QUIT +X
+ ;
+TIUNOTETX(DA) ; $NA of array of TIU body lines for FHIR export
+ ; Prefer filed word-processing ^TIU(8925,DA,"TEXT",...) (SYN MAKE^TIUSRVP / loader shape).
+ ; Fall back to $$TEXT^VPRDTIU (TGET^TIUSRVR1) when no TEXT nodes — respects viewer when body absent.
+ NEW K,L,TGT,T1
+ SET DA=+$GET(DA) QUIT:DA<1 ""
+ SET TGT=$NA(^TMP("C0FHIRNT",$J,DA))
+ KILL ^TMP("C0FHIRNT",$J,DA)
+ SET (K,L)=0
+ FOR  SET L=$ORDER(^TIU(8925,DA,"TEXT",L)) QUIT:L'>0  DO
+ . SET T1=$GET(^TIU(8925,DA,"TEXT",L,0))
+ . SET K=K+1,@TGT@(K)=T1
+ QUIT:K>0 TGT
+ QUIT $$TEXT^VPRDTIU(DA)
  ;
 TIUVPRFILL(VISIT,ENC) ; Add ENC("document",n) for TIU on VISIT missing after VPR extract
  NEW VPRX,I,DA,J,CNT,SEEN,Y,TITLE
@@ -263,7 +291,7 @@ TIUVPRFILL(VISIT,ENC) ; Add ENC("document",n) for TIU on VISIT missing after VPR
  .. SET Y=DA_U_TITLE
  . SET CNT=CNT+1
  . SET ENC("document",CNT)=Y
- . SET ENC("document",CNT,"content")=$$TEXT^VPRDTIU(DA)
+ . SET ENC("document",CNT,"content")=$$TIUNOTETX^C0FHIR(DA)
  QUIT
  ;
 GETCOND(RTN,DFN,BEG,END,MAX) ; Add Condition resources for patient/date range
