@@ -56,6 +56,10 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  IF +$GET(DFN)>0 DO
  . SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
  . IF $PIECE($GET(^DPT(DFN,0)),U)'="" SET RTN("entry",IDX,"resource","subject","display")=$PIECE($GET(^DPT(DFN,0)),U)
+ ; VPR sometimes omits ENC("dateTime"); loader needs period.start or fhirTfm^SYNFUTL returns -1.
+ IF +$GET(ENC("dateTime"))<1 DO
+ . NEW VS SET VS=$PIECE($GET(^AUPNVSIT(ENCIEN,0)),U,2)
+ . IF +VS>0 SET ENC("dateTime")=VS
  IF +$GET(ENC("dateTime"))>0 SET RTN("entry",IDX,"resource","period","start")=$$FM2FHIR^C0FHIRBU(ENC("dateTime"))
  SET ENDDT=+$GET(ENC("departureDateTime"))
  IF ENDDT<1 SET ENDDT=$$ENCEND(+$GET(DFN),.ENC)
@@ -226,13 +230,40 @@ SETERSN(RTN,IDX,ENC) ; Add encounter reason from VistA POV data when available
  QUIT
  ;
 SETENOTE(RTN,IDX,ENC) ; Add encounter-linked TIU note text when available
+ ; VPRDVSIT TIU^VPRDVSIT skips docs when $$INFO^VPRDTIU<1 (status outside 7-13, etc.).
+ ; Merge any visit-linked ^TIU(8925) not already in ENC so /fhir round-trips intake notes.
  NEW CONT,DOC,I,TXT
+ IF +$GET(ENC("id"))>0 DO TIUVPRFILL^C0FHIR(ENC("id"),.ENC)
  SET I=0
  FOR  SET I=$ORDER(ENC("document",I)) Q:I<1  DO
  . SET DOC=$GET(ENC("document",I))
  . SET CONT=$GET(ENC("document",I,"content"))
  . SET TXT=$$DOCNOTE^C0FHIRBU(DOC,CONT)
  . IF TXT'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT)
+ QUIT
+ ;
+TIUVPRFILL(VISIT,ENC) ; Add ENC("document",n) for TIU on VISIT missing after VPR extract
+ NEW VPRX,I,DA,J,CNT,SEEN,Y,TITLE
+ SET VISIT=+$GET(VISIT) QUIT:VISIT<1
+ KILL SEEN
+ SET J=0
+ FOR  SET J=$ORDER(ENC("document",J)) Q:J<1  DO
+ . SET DA=+$GET(ENC("document",J))
+ . IF DA>0 SET SEEN(DA)=1
+ SET CNT=+$ORDER(ENC("document",""),-1)
+ DO FIND^DIC(8925,,.01,"QX",VISIT,,"V",,,"VPRX")
+ SET I=0
+ FOR  SET I=$ORDER(VPRX("DILIST",1,I)) Q:I<1  DO
+ . SET DA=+$GET(VPRX("DILIST",2,I))
+ . QUIT:DA<1
+ . QUIT:$DATA(SEEN(DA))
+ . SET Y=$$INFO^VPRDTIU(DA)
+ . IF Y<1 DO
+ .. SET TITLE=$$GET1^DIQ(8925,DA_",",.01,"E")
+ .. SET Y=DA_U_TITLE
+ . SET CNT=CNT+1
+ . SET ENC("document",CNT)=Y
+ . SET ENC("document",CNT,"content")=$$TEXT^VPRDTIU(DA)
  QUIT
  ;
 GETCOND(RTN,DFN,BEG,END,MAX) ; Add Condition resources for patient/date range

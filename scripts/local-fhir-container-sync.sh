@@ -50,9 +50,20 @@ copy_via_ssh() {
 
 restart_web_and_register() {
   # su - <user> loads ~/etc/env (gtm_dist, gtmgbldir, gtmroutines).
-  local M="$FHIR_MUMPS"
-  docker exec "$FHIR_CONTAINER" su - "$FHIR_M_USER" -c \
-    "${M} -run %XCMD \"zlink \\\"C0FTIUST\\\" zlink \\\"SYNWEBRG\\\" d EN^SYNWEBRG\""
+  # ZLINK the same *.m set we copy from SRC via mumps -dir (cwd = routine dir),
+  # matching interactive "cd .../p && mumps -dir" — one listener process, no giant %XCMD.
+  local M="$FHIR_MUMPS" remote_p_q m_q
+  remote_p_q=$(printf '%q' "$FHIR_REMOTE_P")
+  m_q=$(printf '%q' "$M")
+  {
+    local f
+    for f in "$SRC"/*.m; do
+      [[ -f "$f" ]] || continue
+      printf 'zlink "%s"\n' "$(basename "$f" .m)"
+    done
+    printf '%s\n' 'd EN^SYNWEBRG' 'h'
+  } | docker exec -i "$FHIR_CONTAINER" su - "$FHIR_M_USER" -c \
+    "cd ${remote_p_q} && ${m_q} -dir"
   docker exec "$FHIR_CONTAINER" su - "$FHIR_M_USER" -c \
     "${M} -run %XCMD \"d stop^%webreq d go^%webreq\""
 }
