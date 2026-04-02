@@ -3,7 +3,7 @@
 This directory stores detailed project documentation for implementation tracking.
 
 - `PROJECT_CONTEXT_PUBLIC.md`: Repository-safe project goals, scope, and constraints.
-- Shared `tjson` tooling and `%wd` / `%wdgraph` maintainer material: sibling checkout **`~/work/vista-stack/tjson-tooling`** (symlink to **`~/tjson-tooling`**, git remote **`glilly/tjson-tools`**). Keep Codex focused on FHIR server behavior; browser TJSON vendoring lives in **`vendor/tjson/`** with runbook **`FHIR_BROWSER_TJSON_CODEX.md`**.
+- Shared `tjson` tooling and `%wd` / `%wdgraph` maintainer material: sibling checkout **`~/work/vista-stack/tjson-tooling`** (symlink to **`~/tjson-tooling`**, git remote **`glilly/tjson-tools`**). Keep Codex focused on FHIR server behavior; browser TJSON vendoring lives in **`vendor/tjson/`**. Pair **`FHIR_BROWSER_TJSON.md`** (feasibility) and **`FHIR_BROWSER_TJSON_CODEX.md`** (runbook) are mirrored in **tjson-tooling** `docs/`—keep them in sync.
 - `FHIR_SOURCE_FINDINGS.md`: Findings from source corpus analysis and implementation implications.
 - `CURRENT_DOMAIN_EXTRACTION_NOTES.md`: Current in-repo bundle domains, request tokens, and implementation notes for what the server extracts today.
 - `VPR_CONTAINER_FHIR_MAPPING.md`: VPR container/domain mapping to FHIR resources with source file numbers.
@@ -13,7 +13,8 @@ This directory stores detailed project documentation for implementation tracking
 - `CPT_HAPPY_PATH_VALIDATION_2026-03-15.md`: Cross-repo encounter/procedure CPT happy-path fixes and fresh-patient validation results, including confirmation that fallback remains available while `410620009` now maps to `3282K`.
 - `VEHU_NEW_PATIENT_RUNBOOK_2026-03-16.md`: Exact VEHU direct-deploy, file `81`/Lex refresh, `addPatient` registration, Dockerized Synthea generation, and host-local import workflow used to prepare for a fresh patient test.
 - `ICN_GENERATION_FHIR_INTAKE.md`: ICN assignment for FHIR intake (`newIcn2^SYNFPAT`): Synthea UUID, FHIR-supplied ICN, SSN pseudo-base (`8` + nine digits), and deploy notes for Data-Loader routines.
-- `FHIR_BROWSER_TJSON_CODEX.md`: C0FHIR browser TJSON (WASM) integration: vendoring, `/filesystem/` paths, MIME/gzip pitfalls, `tjson_bg.wasm.b64`, sync scripts, **fhirdev22** (`fhirdev-codex-sync.sh`). Mirror under **`tjson-tools/docs/`** if you maintain that repo separately.
+- `FHIR_BROWSER_TJSON.md`: Feasibility and sources for browser TJSON (WASM/npm); points to the runbook below. Same file in **tjson-tooling** `docs/`.
+- `FHIR_BROWSER_TJSON_CODEX.md`: C0FHIR browser TJSON (WASM) integration: vendoring, `/filesystem/` paths, MIME/gzip pitfalls, `tjson_bg.wasm.b64`, sync scripts, **fhirdev22** (`fhirdev-codex-sync.sh` with SSH multiplexing). Mirrored under **`tjson-tooling/docs/`**; keep copies identical.
 - `FHIR_INTAKE_CURL_RECIPES.md`: Copy-paste curls for container sync, VEHU bundle pull, `POST /addpatient` and `POST /updatepatient`, and smoke checks.
 - `VISTA_VISIT_NOTE_ORDERING.md`: PCE visit vs TIU note ordering (visit-first integration vs CPRS note-first workflow), inpatient visit linkage and `ORWPCE1`/`PXRPC`/`PXAI` roles, and SYN/TIU caveats.
 - `FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`: Incident note covering the root-level malicious binaries found inside `fhirdev`, the cron persistence chain removed from the container, and the separate `%webreq` CLOSE_WAIT worker leak.
