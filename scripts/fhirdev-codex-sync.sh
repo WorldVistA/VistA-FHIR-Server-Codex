@@ -2,10 +2,15 @@
 # Push VistA-FHIR-Server-Codex src/*.m + vendor/tjson/* to remote fhirdev22 (SSH + docker).
 # Matches vehu layout: routines /home/vehu/p, static /home/vehu/www/filesystem (GET /filesystem/...).
 #
+# Uses SSH connection multiplexing (ControlMaster) so all scp/ssh share one TCP session.
+# Without this, many back-to-back connections can hit MaxStartups / rate limits and get
+# "Connection refused" after the first few files (see sshd_config MaxStartups).
+#
 # Defaults: root@fhirdev.vistaplex.org, container fhirdev22, smoke http://fhirdev.vistaplex.org:9080
 #
 # Env: FHIRDEV_SSH, FHIRDEV_CONTAINER, FHIRDEV_ROUTINE_DIR, FHIRDEV_WWW, VEHU_ENV,
 #      FHIRDEV_MUMPS, FHIRDEV_HTTP_BASE
+#      FHIRDEV_SSH_NO_MUX=1  — disable multiplexing (debug)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,14 +25,30 @@ VEHU_ENV="${VEHU_ENV:-/home/vehu/etc/env}"
 MUMPS="${FHIRDEV_MUMPS:-/home/vehu/lib/gtm/mumps}"
 HTTP_BASE="${FHIRDEV_HTTP_BASE:-http://fhirdev.vistaplex.org:9080}"
 
-SSH=(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
-SCP=(scp -o BatchMode=yes -o StrictHostKeyChecking=accept-new)
+CTL="${TMPDIR:-/tmp}/fhirdev-codex-$$.sock"
+if [[ "${FHIRDEV_SSH_NO_MUX:-0}" == "1" ]]; then
+  SSH_COMMON=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new)
+else
+  SSH_COMMON=(
+    -o BatchMode=yes
+    -o StrictHostKeyChecking=accept-new
+    -o ControlMaster=auto
+    -o "ControlPath=$CTL"
+    -o ControlPersist=120
+  )
+fi
+SSH=(ssh "${SSH_COMMON[@]}")
+SCP=(scp "${SSH_COMMON[@]}")
 
 STAGE="$("${SSH[@]}" "$FHIRDEV_SSH" 'mktemp -d /tmp/codex-sync.XXXXXX')"
 echo "==> Remote stage on $FHIRDEV_SSH: $STAGE"
 
 cleanup() {
   "${SSH[@]}" "$FHIRDEV_SSH" "rm -rf '$STAGE'" 2>/dev/null || true
+  if [[ "${FHIRDEV_SSH_NO_MUX:-0}" != "1" ]] && [[ -S "$CTL" ]]; then
+    ssh -o BatchMode=yes -S "$CTL" -O exit "$FHIRDEV_SSH" 2>/dev/null || true
+  fi
+  rm -f "$CTL" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -38,13 +59,14 @@ for f in "$SRC"/*.m; do
   "${SSH[@]}" "$FHIRDEV_SSH" "docker cp '$STAGE/$bn' '$FHIRDEV_CONTAINER:$REMOTE_P/$bn'"
 done
 
+"${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' mkdir -p '$REMOTE_WWW'"
+
 for fn in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
   [[ -f "$V/$fn" ]] || {
     echo "error: missing $V/$fn" >&2
     exit 1
   }
   "${SCP[@]}" "$V/$fn" "$FHIRDEV_SSH:$STAGE/$fn"
-  "${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' mkdir -p '$REMOTE_WWW'"
   "${SSH[@]}" "$FHIRDEV_SSH" "docker cp '$STAGE/$fn' '$FHIRDEV_CONTAINER:$REMOTE_WWW/$fn'"
 done
 

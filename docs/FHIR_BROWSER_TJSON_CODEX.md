@@ -70,7 +70,7 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 | Route registration | `src/SYNWEBRG.m` |
 | Vendored TJSON (patched entry) | `vendor/tjson/` |
 | Local Docker sync | `scripts/local-fhir-container-sync.sh`, `vehu10-fhir-sync.sh` |
-| Remote **fhirdev22** sync | `scripts/fhirdev-codex-sync.sh` |
+| Remote **fhirdev22** sync | `scripts/fhirdev-codex-sync.sh` (uses **SSH multiplexing** so many `scp`/`ssh` calls do not trip **MaxStartups** / rate limits; set `FHIRDEV_SSH_NO_MUX=1` to disable) |
 
 ## References
 
