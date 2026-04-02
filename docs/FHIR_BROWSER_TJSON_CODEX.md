@@ -2,7 +2,7 @@
 
 This note records the full path from **unpkg** to a **same-origin**, **container-local** TJSON setup for `GET /fhir?view=browser` in **VistA-FHIR-Server-Codex** (`C0FHIRWS.m`), including pitfalls on minimal **`fhir`** vs **VEHU**-style images and **fhirdev22**.
 
-A copy may be mirrored under **`tjson-tools/docs/`** for the automation repo; treat this file as the **canonical** version in Codex.
+A copy is mirrored under **`~/work/vista-stack/tjson-tooling/docs/`** (repo **`glilly/tjson-tools`**). Treat **this** Codex file as **canonical**; refresh the mirror when it changes.
 
 ## Goal
 

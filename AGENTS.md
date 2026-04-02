@@ -20,6 +20,7 @@ Shared context source (local clone equivalent):
 
 Repo-specific overrides:
 
+- **TJSON maintainer repo:** `~/work/vista-stack/tjson-tooling` → `~/tjson-tooling` (`glilly/tjson-tools`): `%wd` / `%wdgraph`, Rust CLI notes, incoming automation. **FHIR browser WASM** for `/fhir?view=browser` is vendored in **this** repo under **`vendor/tjson/`** (see **`docs/FHIR_BROWSER_TJSON_CODEX.md`**).
 - Keep repo-specific command/path details in local docs as needed.
 - If there is a conflict, this repo's explicit instructions take precedence.
 - **TIU / visit-linked note development:** use Docker **`vehu10`** as the patient source (VEHU DB). HTTP `http://127.0.0.1:9085/`, M user **`vehu`**, routines **`/home/vehu/p`**. Run **`./scripts/vehu10-fhir-sync.sh [dfn]`** to copy Codex `src/*.m`, register routes, and smoke **`/tiustats`**. The minimal **`fhir`** container (`9081`, `osehra`, `/home/osehra/p`) is fine for light smoke tests but often has **no** visit-linked TIU.

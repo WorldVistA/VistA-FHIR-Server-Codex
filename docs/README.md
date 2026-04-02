@@ -3,7 +3,7 @@
 This directory stores detailed project documentation for implementation tracking.
 
 - `PROJECT_CONTEXT_PUBLIC.md`: Repository-safe project goals, scope, and constraints.
-- Shared `tjson` tooling and `%wd` / `%wdgraph` maintainer material now live outside this repo in the sibling local repo `tjson-tools`; keep this repo focused on FHIR server behavior and consumer-facing notes.
+- Shared `tjson` tooling and `%wd` / `%wdgraph` maintainer material: sibling checkout **`~/work/vista-stack/tjson-tooling`** (symlink to **`~/tjson-tooling`**, git remote **`glilly/tjson-tools`**). Keep Codex focused on FHIR server behavior; browser TJSON vendoring lives in **`vendor/tjson/`** with runbook **`FHIR_BROWSER_TJSON_CODEX.md`**.
 - `FHIR_SOURCE_FINDINGS.md`: Findings from source corpus analysis and implementation implications.
 - `CURRENT_DOMAIN_EXTRACTION_NOTES.md`: Current in-repo bundle domains, request tokens, and implementation notes for what the server extracts today.
 - `VPR_CONTAINER_FHIR_MAPPING.md`: VPR container/domain mapping to FHIR resources with source file numbers.
