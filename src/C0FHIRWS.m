@@ -1,5 +1,5 @@
 C0FHIRWS ; VAMC/JS - FHIR web service entry point ; 11-MAR-2026
- ;;1.3;C0FHIR PROJECT;;Mar 11, 2026;Build 3
+ ;;1.3;C0FHIR PROJECT;;Mar 11, 2026;Build 4
  ;
  Q
  ;
@@ -41,7 +41,7 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  D GENFULL^C0FHIRGF(.RTN,DFN,ENCPTR,SDT,EDT)
  Q
  ;
-BROWSER(RTN,DFN) ; React-style interactive FHIR browser
+BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson_bg.* + tjson_bg.wasm.b64 in M user www)
  N D
  S D=+$G(DFN)
  K RTN
@@ -72,6 +72,10 @@ BROWSER(RTN,DFN) ; React-style interactive FHIR browser
  D ADDLN(.RTN,".nm{font-weight:600;margin-top:2px;}")
  D ADDLN(.RTN,".id{font-size:12px;color:#94a3b8;}")
  D ADDLN(.RTN,"pre{margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word;}")
+ D ADDLN(.RTN,".bar-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}")
+ D ADDLN(.RTN,".fmtbtns{display:flex;gap:6px;flex-shrink:0;}")
+ D ADDLN(.RTN,".fmtbtn{padding:6px 12px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#e2e8f0;cursor:pointer;font-size:12px;}")
+ D ADDLN(.RTN,".fmtbtn.active{background:#1d4ed8;border-color:#2563eb;color:#fff;}")
  D ADDLN(.RTN,"</style>")
  D ADDLN(.RTN,"</head>")
  D ADDLN(.RTN,"<body>")
@@ -84,13 +88,17 @@ BROWSER(RTN,DFN) ; React-style interactive FHIR browser
  D ADDLN(.RTN,"<div id='list' class='list'></div>")
  D ADDLN(.RTN,"</section>")
  D ADDLN(.RTN,"<section class='right'>")
- D ADDLN(.RTN,"<div class='bar' id='meta'>Loading...</div>")
+ D ADDLN(.RTN,"<div class='bar bar-meta'><span id='meta'>Loading...</span><div class='fmtbtns'><button type='button' class='fmtbtn' id='btnTjson'>TJSON</button><button type='button' class='fmtbtn' id='btnJson'>JSON</button></div></div>")
  D ADDLN(.RTN,"<pre id='detail'>Select a resource</pre>")
  D ADDLN(.RTN,"</section>")
  D ADDLN(.RTN,"</div>")
  D ADDLN(.RTN,"<script>")
  D ADDLN(.RTN,"const dfn="_D_";")
- D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all'};")
+ D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson.js';")
+ D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")
+ D ADDLN(.RTN,"try{const x=sessionStorage.getItem('c0fhirBrowserFmt');if(x==='json'||x==='tjson')st.fmt=x;}catch(e){}")
+ D ADDLN(.RTN,"let tjsonMod=null;")
+ D ADDLN(.RTN,"async function ensureTjson(){if(tjsonMod)return tjsonMod;tjsonMod=await import(TJSON_PKG);return tjsonMod;}")
  D ADDLN(.RTN,"const el=id=>document.getElementById(id);")
  D ADDLN(.RTN,"const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');")
  D ADDLN(.RTN,"const rtype=e=>((e||{}).resource||{}).resourceType||'Unknown';")
@@ -139,13 +147,27 @@ BROWSER(RTN,DFN) ; React-style interactive FHIR browser
  D ADDLN(.RTN," if(!h) h=""<div class='item'>No resources match.</div>"";")
  D ADDLN(.RTN," n.innerHTML=h;")
  D ADDLN(.RTN," n.querySelectorAll('.item[data-i]').forEach(x=>x.onclick=()=>{st.pick=flat[+x.dataset.i];draw();});}")
- D ADDLN(.RTN,"function drawDetail(){")
+ D ADDLN(.RTN,"function updateFmtButtons(){")
+ D ADDLN(.RTN," el('btnTjson').classList.toggle('active',st.fmt==='tjson');")
+ D ADDLN(.RTN," el('btnJson').classList.toggle('active',st.fmt==='json');}")
+ D ADDLN(.RTN,"function setFmt(f){")
+ D ADDLN(.RTN," st.fmt=f;")
+ D ADDLN(.RTN," try{sessionStorage.setItem('c0fhirBrowserFmt',f);}catch(e){}")
+ D ADDLN(.RTN," updateFmtButtons();draw();}")
+ D ADDLN(.RTN,"async function drawDetailAsync(){")
  D ADDLN(.RTN," el('meta').textContent=st.visible.length+' visible resources in '+st.tree.length+' top-level rows ('+st.all.length+' total)';")
  D ADDLN(.RTN," if(!st.pick){el('detail').textContent='Select a resource';return;}")
- D ADDLN(.RTN," el('detail').textContent=JSON.stringify((st.pick||{}).resource||{},null,2);}")
- D ADDLN(.RTN,"function draw(){drawList();drawDetail();}")
+ D ADDLN(.RTN," const obj=(st.pick||{}).resource||{};")
+ D ADDLN(.RTN," if(st.fmt==='json'){el('detail').textContent=JSON.stringify(obj,null,2);return;}")
+ D ADDLN(.RTN," el('detail').textContent='Loading TJSON…';")
+ D ADDLN(.RTN," try{")
+ D ADDLN(.RTN,"  const m=await ensureTjson();")
+ D ADDLN(.RTN,"  el('detail').textContent=m.stringify(JSON.stringify(obj),{});")
+ D ADDLN(.RTN," }catch(err){el('detail').textContent='TJSON failed (sync vendor/tjson including tjson_bg.wasm.b64 into M user www; redeploy): '+String(err);}")
+ D ADDLN(.RTN,"}")
+ D ADDLN(.RTN,"function draw(){drawList();updateFmtButtons();drawDetailAsync();}")
  D ADDLN(.RTN,"async function boot(){")
- D ADDLN(.RTN," const r=await fetch('/fhir?dfn='+dfn);")
+ D ADDLN(.RTN," const [r]=await Promise.all([fetch('/fhir?dfn='+dfn),ensureTjson().catch(()=>null)]);")
  D ADDLN(.RTN," if(!r.ok) throw new Error('HTTP '+r.status+' loading /fhir?dfn='+dfn);")
  D ADDLN(.RTN," const j=await r.json();")
  D ADDLN(.RTN," st.all=(j&&Array.isArray(j.entry))?j.entry:[];")
@@ -154,6 +176,8 @@ BROWSER(RTN,DFN) ; React-style interactive FHIR browser
  D ADDLN(.RTN," draw();}")
  D ADDLN(.RTN,"el('q').addEventListener('input',e=>{st.q=e.target.value||'';apply();draw();});")
  D ADDLN(.RTN,"el('type').addEventListener('change',e=>{st.type=e.target.value||'all';apply();draw();});")
+ D ADDLN(.RTN,"el('btnTjson').addEventListener('click',()=>setFmt('tjson'));")
+ D ADDLN(.RTN,"el('btnJson').addEventListener('click',()=>setFmt('json'));")
  D ADDLN(.RTN,"boot().catch(e=>{el('meta').textContent='Load failed';el('detail').textContent=String(e);});")
  D ADDLN(.RTN,"</script>")
  D ADDLN(.RTN,"</body>")

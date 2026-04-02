@@ -6,7 +6,8 @@ inside the container, sync src/*.m to the M routine directory, optionally ZL + D
 Typical vehu10 HTTP base: http://127.0.0.1:9085/
 
 For a quick **Server-Codex-only** sync (no git clone inside the container), use
-**scripts/vehu10-fhir-sync.sh** — same host/port/user/routine dir as this bootstrap.
+**scripts/vehu10-fhir-sync.sh** — same host/port/user/routine dir, **www**, and TJSON vendor copy
+as this bootstrap.
 
 Requires: docker CLI, container user with git and bash (git often present on vehu images).
 
@@ -47,6 +48,61 @@ def docker_cp(src: Path, container: str, dest: str) -> None:
     run(["docker", "cp", str(src), f"{container}:{dest}"])
 
 
+def copy_vendor_tjson_to_container_www(
+    container: str,
+    repo_root: Path,
+    www_dest: str,
+    chown_user: str,
+) -> None:
+    """Copy repo vendor/tjson/* into the container for GET /filesystem/tjson.js (C0FHIR browser)."""
+    vdir = repo_root / "vendor" / "tjson"
+    names = ("tjson.js", "tjson_bg.js", "tjson_bg.wasm", "tjson_bg.wasm.b64")
+    if not vdir.is_dir() or not all((vdir / n).is_file() for n in names):
+        print(
+            "warning: vendor/tjson incomplete in this checkout; C0FHIR browser TJSON may 404. "
+            "Populate vendor/tjson from unpkg or run scripts/vehu10-fhir-sync.sh from a full clone.",
+            file=sys.stderr,
+        )
+        return
+    wd = www_dest.rstrip("/")
+    run(
+        [
+            "docker",
+            "exec",
+            container,
+            "bash",
+            "-lc",
+            "mkdir -p "
+            + shlex.quote(wd)
+            + " && chown "
+            + shlex.quote(chown_user)
+            + ":"
+            + shlex.quote(chown_user)
+            + " "
+            + shlex.quote(wd),
+        ],
+        check=True,
+    )
+    for n in names:
+        docker_cp(vdir / n, container, f"{wd}/{n}")
+    run(
+        [
+            "docker",
+            "exec",
+            container,
+            "bash",
+            "-lc",
+            "chown "
+            + shlex.quote(chown_user)
+            + ":"
+            + shlex.quote(chown_user)
+            + " "
+            + " ".join(shlex.quote(f"{wd}/{n}") for n in names),
+        ],
+        check=True,
+    )
+
+
 def write_repos_conf(
     path: Path,
     *,
@@ -73,6 +129,11 @@ def main() -> int:
         "--routine-dest",
         default="/home/vehu/p",
         help="Directory in container for .m sources (default: /home/vehu/p)",
+    )
+    p.add_argument(
+        "--www-dest",
+        default="/home/vehu/www/filesystem",
+        help="Directory for static /filesystem/* on vehu images (default: /home/vehu/www/filesystem)",
     )
     p.add_argument(
         "--bootstrap-dir",
@@ -311,6 +372,8 @@ def main() -> int:
         check=True,
     )
 
+    copy_vendor_tjson_to_container_www(c, root, args.www_dest, u)
+
     if args.register_routes:
         env_src = f"source {args.vehu_env} >/dev/null 2>&1; "
         mumps_in = (
@@ -344,7 +407,7 @@ def main() -> int:
             return r.returncode or 1
 
     print("Bootstrap steps finished.")
-    print(f"  Container: {c}  routines: {routine_dest}")
+    print(f"  Container: {c}  routines: {routine_dest}  www (TJSON): {args.www_dest}")
     print(f"  Portal smoke URL (host): {args.http_smoke_url}")
     print("  If routes were not registered: ZL \"SYNINIT\" ZL \"SYNWEBRG\" then D EN^SYNWEBRG")
     print("  Reload other changed routines with ZL as needed, then XINDEX per site policy.")

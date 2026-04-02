@@ -6,6 +6,9 @@
 #
 # Full bootstrap (clone Data-Loader + Codex inside the container): **vehu10_bootstrap.py**
 #
+# TJSON for /fhir?view=browser: vendored files are **docker cp**'d into **/home/vehu/www/filesystem/**
+# (this image maps GET /filesystem/<name> to ~/www/filesystem/<name>, not ~/www/<name> like **fhir**).
+#
 # Usage:
 #   ./scripts/vehu10-fhir-sync.sh              # smoke /fhir index only
 #   ./scripts/vehu10-fhir-sync.sh 101075       # /fhir and /tiustats for that DFN
@@ -14,6 +17,7 @@ set -euo pipefail
 export FHIR_CONTAINER="${FHIR_CONTAINER:-vehu10}"
 export FHIR_HTTP_BASE="${FHIR_HTTP_BASE:-http://127.0.0.1:9085}"
 export FHIR_REMOTE_P="${FHIR_REMOTE_P:-/home/vehu/p}"
+export FHIR_REMOTE_WWW="${FHIR_REMOTE_WWW:-/home/vehu/www/filesystem}"
 export FHIR_M_USER="${FHIR_M_USER:-vehu}"
 export FHIR_MUMPS="${FHIR_MUMPS:-/home/vehu/lib/gtm/mumps}"
 
