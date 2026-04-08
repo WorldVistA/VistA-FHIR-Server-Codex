@@ -32,4 +32,6 @@ const instance = await WebAssembly.instantiate(wasmMod, imports);
 bg.__wbg_set_wasm(instance.exports);
 instance.exports.__wbindgen_start();
 
-export { fromJson, parse, stringify, toJson } from "./tjson_bg.js";
+// Re-export whatever tjson_bg.js provides (0.4+ adds fromJson/toJson). Do not use
+// `export { fromJson, ... }` — that is a parse-time error if an old tjson_bg.js is deployed.
+export * from "./tjson_bg.js";

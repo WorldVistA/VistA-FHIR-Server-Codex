@@ -40,6 +40,7 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
    - Imports `./tjson_bg.js`.
    - Loads bytes from **`tjson_bg.wasm.b64`** (text), **`atob` → `compile` / `instantiate`**.
    - Calls **`__wbg_set_wasm`** and **`__wbindgen_start`**.
+   - Re-exports with **`export * from "./tjson_bg.js"`** (not `export { fromJson, … }`) so a site with an **older** `tjson_bg.js` still parses; the browser uses **`fromJson`** when present and **`stringify(jsonString)`** when not.
 
 8. **Gzip corruption on binary (minimal `fhir`)**  
    With **`Accept-Encoding: gzip`**, the server sometimes produced a **bad uncompressed length** for the wasm body. After gunzip, **`WebAssembly.compile`** failed.
