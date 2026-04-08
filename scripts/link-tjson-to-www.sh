@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# **Host-only** (native M listener): symlink vendored @rfanth/tjson 0.3.1 into ~/www for %W0:
+# **Host-only** (native M listener): symlink vendored @rfanth/tjson (see vendor/tjson; e.g. 0.4.3) into ~/www for %W0:
 #   GET http://<host>:<port>/filesystem/tjson.js
 #   GET .../filesystem/tjson_bg.js
 #   GET .../filesystem/tjson_bg.wasm.b64 (browser loads wasm via atob; avoids gzip on binary)

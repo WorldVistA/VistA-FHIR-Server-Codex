@@ -14,11 +14,12 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
    In `C0FHIRWS.m` → `BROWSER()`, the detail pane defaults to TJSON with a TJSON / JSON toggle; preference stored in `sessionStorage` (`c0fhirBrowserFmt`).
 
 2. **Drop unpkg**  
-   Dynamic `import('https://unpkg.com/@rfanth/tjson@0.3.1/tjson.js')` fails under strict **CSP** or offline. Switched to **same-origin** loading under the M listener’s static path.
+   Dynamic `import('https://unpkg.com/@rfanth/tjson@…/tjson.js')` fails under strict **CSP** or offline. Switched to **same-origin** loading under the M listener’s static path.
 
-3. **Vendoring (pin 0.3.1)**  
+3. **Vendoring (pin 0.4.3)**  
    Under **`vendor/tjson/`**:
-   - `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm` from `https://unpkg.com/@rfanth/tjson@0.3.1/`.
+   - `tjson_bg.js`, `tjson_bg.wasm`, `tjson.d.ts` from `https://unpkg.com/@rfanth/tjson@0.4.3/`.
+   - **`tjson.js`** is a **patched** entry (not the stock npm file): see steps 7–10.
 
 4. **Serve via `%W0` `/filesystem/<file>`**  
    Static files must live under the M user’s **`www`** tree (listener-dependent mapping):
@@ -35,23 +36,27 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
    The static layer may serve **`tjson_bg.wasm`** as **`application/json`**. Browsers reject **ESM `import` of `.wasm`** when the MIME is wrong.
 
 7. **Patched `tjson.js` — fetch + `WebAssembly.compile` / `instantiate`**  
-   Replaced ESM wasm import with glue that:
+   Upstream **`tjson.js` (0.4+)** uses `import * as wasm from "./tjson_bg.wasm"`, which is fragile behind wrong MIME / gzip. Our patch:
    - Imports `./tjson_bg.js`.
-   - Builds the import object from **`WebAssembly.Module.imports`** and **`instantiate`**s the module.
+   - Loads bytes from **`tjson_bg.wasm.b64`** (text), **`atob` → `compile` / `instantiate`**.
    - Calls **`__wbg_set_wasm`** and **`__wbindgen_start`**.
 
 8. **Gzip corruption on binary (minimal `fhir`)**  
-   With **`Accept-Encoding: gzip`**, the server sometimes produced a **bad uncompressed length** for the wasm body (e.g. declared **359826** vs actual **359825** bytes). After gunzip, **`WebAssembly.compile`** failed (e.g. end-of-module / “custom section” errors).
+   With **`Accept-Encoding: gzip`**, the server sometimes produced a **bad uncompressed length** for the wasm body. After gunzip, **`WebAssembly.compile`** failed.
 
 9. **`Accept-Encoding: identity` on `fetch()` does not work**  
    In the Fetch API, **`Accept-Encoding` is a forbidden request header**; browsers ignore script-set values. The gzip issue could not be fixed from JS that way.
 
 10. **Base64 sidecar `tjson_bg.wasm.b64`**  
     - Generate: `base64 -w0 vendor/tjson/tjson_bg.wasm > vendor/tjson/tjson_bg.wasm.b64`  
-    - Loader fetches **`tjson_bg.wasm.b64`** as **text**, strips whitespace with **`.replace(/\s/g, "")`** (handles an extra newline after gzip on ASCII), **`atob` → `Uint8Array` → `compile`**.  
+    - Loader fetches **`tjson_bg.wasm.b64`** as **text**, strips whitespace with **`.replace(/\s/g, "")`**, **`atob` → `Uint8Array` → `compile`**.  
     - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.
 
-11. **`C0FHIRWS.m` error string**  
+11. **`C0FHIRWS.m` — JS API (0.4.x)**  
+    Detail pane uses **`stringify(obj, {})`** on the selected **resource object**.  
+    **Do not** use **`stringify(JSON.stringify(obj), {})`** (that was the **0.3.x** shape). For a JSON string only, **`fromJson(jsonString, {})`** is the right call.
+
+12. **`C0FHIRWS.m` error string**  
     On failure, the UI mentions syncing **`vendor/tjson`** including **`.b64`** and redeploying.
 
 ## Operational checklist
@@ -74,5 +79,5 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 
 ## References
 
-- npm package: `@rfanth/tjson` **0.3.1**
+- npm package: `@rfanth/tjson` **0.4.3** (see [textjson.com](https://textjson.com/) for format + API examples)
 - FHIR browser URL shape: `/fhir?dfn=<dfn>&view=browser` (or as implemented by `WEB^C0FHIRWS`).

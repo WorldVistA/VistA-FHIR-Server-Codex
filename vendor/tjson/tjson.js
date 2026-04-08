@@ -32,4 +32,4 @@ const instance = await WebAssembly.instantiate(wasmMod, imports);
 bg.__wbg_set_wasm(instance.exports);
 instance.exports.__wbindgen_start();
 
-export { parse, stringify } from "./tjson_bg.js";
+export { fromJson, parse, stringify, toJson } from "./tjson_bg.js";
