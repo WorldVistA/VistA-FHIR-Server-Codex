@@ -53,8 +53,7 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
     - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.
 
 11. **`C0FHIRWS.m` — JS API (0.4.x)**  
-    Detail pane uses **`stringify(obj, {})`** on the selected **resource object**.  
-    **Do not** use **`stringify(JSON.stringify(obj), {})`** (that was the **0.3.x** shape). For a JSON string only, **`fromJson(jsonString, {})`** is the right call.
+    Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=043`** to reduce stale cached JS vs wasm. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
 
 12. **`C0FHIRWS.m` error string**  
     On failure, the UI mentions syncing **`vendor/tjson`** including **`.b64`** and redeploying.

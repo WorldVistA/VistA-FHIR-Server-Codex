@@ -27,7 +27,7 @@ The **consumer-facing API** (verified for **`@rfanth/tjson@0.4.3`**) is:
 | **`parse(tjsonString)`** | Parse **TJSON** → **JavaScript value** (not a JSON string). |
 | **`toJson(tjsonString)`** | Parse **TJSON** → **JSON string** (for handing off to JSON-only consumers). |
 
-**Breaking change from 0.3.x:** `stringify` used to accept a **JSON string** as the first argument. It now accepts a **live JS value**. For a JSON string, use **`fromJson`**. The FHIR browser (`C0FHIRWS.m` → `BROWSER`) uses **`stringify(obj, {})`** on the selected resource object.
+**Breaking change from 0.3.x:** `stringify` used to accept a **JSON string** as the first argument. It now accepts a **live JS value**. For a JSON string, use **`fromJson`**. The FHIR browser (`C0FHIRWS.m` → `BROWSER`) uses **`fromJson(JSON.stringify(resource), {})`** so TJSON generation does not cross the deep **JsValue** bridge (which can **`memory access out of bounds`** on some bundles); it falls back to **`stringify(obj, {})`** only if **`fromJson`** is absent.
 
 **CDN (upstream docs):** e.g. `import { parse, toJson } from "https://esm.sh/@rfanth/tjson"` — we still recommend **vendoring** for production (CSP, offline, supply chain).
 
