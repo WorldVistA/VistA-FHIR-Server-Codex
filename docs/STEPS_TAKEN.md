@@ -69,6 +69,15 @@ Use this file as a chronological log of concrete implementation work.
 ## 2026-03-27
 - Documented a fresh-start GT.M ZSY baseline for live container `fhirdev22` on `fhirdev.vistaplex.org` (single `LOOP+19^%webreq` on `BG-S9080`, no `MATCHR^%webrsp` pile, TaskMan/Mailman/HL7 `HLCSTCP1` on link 5001) in `docs/FHIRDEV22_FRESH_START_ZSY_SNAPSHOT_2026-03-27.md` for comparison to the 2026-03-25 incident snapshot and future regressions.
 
+## 2026-04-11
+- Investigated a new `fhirdev22` incident after reports of “disintegrating” networking while the `9080` demo still worked; confirmed the host itself was not resource-exhausted (normal load, RAM, disk, conntrack) but the container again contained a cron persistence chain (`*/1 * * * * root /.mod`) launching `/usr/lib/libgdi.so.0.8.2`.
+- Captured current malware evidence in `fhirdev22`: `/.mod` shell launcher, root-owned payload `/usr/lib/libgdi.so.0.8.2` (hash `1e3eb765015fd335cfdcb0ddd020565690b5a2f15a2a62406d750bcb21b6d77b`), and zero-length companion placeholders at `/tmp/linux`, `/etc/kswpad`, and `/usr/bin/.sshd`.
+- Removed the live persistence chain from `fhirdev22`, deleted the payload and companion files, confirmed they did not reappear after more than one minute, and verified `GET http://fhirdev.vistaplex.org:9080/fhir` still returned HTTP `200`.
+- Found an obvious SSH re-entry path in `fhirdev22`: `2222 -> 22` published on the host, `PermitRootLogin yes`, `PasswordAuthentication yes`, a valid container root password hash, and an unexpected container `/root/.ssh/authorized_keys` key labeled `mdrfckr`; removed the suspicious key, locked the container root password, disabled root/password SSH in the container config, and stopped container `sshd` / `xinetd`.
+- Added host-side containment for container SSH on `2222` (UFW deny in / deny forward plus a direct iptables drop during live response) while leaving `9080` available for the demo, and confirmed external `2222` no longer provided a usable path while `9080` still served `200`.
+- Parsed host SSH logs, identified a high-volume non-US brute-force set, and added reusable security tooling under `scripts/security/`: `fhirdev-nonus-ssh-blocklist-2026-04-11.txt` plus `apply-ufw-blocklist.sh` for local or remote UFW deny installation.
+- Added `docs/FHIRDEV22_INCIDENT_RESPONSE_2026-04-11.md` documenting the evidence, live containment, recommended rebuild/hardening follow-up, and the reusable blocklist workflow.
+
 ## Template For New Entries
 - Date:
 - Change:

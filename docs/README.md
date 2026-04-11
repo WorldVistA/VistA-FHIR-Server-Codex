@@ -20,6 +20,7 @@ This directory stores detailed project documentation for implementation tracking
 - `FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`: Incident note covering the root-level malicious binaries found inside `fhirdev`, the cron persistence chain removed from the container, and the separate `%webreq` CLOSE_WAIT worker leak.
 - `FHIRDEV_MATCHR_WEBRSP_WORKERS_2026-03-25.md`: Characterization of `fhirdev` GT.M ZSY evidence showing HTTP workers accumulating CPU in `MATCHR+8^%webrsp` (and `URLDEC^%webutils`), distinct from malware and from `C0FHIR` application code; links to CLOSE_WAIT fix outline.
 - `FHIRDEV22_FRESH_START_ZSY_SNAPSHOT_2026-03-27.md`: Baseline ZSY snapshot for live container `fhirdev22` (TaskMan, Mailman, HL7 on 5001, single `LOOP^%webreq` on `BG-S9080`); contrast reference for the MATCHR incident and post-cutover runbooks.
+- `FHIRDEV22_INCIDENT_RESPONSE_2026-04-11.md`: Live containment note for the reappeared cron-based malware chain in `fhirdev22`, container SSH hardening, `2222` containment, and reusable non-US SSH scanner blocklist tooling under `scripts/security/`.
 - `M_WEBSERVER_CLOSE_WAIT_FIX_OUTLINE.md`: Fix outline for the server-side CLOSE_WAIT leak (WAIT/ETDC and timeout handling so workers close and exit when the client disconnects).
 - `M_WEBSERVER_RUNAWAY_JOBS_ANALYSIS_2026-03-12.md`: Maintainer-facing root-cause analysis and validated hotfix for `%webrsp` runaway `mumps -direct` worker leaks (SENDATA traversal).
 - `STEPS_TAKEN.md`: Chronological log of work completed.

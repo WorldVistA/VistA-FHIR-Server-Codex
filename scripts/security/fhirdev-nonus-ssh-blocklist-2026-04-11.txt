@@ -1,0 +1,27 @@
+# fhirdev.vistaplex.org
+# Non-US source IPs observed in host SSH brute-force logs during the
+# 2026-04-11 incident review. Geolocation is heuristic; verify before
+# reusing on another host with a different traffic profile.
+
+51.158.155.6      # NL Scaleway SAS
+118.185.85.137    # IN Vodafone Idea
+2.57.122.96       # RO UNMANAGED LTD
+20.2.83.149       # HK Microsoft
+80.94.92.186      # RO UNMANAGED LTD
+103.117.56.152    # ID Pt Cloud Hosting Indonesia
+107.189.27.179    # NL Routerhosting LLC
+81.192.46.45      # MA Maroc Telecom
+14.225.217.138    # VN VNPT
+45.249.247.126    # HK UCLOUD
+45.148.10.151     # NL TECHOFF SRV LIMITED
+45.148.10.147     # NL TECHOFF SRV LIMITED
+45.227.254.170    # LT Flyservers S.A.
+2.57.121.118      # RO UNMANAGED LTD
+2.57.122.188      # RO UNMANAGED LTD
+2.57.122.190      # RO UNMANAGED LTD
+5.253.59.171      # NL GLOBAL CONNECTIVITY SOLUTIONS LLP
+92.118.39.95      # NL UNMANAGED LTD
+42.118.12.47      # VN FPT Telecom
+118.70.178.158    # VN FPT Telecom
+211.253.37.225    # KR PubNet
+103.210.21.242    # HK UCLOUD
