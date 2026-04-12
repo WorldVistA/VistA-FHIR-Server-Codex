@@ -7,17 +7,13 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  ; RTN:    Output array (passed by reference)
  ; FILTER: Input/Output array (passed by reference)
  ;
- N DFN,EDT,ENCPTR,NAME,SDT,VIEW
+ N DFN,NAME,VIEW
  K RTN
  S FILTER("type")="application/json" ; default mime type
  ;
  S DFN=$G(FILTER("dfn"))
  S NAME=$G(FILTER("name"))
- S ENCPTR=$G(FILTER("encounter"))
- S SDT=$G(FILTER("sdt"))
- S EDT=$G(FILTER("edt"))
  S VIEW=$$UPCASE^C0FHIR($G(FILTER("view")))
- I EDT="" S EDT=$$NOW^XLFDT
  ;
  ; Mode 1: Search by Name (HTML)
  I DFN="",NAME'="" D  Q
@@ -38,7 +34,7 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  . S HTTPRSP("mime")="text/html"
  ;
  ; Mode 4: Core FHIR aggregator (JSON)
- D GENFULL^C0FHIRGF(.RTN,DFN,ENCPTR,SDT,EDT)
+ D GETFHIR^C0FHIR(.RTN,.FILTER)
  Q
  ;
 BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson_bg.* + tjson_bg.wasm.b64 in M user www)
@@ -170,7 +166,7 @@ BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson
  D ADDLN(.RTN," if(!st.pick){el('detail').textContent='Select a resource';return;}")
  D ADDLN(.RTN," const obj=(st.pick||{}).resource||{};")
  D ADDLN(.RTN," if(st.fmt==='json'){el('detail').textContent=JSON.stringify(obj,null,2);return;}")
- D ADDLN(.RTN," el('detail').textContent='Loading TJSON…';")
+ D ADDLN(.RTN," el('detail').textContent='Loading TJSON...';")
  D ADDLN(.RTN," try{")
  D ADDLN(.RTN,"  const m=await ensureTjson();")
  D ADDLN(.RTN,"  const js=JSON.stringify(obj);")

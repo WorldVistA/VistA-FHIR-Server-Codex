@@ -1,0 +1,45 @@
+C0RGWEB ; VEHU/Codex - HTTP bridge for rehmp C0RG operations ;Apr 11, 2026
+ ;;0.1;C0FHIR PROJECT;;Apr 11, 2026
+ ;
+ ; POST /rehmp
+ ; Body: RequestEnvelope JSON with top-level "operation"
+ ;
+ Q
+ ;
+wsRehmp(ARGS,BODY,RESULT) ; Backward-compatible label spelling for existing %web registrations
+ Q $$WSREHMP(.ARGS,.BODY,.RESULT)
+ ;
+WSREHMP(ARGS,BODY,RESULT) ; %web POST handler
+ NEW RESP,JERR,STATUS,REQID,ECODE,EMSG,OK
+ KILL RESULT
+ SET HTTPRSP("mime")="application/json"
+ IF '$DATA(BODY) DO  QUIT 1
+ . DO ERR^C0RGRES(.RESULT,"","VALIDATION","Empty request body")
+ . SET HTTPERR=400
+ SET REQID="",ECODE="",EMSG=""
+ SET OK=$$HTTP^C0RGAPI(.RESULT,.ARGS,.BODY,.REQID,.ECODE,.EMSG)
+ KILL RESP,JERR
+ DO DECODE^XLFJSON($NA(RESULT),$NA(RESP),$NA(JERR))
+ SET STATUS=$$HTTPSTAT($NA(RESP),$NA(JERR))
+ IF STATUS>0 SET HTTPERR=STATUS
+ ELSE  SET HTTPERR=0
+ QUIT 1
+ ;
+HTTPSTAT(RESPROOT,JERRROOT) ; $$ - derive HTTP status from a ResponseEnvelope
+ IF $$HASERR(JERRROOT) QUIT 500
+ IF $GET(@RESPROOT@("status"))'="error" QUIT 0
+ QUIT $$MAPSTAT($GET(@RESPROOT@("error","code")))
+ ;
+HASERR(ROOT) ; $$ - true when XLFJSON populated an error node
+ IF $DATA(@ROOT)#2 QUIT 1
+ IF $DATA(@ROOT)>1 QUIT 1
+ QUIT 0
+ ;
+MAPSTAT(ECODE) ; Map C0RG error code to HTTP status
+ NEW CODE
+ SET CODE=$$UP^XLFSTR($GET(ECODE))
+ IF CODE="VALIDATION" QUIT 400
+ IF CODE="VERSION" QUIT 400
+ IF CODE="NOT_IMPLEMENTED" QUIT 501
+ IF CODE="UPSTREAM" QUIT 502
+ QUIT 500

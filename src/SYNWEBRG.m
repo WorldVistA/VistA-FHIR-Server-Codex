@@ -8,16 +8,17 @@ SYNWEBRG ; VEHU/Codex - Register SYN + C0FHIR HTTP routes in ^%web(17.6001)
  ;
  Q
  ;
-EN ; Register (or refresh) routes — idempotent for same method+pattern
+EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(addService^%webutils)="" QUIT
- ; vaready-wd-compat SYNINIT may omit LOADHAND — use LOADDEF^SYNWEBRG then
- IF $T(LOADHAND^SYNINIT)'="" DO LOADHAND^SYNINIT
- ELSE  DO LOADDEF^SYNWEBRG
+ ; Use the local route definitions directly; addService^%webutils is idempotent for
+ ; the same method+pattern, so this safely refreshes the shared SYN routes too.
+ DO LOADDEF^SYNWEBRG
  IF $T(wsReplayIntake^SYNFHIR)'="" DO addService^%webutils("GET","replayIntake","wsReplayIntake^SYNFHIR")
  IF $T(wsReplayIntake^SYNFHIR)'="" DO addService^%webutils("GET","replayImport","wsReplayIntake^SYNFHIR")
  IF $T(wsIntakeVitals^SYNFVIT)'="" DO addService^%webutils("POST","addvitals","wsIntakeVitals^SYNFVIT")
  IF $T(wsIntakeEncounters^SYNFENC)'="" DO addService^%webutils("POST","addencounter","wsIntakeEncounters^SYNFENC")
  IF $T(wsIntakeConditions^SYNFCON)'="" DO addService^%webutils("POST","addcondition","wsIntakeConditions^SYNFCON")
+ IF $T(WSREHMP^C0RGWEB)'="" DO addService^%webutils("POST","rehmp","WSREHMP^C0RGWEB")
  IF $T(REGTFHIR^C0FHIR)'="" DO REGTFHIR^C0FHIR
  IF $T(WEB^C0FHIRWS)'="" DO addService^%webutils("GET","fhir","WEB^C0FHIRWS")
  IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")

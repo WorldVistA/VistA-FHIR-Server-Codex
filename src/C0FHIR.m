@@ -258,7 +258,7 @@ VISITIEN(ENC,VIEN) ; Numeric visit ien for ^TIU(8925,"V",...) / FIND^DIC index
  ;
 TIUNOTETX(DA) ; $NA of array of TIU body lines for FHIR export
  ; Prefer filed word-processing ^TIU(8925,DA,"TEXT",...) (SYN MAKE^TIUSRVP / loader shape).
- ; Fall back to $$TEXT^VPRDTIU (TGET^TIUSRVR1) when no TEXT nodes — respects viewer when body absent.
+ ; Fall back to $$TEXT^VPRDTIU (TGET^TIUSRVR1) when no TEXT nodes - respects viewer when body absent.
  NEW K,L,TGT,T1
  SET DA=+$GET(DA) QUIT:DA<1 ""
  SET TGT=$NA(^TMP("C0FHIRNT",$J,DA))
@@ -430,11 +430,12 @@ RPCFHIRA(RTN,FILTER) ; RPC entry point (array params)
  ;
 GETFHIR(RTN,FILTER) ; Web service entry point
  ; FILTER contains URL parameters, for example FILTER("dfn")=12345
- ; RTN returns JSON output nodes from ENCODE^XLFJSON
- NEW ERR,REQ,TMP,VIEW
+ ; RTN returns JSON output nodes from ENCODE^XLFJSON, unless arrayOnly=1
+ NEW ARRAYONLY,ERR,REQ,TMP,VIEW
  DO ENVINIT
  KILL RTN
  DO MAPFILT(.FILTER,.REQ)
+ SET ARRAYONLY=+$$TRUTHVAL($SELECT($GET(FILTER("arrayOnly"))'="":$GET(FILTER("arrayOnly")),1:$GET(FILTER("ARRAYONLY"))))
  SET VIEW=$$UPCASE($SELECT($GET(FILTER("view"))'="":$GET(FILTER("view")),1:$GET(FILTER("VIEW"))))
  IF VIEW="BROWSER",+$GET(REQ("DFN"))>0 DO  QUIT
  . SET FILTER("type")="text/html"
@@ -448,6 +449,8 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  IF $GET(REQ("MODE"))="" DO  QUIT
  . DO ERR^C0FHIRBU("Cannot determine request mode from URL parameters",.TMP)
  . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
+ IF ARRAYONLY DO  QUIT
+ . DO GETBNDLA(.REQ,.RTN)
  SET FILTER("type")="application/json"
  SET HTTPRSP("mime")="application/json"
  DO GETBNDLJ(.REQ,.RTN,.ERR)
@@ -704,7 +707,7 @@ WSSHOWJSON2TJSON(FMT,ARY) ; If FMT is TJSON, wrap tjson^%wd output in HTML5 + CS
  SET HPRE=HPRE_"pre.tjson .hl-synthea{color:#b39ddb;}"_$CHAR(10)
  SET HPRE=HPRE_"</style></head>"_$CHAR(10)
  SET HPRE=HPRE_"<body>"_$CHAR(10)
- SET HPRE=HPRE_"<header class=""hdr""><span class=""t"">TJSON</span> <span class=""h"">FHIR bundle (rust tjson); long lines wrap — scroll vertically</span></header>"_$CHAR(10)
+ SET HPRE=HPRE_"<header class=""hdr""><span class=""t"">TJSON</span> <span class=""h"">FHIR bundle (rust tjson); long lines wrap - scroll vertically</span></header>"_$CHAR(10)
  SET HPRE=HPRE_"<main class=""main""><pre class=""tjson"" spellcheck=""false"" translate=""no"">"
  SET HSUF="</pre></main><script>document.addEventListener('DOMContentLoaded',function(){var p=document.querySelector('pre.tjson');if(!p)return;var t=p.textContent;"
  SET HSUF=HSUF_"function e(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}var r=/urn:uuid:[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}|\\bSynthea\\b/g,m,o='',l=0;"
@@ -773,14 +776,21 @@ GETBNDLJ(REQ,OUT,ERR) ; Return one Bundle response encoded as JSON
  DO TOJSON^C0FHIRBU(.BUNDLE,.OUT,.ERR)
  QUIT
  ;
+GETBNDLA(REQ,OUT) ; Return one Bundle response as a finalized native array
+ DO GETBNDL(.REQ,.OUT)
+ DO FINAL^C0FHIRBU(.OUT)
+ QUIT
+ ;
 MAPFILT(FILTER,REQ) ; Map URL parameters into request structure
- NEW ENDVAL,STARTVAL
+ NEW ENDRAW,ENDVAL,STARTRAW,STARTVAL
  KILL REQ
  SET REQ("DFN")=$SELECT($GET(FILTER("dfn"))'="":$GET(FILTER("dfn")),1:$GET(FILTER("DFN")))
  SET REQ("ENCOUNTER")=$SELECT($GET(FILTER("encounter"))'="":$GET(FILTER("encounter")),1:$GET(FILTER("ENCOUNTER")))
- SET STARTVAL=$$PARSEFM($SELECT($GET(FILTER("start"))'="":$GET(FILTER("start")),1:$GET(FILTER("START"))))
+ SET STARTRAW=$SELECT($GET(FILTER("start"))'="":$GET(FILTER("start")),$GET(FILTER("START"))'="":$GET(FILTER("START")),$GET(FILTER("sdt"))'="":$GET(FILTER("sdt")),1:$GET(FILTER("SDT")))
+ SET STARTVAL=$$PARSEFM(STARTRAW)
  IF STARTVAL'="" SET REQ("START_DT")=STARTVAL
- SET ENDVAL=$$PARSEFM($SELECT($GET(FILTER("end"))'="":$GET(FILTER("end")),1:$GET(FILTER("END"))))
+ SET ENDRAW=$SELECT($GET(FILTER("end"))'="":$GET(FILTER("end")),$GET(FILTER("END"))'="":$GET(FILTER("END")),$GET(FILTER("edt"))'="":$GET(FILTER("edt")),1:$GET(FILTER("EDT")))
+ SET ENDVAL=$$PARSEFM(ENDRAW)
  IF ENDVAL'="" SET REQ("END_DT")=ENDVAL
  SET REQ("MODE")=$$UPCASE($SELECT($GET(FILTER("mode"))'="":$GET(FILTER("mode")),1:$GET(FILTER("MODE"))))
  SET REQ("MAX")=$SELECT($GET(FILTER("max"))'="":+$GET(FILTER("max")),1:+$GET(FILTER("MAX")))
@@ -845,6 +855,15 @@ REQMODE(REQ) ; Resolve request mode from mapped parameters
  ; Default behavior: if no encounter/date filters are supplied,
  ; return all encounters for the patient.
  QUIT "DATERANGE"
+ ;
+TRUTHVAL(X) ; $$ - treat JSON-ish boolean and 1/0 values
+ NEW Y
+ SET Y=$$UPCASE($$TRIM($GET(X)))
+ IF Y=1 QUIT 1
+ IF Y="1" QUIT 1
+ IF Y="TRUE" QUIT 1
+ IF Y="YES" QUIT 1
+ QUIT 0
  ;
 UPCASE(X) ; Upper-case helper without external dependencies
  NEW C,I,Y
