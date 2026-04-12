@@ -7,3 +7,6 @@ _synthea_clone/
 
 # Local machine paths / branches for scripts/routine-sync.sh
 scripts/routine-sync-repos.conf
+
+# Demo/test artifacts
+tmp/demo-artifacts/
