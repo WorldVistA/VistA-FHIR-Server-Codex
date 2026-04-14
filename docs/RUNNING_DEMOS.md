@@ -9,7 +9,9 @@ The current `rehmp` demo is a terminal-friendly regression walkthrough for the n
 ### What It Demonstrates
 
 - `POST /rehmp` health path
+- `POST /rehmp` patient search path using the same RequestEnvelope / ResponseEnvelope contract the browser demo uses
 - `POST /rehmp` patient FHIR bundle path
+- `POST /rehmp` bundle continuation path when a large real bundle exceeds the configured response size
 - `POST /rehmp` domain-filtered bundle path using `domain=lab,meds` and `max=25`
 - Validation/error paths for bad requests
 - Compatibility check that `GET /fhir?dfn=<DFN>` still returns a JSON `Bundle`
@@ -44,13 +46,15 @@ The wrapper script:
 
 The progress view looks like this:
 
-- `[1/7] Health check envelope`
-- `[2/7] Bundle request for one patient`
-- `[3/7] Domain-filtered bundle request`
-- `[4/7] Validation error for missing operation`
-- `[5/7] Validation error for bad apiVersion`
-- `[6/7] Validation error for missing dfn`
-- `[7/7] Compatibility check for GET /fhir`
+- `[1/9] Health check envelope`
+- `[2/9] Patient search`
+- `[3/9] Bundle request for one patient`
+- `[4/9] Bundle continuation when token is returned`
+- `[5/9] Domain-filtered bundle request`
+- `[6/9] Validation error for missing operation`
+- `[7/9] Validation error for bad apiVersion`
+- `[8/9] Validation error for missing dfn`
+- `[9/9] Compatibility check for GET /fhir`
 
 ### What The Underlying Smoke Test Does
 
@@ -64,6 +68,8 @@ It now:
 - saves request and response files for every checked path
 - verifies expected HTTP status codes
 - verifies JSON envelope shape on successful `/rehmp` responses
+- verifies that `patient.search` returns `data.patients`
+- follows `meta.continuationToken` into a live `bundle.continue` request when the first bundle response is `partial`
 - verifies that `/fhir?dfn=<DFN>` returns a FHIR `Bundle`
 
 ### Artifacts Produced
@@ -86,8 +92,12 @@ Typical files include:
 
 - `health.request.json`
 - `health.response.json`
+- `patient-search.request.json`
+- `patient-search.response.json`
 - `bundle-basic.request.json`
 - `bundle-basic.response.json`
+- `bundle-continue.request.json`
+- `bundle-continue.response.json`
 - `bundle-domain-filter.request.json`
 - `bundle-domain-filter.response.json`
 - `missing-operation.request.json`
@@ -103,19 +113,27 @@ Typical files include:
 On a passing run, the terminal shows:
 
 - the wrapper header with base URL, DFN, run directory, and log path
-- seven numbered progress steps
+- nine numbered progress steps
 - HTTP status for each request
 - request/response artifact paths
 - a preview of each response body
 - `assertions: pass` for each checked step
+- a `skip:` message for the continuation step if the current dataset/configuration never returns a continuation token
 - a final pointer to the artifact directory
 
 ### Current Known Behaviors The Demo Makes Visible
 
 The demo currently highlights two transport-layer behaviors that are still important to show:
 
-- successful `POST /rehmp` calls return HTTP `201`
-- error-path `POST /rehmp` calls return HTTP `400`, but the response body is currently `{}` rather than the full application error envelope
+- successful `POST /rehmp` calls may still return HTTP `201`
+- some error-path `POST /rehmp` calls may still return HTTP `400` with body `{}` rather than the full application error envelope, depending on the M web listener version
+
+The application-side `/rehmp` behavior underneath that transport is now richer than the original stub phase:
+
+- `patient.search` returns real candidate patients instead of the original stub payload
+- `patient.fhir.bundle` uses real in-process `C0FHIR` bundle generation when `GETBNDLA^C0FHIR` is installed
+- oversized bundles may return `status: "partial"` with `meta.continuationToken`
+- application error codes now include `AUTH`, `FORBIDDEN`, `SIZE`, and `TIMEOUT` in addition to the earlier validation/upstream cases
 
 Those are not demo-script bugs. They are current M web server response-layer behaviors and are documented separately in:
 
@@ -146,8 +164,9 @@ Or write them to a chosen directory:
 When showing this live, a simple narration is:
 
 1. Start the wrapper so the audience can see progress one step at a time.
-2. Point out that the test covers both success and failure paths for `/rehmp`.
-3. Show that a filtered FHIR bundle request works and keeps the response smaller.
-4. Show that `/fhir` still works for the same patient.
-5. Call out the current HTTP-layer behavior: `201` on success and `{}` on error responses.
-6. Open the saved artifact directory if anyone wants to inspect exact request/response payloads afterward.
+2. Point out that the test covers both search and bundle read paths on `/rehmp`.
+3. If the dataset is large enough, show the continuation step and the returned `meta.continuationToken`.
+4. Show that a filtered FHIR bundle request works and keeps the response smaller.
+5. Show that `/fhir` still works for the same patient.
+6. Call out the current HTTP-layer behavior: `201` on success and `{}` on error responses.
+7. Open the saved artifact directory if anyone wants to inspect exact request/response payloads afterward.

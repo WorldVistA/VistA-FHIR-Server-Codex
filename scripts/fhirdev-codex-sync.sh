@@ -16,6 +16,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/src"
 V="$ROOT/vendor/tjson"
+REHMP_ROOT="${REHMP_ROOT:-$ROOT/../rehmp}"
+RG_SRC="${REHMP_C0RG_DIR:-$REHMP_ROOT/C0RG}"
 
 FHIRDEV_SSH="${FHIRDEV_SSH:-root@fhirdev.vistaplex.org}"
 FHIRDEV_CONTAINER="${FHIRDEV_CONTAINER:-fhirdev22}"
@@ -59,6 +61,13 @@ for f in "$SRC"/*.m; do
   "${SSH[@]}" "$FHIRDEV_SSH" "docker cp '$STAGE/$bn' '$FHIRDEV_CONTAINER:$REMOTE_P/$bn'"
 done
 
+for f in "$RG_SRC"/*.m; do
+  [[ -f "$f" ]] || continue
+  bn=$(basename "$f")
+  "${SCP[@]}" "$f" "$FHIRDEV_SSH:$STAGE/$bn"
+  "${SSH[@]}" "$FHIRDEV_SSH" "docker cp '$STAGE/$bn' '$FHIRDEV_CONTAINER:$REMOTE_P/$bn'"
+done
+
 "${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' mkdir -p '$REMOTE_WWW'"
 
 for fn in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
@@ -79,6 +88,13 @@ echo "==> ZLINK + EN^SYNWEBRG + %webreq restart in $FHIRDEV_CONTAINER"
     [[ -f "$f" ]] || continue
     printf 'zlink "%s"\n' "$(basename "$f" .m)"
   done
+  for f in "$RG_SRC"/*.m; do
+    [[ -f "$f" ]] || continue
+    printf 'zlink "%s"\n' "$(basename "$f" .m)"
+  done
+  if [[ -f "$RG_SRC/C0RGSE.m" ]]; then
+    printf '%s\n' 'd EN^C0RGSE'
+  fi
   printf '%s\n' 'd EN^SYNWEBRG' 'h'
 } | "${SSH[@]}" "$FHIRDEV_SSH" "docker exec -i -u vehu '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; cd $REMOTE_P && $MUMPS -dir'"
 
