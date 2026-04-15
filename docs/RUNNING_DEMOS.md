@@ -25,14 +25,29 @@ For browser-side proof of the same architecture, the companion demos now live in
 the `rehmp` repo:
 
 - `ehmp-ui/rehmp-rpc-demo/` — a richer `/rehmp` gateway workspace with a patient
-  worklist, selected-context panel, transport/status cards, and exact
-  request/response inspectors
+  worklist, selected-context panel, transport/status cards, a merged chart
+  workspace built from `ResponseEnvelope.data`, intra-chart pivots and reactive
+  widgets that stay inside the loaded patient session, widget-driven drilldown,
+  server-backed shell persistence via `USER.CTX.GET` / `USER.CTX.SET` when
+  available, local fallback plus cached bundle-snapshot restore, bundle-
+  progression tracking for continuation slices, and exact request/response
+  inspectors
 - `ehmp-ui/rehmp-fhir-demo/` — a split-pane FHIR shell comparison with a
   persistent side inspector beside the patient narrative
 
 Those browser demos are the current proof that the active Vite + `/rehmp` +
 FHIR path can support a more interactive single-screen shell without reviving
 ADK, RDK, or `core/rdk`.
+
+Operational note:
+
+- On `devfhir.vistaplex.org`, the live browser-demo topology is documented in
+  the sibling `rehmp` repo at `docs/FHIRDEV_LIVE_TOPOLOGY.md`.
+- The short version remains: static UI is served outside the VistA container on
+  the same public origin as proxied `/rehmp` and `/fhir`, the containerized M /
+  `%webreq` runtime stays on `:9080`, and Node 20 is build-only.
+- This Codex runbook intentionally keeps only the demo-facing summary so the
+  environment-specific truth lives in one place.
 
 ### Easiest Command
 
