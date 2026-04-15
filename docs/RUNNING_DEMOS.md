@@ -21,6 +21,19 @@ This is useful as both:
 - a live demo for someone watching the terminal
 - a regression test run that leaves behind reviewable artifacts
 
+For browser-side proof of the same architecture, the companion demos now live in
+the `rehmp` repo:
+
+- `ehmp-ui/rehmp-rpc-demo/` — a richer `/rehmp` gateway workspace with a patient
+  worklist, selected-context panel, transport/status cards, and exact
+  request/response inspectors
+- `ehmp-ui/rehmp-fhir-demo/` — a split-pane FHIR shell comparison with a
+  persistent side inspector beside the patient narrative
+
+Those browser demos are the current proof that the active Vite + `/rehmp` +
+FHIR path can support a more interactive single-screen shell without reviving
+ADK, RDK, or `core/rdk`.
+
 ### Easiest Command
 
 Run this from the repo root:
