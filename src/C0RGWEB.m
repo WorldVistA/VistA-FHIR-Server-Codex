@@ -13,6 +13,11 @@ WSREHMP(ARGS,BODY,RESULT) ; %web POST handler
  NEW RESP,JERR,STATUS,REQID,ECODE,EMSG,OK
  KILL RESULT
  SET HTTPRSP("mime")="application/json"
+ ; TEMPORARY: same Kernel job context bootstrap as GETFHIR^C0FHIR (ENVINIT^C0FHIR).
+ ; GET /fhir runs WEB^C0FHIRWS -> GETFHIR^C0FHIR, which always DO ENVINIT^C0FHIR first.
+ ; POST /rehmp does not, so DUZ/U/DT can be unset and downstream C0RG -> FHIR work can hang
+ ; or fail until a real authenticated session establishes DUZ for this %web worker.
+ IF $T(ENVINIT^C0FHIR)'="" DO ENVINIT^C0FHIR
  IF '$DATA(BODY) DO  QUIT 1
  . DO ERR^C0RGRES(.RESULT,"","VALIDATION","Empty request body")
  . SET HTTPERR=400

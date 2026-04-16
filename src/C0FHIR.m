@@ -888,14 +888,18 @@ TRIM(X) ; Remove leading and trailing spaces
  FOR  QUIT:$EXTRACT(Y,$LENGTH(Y))'=" "  SET Y=$EXTRACT(Y,1,$LENGTH(Y)-1)
  QUIT Y
  ;
-ENVINIT ; Ensure legacy VPR runtime variables are available
+ENVINIT ; Ensure legacy VPR/runtime variables are available
  ; Many legacy VPR/PX/Kernel routines assume U,DT,DUZ,DUZ(0),DUZ(2) are defined.
+ ; If ^VA(200) has no entries (minimal dev image), still force a positive DUZ so HTTP/RPC
+ ; paths that require an active user (for example rehmp USER.CTX.SET) do not fail with DUZ<1.
  NEW DIV
  IF $GET(U)="" SET U="^"
  IF '$DATA(DT) SET DT=$$DT^XLFDT
  IF +$GET(DUZ)<1 DO
  . IF $DATA(^VA(200,.5,0)) SET DUZ=.5 QUIT
  . SET DUZ=+$ORDER(^VA(200,0))
+ ; Use =0 not <1 so DUZ=.5 postmaster survives (+.5 is 0.5, which is <1).
+ IF +$GET(DUZ)=0 SET DUZ=1
  IF $GET(DUZ(0))="" SET DUZ(0)="@"
  IF +$GET(DUZ(2))<1 DO
  . SET DIV=+$PIECE($GET(^VA(200,+DUZ,2,1,0)),"^")

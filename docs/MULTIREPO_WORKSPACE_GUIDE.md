@@ -34,7 +34,7 @@ Store machine-specific paths, ports, and command shortcuts in:
 
 - `FHIR-source-files/WORKSPACE_LOCAL.md`
 
-Keep shared, repository-safe guidance in this document, and keep host-specific details in the local companion.
+Keep shared, repository-safe guidance in this document, and keep host-specific details in the local companion. For **Docker VEHU (`vehu10`) shell access, global naming (`^VA` vs `^va`), and sync commands**, see the companion section **“Local VEHU container (`vehu10`) — accessing VistA”** in `FHIR-source-files/WORKSPACE_LOCAL.md`.
 
 ## Workspace Profiles (Cursor)
 
