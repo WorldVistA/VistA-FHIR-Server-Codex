@@ -30,11 +30,11 @@ Keep repos as siblings (not submodules):
 
 ## Local Machine Companion
 
-Store machine-specific paths, ports, and command shortcuts in:
+Store machine-specific paths, ports, and command shortcuts in the **`~/ops`** tree (outside app repos):
 
-- `FHIR-source-files/WORKSPACE_LOCAL.md`
+- **`~/ops/docs/WORKSPACE_LOCAL.md`** — canonical machine profile (also indexed from **`~/ops/agent-context/README.md`**).
 
-Keep shared, repository-safe guidance in this document, and keep host-specific details in the local companion. For **Docker VEHU (`vehu10`) shell access, global naming (`^VA` vs `^va`), and sync commands**, see the companion section **“Local VEHU container (`vehu10`) — accessing VistA”** in `FHIR-source-files/WORKSPACE_LOCAL.md`.
+Keep shared, repository-safe guidance in this document, and keep host-specific details in **`~/ops`**. For **Docker VEHU (`vehu10`) shell access, global naming (`^VA` vs `^va`), and sync commands**, see the section **“Local VEHU container (`vehu10`) — accessing VistA”** in **`~/ops/docs/WORKSPACE_LOCAL.md`**.
 
 ## Workspace Profiles (Cursor)
 
