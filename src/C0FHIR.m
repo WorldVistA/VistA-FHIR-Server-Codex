@@ -460,18 +460,18 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  QUIT
  ;
 FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
- NEW BURL,CNT,DFN,FURL,HASGRAPH,HASVPR,IEN,JURL,KEY,LURL,NAME,NCOLS,ROOT,ROW,SORT,SUM,TBYDFN,VURL
+ NEW BURL,CNT,DFN,FURL,HASGRAPH,HASVPR,IEN,JURL,KEY,LURL,NAME,NCOLS,RURL,ROOT,ROW,SORT,SUM,TBYDFN,VURL
  KILL RTN
  SET ROOT=$$GSROOT()
  SET HASGRAPH=0 IF $L($G(ROOT))>0,$DATA(@ROOT@("DFN")) SET HASGRAPH=1
  SET HASVPR=$$VPROK()
- SET NCOLS=4+$SELECT(HASGRAPH:2,1:0)+$SELECT(HASVPR:1,1:0)
+ SET NCOLS=5+$SELECT(HASGRAPH:2,1:0)+$SELECT(HASVPR:1,1:0)
  DO ADDLN(.RTN,"<!DOCTYPE HTML>")
  DO ADDLN(.RTN,"<html><head><title>FHIR Patient Index</title></head><body>")
  DO ADDLN(.RTN,"<h1>FHIR Patient Index</h1>")
  DO ADDLN(.RTN,"<p>Click Name for interactive browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea).</p>")
  DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
- SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th>"
+ SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>rehmp rpc</th>"
  IF HASGRAPH SET ROW=ROW_"<th>Synthea Json</th><th>Load Log</th>"
  IF HASVPR SET ROW=ROW_"<th>VPR</th>"
  DO ADDLN(.RTN,ROW_"</tr>")
@@ -507,11 +507,13 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . SET FURL="/fhir?dfn="_DFN
  . SET BURL="/fhir?dfn="_DFN_"&view=browser"
  . SET VURL="/vpr?dfn="_DFN
+ . SET RURL="/demos/rpc/?dfn="_DFN_"&rehmpBase=/rehmp"
  . SET JURL=$SELECT(HASGRAPH&(+IEN>0):"/showfhir?ien="_IEN,1:"")
  . SET LURL=$SELECT(HASGRAPH&(+IEN>0):$$LOADLOGURL(ROOT,IEN),1:"")
  . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
  . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
  . SET ROW=ROW_"<td>"_DFN_"</td><td>"_$SELECT(+IEN>0:IEN,1:"-")_"</td>"
+ . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
  . IF HASGRAPH DO
  . . IF JURL'="" SET ROW=ROW_"<td><a href="""_JURL_""">json</a></td>"
  . . ELSE  SET ROW=ROW_"<td>n/a</td>"
