@@ -9,7 +9,7 @@
 # Defaults: root@fhirdev.vistaplex.org, container fhirdev22, smoke http://fhirdev.vistaplex.org:9080
 #
 # Env: FHIRDEV_SSH, FHIRDEV_CONTAINER, FHIRDEV_ROUTINE_DIR, FHIRDEV_WWW, VEHU_ENV,
-#      FHIRDEV_MUMPS, FHIRDEV_HTTP_BASE
+#      FHIRDEV_MUMPS, FHIRDEV_HTTP_BASE, FHIRDEV_M_USER (default vehu; use osehra for fhir.vistaplex.org)
 #      FHIRDEV_SSH_NO_MUX=1  — disable multiplexing (debug)
 set -euo pipefail
 
@@ -26,6 +26,7 @@ REMOTE_WWW="${FHIRDEV_WWW:-/home/vehu/www/filesystem}"
 VEHU_ENV="${VEHU_ENV:-/home/vehu/etc/env}"
 MUMPS="${FHIRDEV_MUMPS:-/home/vehu/lib/gtm/mumps}"
 HTTP_BASE="${FHIRDEV_HTTP_BASE:-http://fhirdev.vistaplex.org:9080}"
+FHIRDEV_M_USER="${FHIRDEV_M_USER:-vehu}"
 
 CTL="${TMPDIR:-/tmp}/fhirdev-codex-$$.sock"
 if [[ "${FHIRDEV_SSH_NO_MUX:-0}" == "1" ]]; then
@@ -79,8 +80,8 @@ for fn in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
   "${SSH[@]}" "$FHIRDEV_SSH" "docker cp '$STAGE/$fn' '$FHIRDEV_CONTAINER:$REMOTE_WWW/$fn'"
 done
 
-"${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown vehu:vehu $REMOTE_P/*.m 2>/dev/null || true"
-"${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown vehu:vehu '$REMOTE_WWW/tjson.js' '$REMOTE_WWW/tjson_bg.js' '$REMOTE_WWW/tjson_bg.wasm' '$REMOTE_WWW/tjson_bg.wasm.b64' 2>/dev/null || true"
+"${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown '${FHIRDEV_M_USER}:${FHIRDEV_M_USER}' $REMOTE_P/*.m 2>/dev/null || true"
+"${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown '${FHIRDEV_M_USER}:${FHIRDEV_M_USER}' '$REMOTE_WWW/tjson.js' '$REMOTE_WWW/tjson_bg.js' '$REMOTE_WWW/tjson_bg.wasm' '$REMOTE_WWW/tjson_bg.wasm.b64' 2>/dev/null || true"
 
 echo "==> ZLINK + EN^SYNWEBRG + %webreq restart in $FHIRDEV_CONTAINER"
 {
@@ -96,9 +97,9 @@ echo "==> ZLINK + EN^SYNWEBRG + %webreq restart in $FHIRDEV_CONTAINER"
     printf '%s\n' 'd EN^C0RGSE'
   fi
   printf '%s\n' 'd EN^SYNWEBRG' 'h'
-} | "${SSH[@]}" "$FHIRDEV_SSH" "docker exec -i -u vehu '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; cd $REMOTE_P && $MUMPS -dir'"
+} | "${SSH[@]}" "$FHIRDEV_SSH" "docker exec -i -u '${FHIRDEV_M_USER}' '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; cd $REMOTE_P && $MUMPS -dir'"
 
-"${SSH[@]}" "$FHIRDEV_SSH" "docker exec -u vehu '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; $MUMPS -run %XCMD \"d stop^%webreq d go^%webreq\"'"
+"${SSH[@]}" "$FHIRDEV_SSH" "docker exec -u '${FHIRDEV_M_USER}' '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; $MUMPS -run %XCMD \"d stop^%webreq d go^%webreq\"'"
 
 echo "==> Smoke: GET $HTTP_BASE/filesystem/tjson.js"
 curl -sS -o /tmp/fhirdev-tjson-smoke.js -w "HTTP %{http_code}\n" "$HTTP_BASE/filesystem/tjson.js" | tail -1
