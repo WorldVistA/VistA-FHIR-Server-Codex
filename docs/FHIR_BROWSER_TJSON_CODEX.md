@@ -16,9 +16,9 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 2. **Drop unpkg**  
    Dynamic `import('https://unpkg.com/@rfanth/tjson@…/tjson.js')` fails under strict **CSP** or offline. Switched to **same-origin** loading under the M listener’s static path.
 
-3. **Vendoring (pin 0.4.3)**  
+3. **Vendoring (pin 0.5.0)**  
    Under **`vendor/tjson/`**:
-   - `tjson_bg.js`, `tjson_bg.wasm`, `tjson.d.ts` from `https://unpkg.com/@rfanth/tjson@0.4.3/`.
+   - `tjson_bg.js`, `tjson_bg.wasm`, `tjson.d.ts` from `https://unpkg.com/@rfanth/tjson@0.5.0/`.
    - **`tjson.js`** is a **patched** entry (not the stock npm file): see steps 7–10.
 
 4. **Serve via `%W0` `/filesystem/<file>`**  
@@ -53,8 +53,8 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
     - Loader fetches **`tjson_bg.wasm.b64`** as **text**, strips whitespace with **`.replace(/\s/g, "")`**, **`atob` → `Uint8Array` → `compile`**.  
     - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.
 
-11. **`C0FHIRWS.m` — JS API (0.4.x)**  
-    Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=043`** to reduce stale cached JS vs wasm. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
+11. **`C0FHIRWS.m` — JS API (0.4+ / 0.5.x)**  
+    Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=050`** to reduce stale cached JS vs wasm. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
 
 12. **`C0FHIRWS.m` error string**  
     On failure, the UI mentions syncing **`vendor/tjson`** including **`.b64`** and redeploying.
@@ -79,5 +79,5 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 
 ## References
 
-- npm package: `@rfanth/tjson` **0.4.3** (see [textjson.com](https://textjson.com/) for format + API examples)
+- npm package: `@rfanth/tjson` **0.5.0** (see [textjson.com](https://textjson.com/) for format + API examples)
 - FHIR browser URL shape: `/fhir?dfn=<dfn>&view=browser` (or as implemented by `WEB^C0FHIRWS`).

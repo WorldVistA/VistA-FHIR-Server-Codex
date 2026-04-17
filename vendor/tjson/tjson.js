@@ -1,4 +1,5 @@
 /* @ts-self-types="./tjson.d.ts" */
+/* Vendored @rfanth/tjson 0.5.0 (+ this patch). */
 /* Patched for %W0 static /filesystem:
    - ESM cannot import .wasm (wrong MIME).
    - fetch(.wasm) gets gzip with wrong ISIZE; browsers ignore fetch(…, { headers: { Accept-Encoding } })
@@ -32,6 +33,6 @@ const instance = await WebAssembly.instantiate(wasmMod, imports);
 bg.__wbg_set_wasm(instance.exports);
 instance.exports.__wbindgen_start();
 
-// Re-export whatever tjson_bg.js provides (0.4+ adds fromJson/toJson). Do not use
+// Re-export whatever tjson_bg.js provides (0.4+; 0.5.x adds toJson). Do not use
 // `export { fromJson, ... }` — that is a parse-time error if an old tjson_bg.js is deployed.
 export * from "./tjson_bg.js";

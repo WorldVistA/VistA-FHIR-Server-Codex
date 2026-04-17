@@ -101,7 +101,7 @@ BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson
  D ADDLN(.RTN,"</div>")
  D ADDLN(.RTN,"<script>")
  D ADDLN(.RTN,"const dfn="_D_";")
- D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson.js?v=044';")
+ D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson.js?v=050';")
  D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")
  D ADDLN(.RTN,"try{const x=sessionStorage.getItem('c0fhirBrowserFmt');if(x==='json'||x==='tjson')st.fmt=x;}catch(e){}")
  D ADDLN(.RTN,"let tjsonMod=null;")

@@ -30,18 +30,18 @@ export interface StringifyOptions {
     multilineStyle?: MultilineStyle;
     /** Minimum number of lines before a multiline block is used. Default: `1`. */
     multilineMinLines?: number;
-    /** Maximum number of lines in a multiline block before falling back. Default: `10`. */
+    /** @experimental Maximum number of lines in a minimal (`) multiline block before falling back to a bold style multiline block (``), applies with multilineStyle: "floating" only.  The idea is that we want to reserve a minimal style multiline for short multilines only for "floating".  "light" has a similar look with no max line fallback.  Default: `10`. */
     multilineMaxLines?: number;
     /** Enable table rendering for uniform arrays-of-objects. Default: `true`. */
     tables?: boolean;
-    /** Allow folding long table rows across continuation lines. Default: `false`. */
+    /** @experimental Allow folding long table rows across continuation lines.  (Not currently implemented.  It is probably best to avoid this option for now as it may change.)  Default: `false`. */
     tableFold?: boolean;
-    /** How to horizontally reposition tables using indent-offset glyphs. Default: `"auto"`. */
+    /** Whether to push wide tables toward the left margin. Independent of `indentGlyphStyle`. Default: `"auto"`. */
     tableUnindentStyle?: TableUnindentStyle;
     /** Minimum rows required to render a table. Default: `3`. */
     tableMinRows?: number;
     /** Minimum columns required to render a table. Default: `3`. */
-    tableMinCols?: number;
+    tableMinColumns?: number;
     /** Minimum fraction [0–1] of rows sharing a column before it's included. Default: `0.8`. */
     tableMinSimilarity?: number;
     /** If any column's content width (including the leading space on bare string values) exceeds this value, the table is abandoned and falls back to block layout. `0` means no limit. Default: `40`. */
@@ -58,10 +58,12 @@ export interface StringifyOptions {
     stringQuotedFoldStyle?: FoldStyle;
     /** How to fold multiline string continuation lines. Default: `"none"`. */
     stringMultilineFoldStyle?: FoldStyle;
-    /** When to emit `/<` `/>` indent-offset glyphs. Default: `"auto"`. */
+    /** Whether to wrap deeply-nested objects and arrays in `/<` `/>` glyphs to reduce visual depth. Independent of `tableUnindentStyle`. Default: `"auto"`. */
     indentGlyphStyle?: IndentGlyphStyle;
     /** Where to place the opening `/<` glyph. Default: `"compact"`. */
     indentGlyphMarkerStyle?: IndentGlyphMarkerStyle;
+    /** @experimental Spacing multiplier between packed key-value pairs. Valid values: 1–4 (clamped); actual spaces = value × 2. Default: `2` (4 spaces). May be changed or removed in a future version. */
+    kvPackMultiple?: number;
 }
 
 /** Parse a TJSON string and return a JSON string. */
