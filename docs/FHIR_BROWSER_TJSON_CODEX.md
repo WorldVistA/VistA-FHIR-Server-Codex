@@ -27,6 +27,7 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
    - **VEHU / vehu10 / fhirdev22 (vehu):** `GET /filesystem/foo` → `/home/vehu/www/filesystem/foo` (nested `filesystem` segment).
 
 5. **Sync scripts**  
+   - **`scripts/regen-tjson-wasm-b64.sh`**: refresh **`tjson_bg.wasm.b64`** from **`tjson_bg.wasm`** with a round-trip verify (run automatically before vendor copy in **`local-fhir-container-sync.sh`** and **`fhirdev-codex-sync.sh`** unless **`TJSON_SKIP_REGEN_B64=1`**).  
    - **`scripts/local-fhir-container-sync.sh`**: `docker cp` `src/*.m` and `vendor/tjson/*` into the container; default **`FHIR_REMOTE_WWW=/home/<user>/www`** for `fhir`.
    - **`scripts/vehu10-fhir-sync.sh`**: exports **`FHIR_REMOTE_WWW=/home/vehu/www/filesystem`**.
    - **`scripts/vehu10_bootstrap.py`**: copies the same vendor set to **`--www-dest`** (default `/home/vehu/www/filesystem`).
@@ -49,7 +50,8 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
    In the Fetch API, **`Accept-Encoding` is a forbidden request header**; browsers ignore script-set values. The gzip issue could not be fixed from JS that way.
 
 10. **Base64 sidecar `tjson_bg.wasm.b64`**  
-    - Generate: `base64 -w0 vendor/tjson/tjson_bg.wasm > vendor/tjson/tjson_bg.wasm.b64`  
+    - Generate (preferred): `./scripts/regen-tjson-wasm-b64.sh` (encodes and **verifies** decode matches wasm).  
+    - Manual: `base64 -w0 vendor/tjson/tjson_bg.wasm > vendor/tjson/tjson_bg.wasm.b64`  
     - Loader fetches **`tjson_bg.wasm.b64`** as **text**, strips whitespace with **`.replace(/\s/g, "")`**, **`atob` → `Uint8Array` → `compile`**.  
     - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.
 
@@ -74,6 +76,7 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 | Browser HTML/JS (M-embedded) | `src/C0FHIRWS.m` |
 | Route registration | `src/SYNWEBRG.m` |
 | Vendored TJSON (patched entry) | `vendor/tjson/` |
+| Regenerate wasm sidecar | `scripts/regen-tjson-wasm-b64.sh` |
 | Local Docker sync | `scripts/local-fhir-container-sync.sh`, `vehu10-fhir-sync.sh` |
 | Remote **fhirdev22** sync | `scripts/fhirdev-codex-sync.sh` (uses **SSH multiplexing** so many `scp`/`ssh` calls do not trip **MaxStartups** / rate limits; set `FHIRDEV_SSH_NO_MUX=1` to disable) |
 

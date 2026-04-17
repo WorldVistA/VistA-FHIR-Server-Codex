@@ -25,6 +25,7 @@
 #   FHIR_M_USER      (default: osehra) — su - target for ZLINK / %webreq
 #   FHIR_MUMPS       (default: /home/${FHIR_M_USER}/lib/gtm/mumps)
 #   FHIR_USE_SSH=1   FHIR_SSH_HOST PORT USER KEY — scp to container SSH
+#   TJSON_SKIP_REGEN_B64=1 — skip scripts/regen-tjson-wasm-b64.sh before vendor copy
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -187,6 +188,11 @@ restart_web_and_register() {
   docker exec "$FHIR_CONTAINER" su - "$FHIR_M_USER" -c \
     "${M} -run %XCMD \"d stop^%webreq d go^%webreq\""
 }
+
+if [[ "${TJSON_SKIP_REGEN_B64:-0}" != "1" ]]; then
+  echo "==> regen tjson_bg.wasm.b64 (verify decode matches wasm)"
+  bash "$ROOT/scripts/regen-tjson-wasm-b64.sh"
+fi
 
 if [[ "$FHIR_USE_SSH" == "1" ]]; then
   copy_via_ssh

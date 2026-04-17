@@ -13,6 +13,7 @@
 # Env: FHIRDEV_SSH, FHIRDEV_CONTAINER, FHIRDEV_ROUTINE_DIR, FHIRDEV_WWW, VEHU_ENV,
 #      FHIRDEV_MUMPS, FHIRDEV_HTTP_BASE, FHIRDEV_M_USER (default vehu; use osehra for fhir.vistaplex.org)
 #      FHIRDEV_SSH_NO_MUX=1  — disable ControlMaster (debug only; increases TCP churn)
+#      TJSON_SKIP_REGEN_B64=1 — skip scripts/regen-tjson-wasm-b64.sh before vendor scp
 set -euo pipefail
 shopt -s nullglob
 
@@ -67,6 +68,11 @@ for tf in "${TJSON_FILES[@]}"; do
     exit 1
   }
 done
+
+if [[ "${TJSON_SKIP_REGEN_B64:-0}" != "1" ]]; then
+  echo "==> regen tjson_bg.wasm.b64 (verify decode matches wasm)"
+  bash "$ROOT/scripts/regen-tjson-wasm-b64.sh"
+fi
 
 echo "==> scp batched routines + tjson -> stage (few connections)"
 if ((${#SRC_M[@]})); then
