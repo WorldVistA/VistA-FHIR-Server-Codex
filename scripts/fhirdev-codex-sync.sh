@@ -3,15 +3,18 @@
 # Matches vehu layout: routines /home/vehu/p, static /home/vehu/www/filesystem (GET /filesystem/...).
 #
 # Uses SSH connection multiplexing (ControlMaster) so all scp/ssh share one TCP session.
-# Without this, many back-to-back connections can hit MaxStartups / rate limits and get
-# "Connection refused" after the first few files (see sshd_config MaxStartups).
+# File copies are batched (few scp invocations + one ssh for all docker cp) so even with
+# FHIRDEV_SSH_NO_MUX=1 you do not open 2 connections per routine (which can exhaust
+# sshd MaxStartups and yield mid-run "Connection refused"). Prefer leaving multiplexing
+# **enabled** (omit FHIRDEV_SSH_NO_MUX) when the server allows it.
 #
 # Defaults: root@fhirdev.vistaplex.org, container fhirdev22, smoke http://fhirdev.vistaplex.org:9080
 #
 # Env: FHIRDEV_SSH, FHIRDEV_CONTAINER, FHIRDEV_ROUTINE_DIR, FHIRDEV_WWW, VEHU_ENV,
 #      FHIRDEV_MUMPS, FHIRDEV_HTTP_BASE, FHIRDEV_M_USER (default vehu; use osehra for fhir.vistaplex.org)
-#      FHIRDEV_SSH_NO_MUX=1  — disable multiplexing (debug)
+#      FHIRDEV_SSH_NO_MUX=1  — disable ControlMaster (debug only; increases TCP churn)
 set -euo pipefail
+shopt -s nullglob
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/src"
@@ -55,30 +58,38 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for f in "$SRC"/*.m; do
-  [[ -f "$f" ]] || continue
-  bn=$(basename "$f")
-  "${SCP[@]}" "$f" "$FHIRDEV_SSH:$STAGE/$bn"
-  "${SSH[@]}" "$FHIRDEV_SSH" "docker cp '$STAGE/$bn' '$FHIRDEV_CONTAINER:$REMOTE_P/$bn'"
-done
-
-for f in "$RG_SRC"/*.m; do
-  [[ -f "$f" ]] || continue
-  bn=$(basename "$f")
-  "${SCP[@]}" "$f" "$FHIRDEV_SSH:$STAGE/$bn"
-  "${SSH[@]}" "$FHIRDEV_SSH" "docker cp '$STAGE/$bn' '$FHIRDEV_CONTAINER:$REMOTE_P/$bn'"
-done
-
-"${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' mkdir -p '$REMOTE_WWW'"
-
-for fn in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
-  [[ -f "$V/$fn" ]] || {
-    echo "error: missing $V/$fn" >&2
+SRC_M=( "$SRC"/*.m )
+RG_M=( "$RG_SRC"/*.m )
+TJSON_FILES=( "$V/tjson.js" "$V/tjson_bg.js" "$V/tjson_bg.wasm" "$V/tjson_bg.wasm.b64" )
+for tf in "${TJSON_FILES[@]}"; do
+  [[ -f "$tf" ]] || {
+    echo "error: missing vendor file: $tf" >&2
     exit 1
   }
-  "${SCP[@]}" "$V/$fn" "$FHIRDEV_SSH:$STAGE/$fn"
-  "${SSH[@]}" "$FHIRDEV_SSH" "docker cp '$STAGE/$fn' '$FHIRDEV_CONTAINER:$REMOTE_WWW/$fn'"
 done
+
+echo "==> scp batched routines + tjson -> stage (few connections)"
+if ((${#SRC_M[@]})); then
+  "${SCP[@]}" "${SRC_M[@]}" "$FHIRDEV_SSH:$STAGE/"
+fi
+if ((${#RG_M[@]})); then
+  "${SCP[@]}" "${RG_M[@]}" "$FHIRDEV_SSH:$STAGE/"
+fi
+"${SCP[@]}" "${TJSON_FILES[@]}" "$FHIRDEV_SSH:$STAGE/"
+
+echo "==> one ssh: docker cp stage -> container ($FHIRDEV_CONTAINER)"
+"${SSH[@]}" "$FHIRDEV_SSH" "env STAGE=$(printf '%q' "$STAGE") FHIRDEV_CONTAINER=$(printf '%q' "$FHIRDEV_CONTAINER") REMOTE_P=$(printf '%q' "$REMOTE_P") REMOTE_WWW=$(printf '%q' "$REMOTE_WWW") bash -s" <<'EOS'
+set -euo pipefail
+shopt -s nullglob
+docker exec "$FHIRDEV_CONTAINER" mkdir -p "$REMOTE_WWW"
+for f in "$STAGE"/*.m; do
+  bn=$(basename "$f")
+  docker cp "$f" "${FHIRDEV_CONTAINER}:${REMOTE_P}/${bn}"
+done
+for fn in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
+  docker cp "${STAGE}/${fn}" "${FHIRDEV_CONTAINER}:${REMOTE_WWW}/${fn}"
+done
+EOS
 
 "${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown '${FHIRDEV_M_USER}:${FHIRDEV_M_USER}' $REMOTE_P/*.m 2>/dev/null || true"
 "${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown '${FHIRDEV_M_USER}:${FHIRDEV_M_USER}' '$REMOTE_WWW/tjson.js' '$REMOTE_WWW/tjson_bg.js' '$REMOTE_WWW/tjson_bg.wasm' '$REMOTE_WWW/tjson_bg.wasm.b64' 2>/dev/null || true"

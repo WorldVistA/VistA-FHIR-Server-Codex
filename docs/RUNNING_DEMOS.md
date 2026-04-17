@@ -42,7 +42,9 @@ ADK, RDK, or `core/rdk`.
 Operational note:
 
 - On `devfhir.vistaplex.org`, the live browser-demo topology is documented in
-  the sibling `rehmp` repo at `docs/FHIRDEV_LIVE_TOPOLOGY.md`.
+  the sibling `rehmp` repo at `docs/FHIRDEV_LIVE_TOPOLOGY.md`. Published paths
+  include `https://devfhir.vistaplex.org/demos/rpc/` and
+  `https://devfhir.vistaplex.org/demos/fhir/`.
 - The short version remains: static UI is served outside the VistA container on
   the same public origin as proxied `/rehmp` and `/fhir`, the containerized M /
   `%webreq` runtime stays on `:9080`, and Node 20 is build-only.
