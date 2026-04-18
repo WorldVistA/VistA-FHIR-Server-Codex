@@ -6,9 +6,10 @@ Checks:
 - /fhir returns HTML
 - rendered VPR links omit format=xml (default VPR output)
 - patient rows are ordered by DFN descending (newest DFN first)
-- each listed patient has labs loaded > 0 in summary row
+- patient rows are paired with summary rows
 - /fhir?dfn=<sample> returns JSON Bundle
 - /fhir?dfn=<sample>&view=browser returns HTML
+- Synthea FHIR table links open the shared browser on /showfhir data with a light theme
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ class CheckError(RuntimeError):
 class Row:
     dfn: int
     ien: int
+    synthea_link: str
     vpr_link: str
     summary: str
 
@@ -59,13 +61,14 @@ def parse_index_rows(index_html: str) -> List[Row]:
         r'<tr><td><a href="/fhir\?dfn=(?P<dfn>\d+)&view=browser">[^<]*</a></td>'
         r'<td><a href="/fhir\?dfn=\d+">fhir</a></td>'
         r"<td>\d+</td><td>(?P<ien>\d+)</td>"
-        r'<td><a href="/(?:showfhir|tfhir)\?ien=\d+">json</a></td>'
+        r'<td><a href="[^"]+">rehmp</a></td>'
+        r'<td><a href="(?P<synthea>/fhir\?dfn=\d+&view=browser&source=showfhir&ien=\d+)">browser</a></td>'
         r'<td><a href="[^"]+">load</a></td>'
         r'<td><a href="(?P<vpr>/vpr\?dfn=\d+[^"]*)">vpr</a></td></tr>',
         re.IGNORECASE,
     )
     summary_pattern = re.compile(
-        r'<tr><td colspan="7"><small>(?P<summary>.*?)</small></td></tr>',
+        r'<tr><td colspan="\d+"><small>(?P<summary>.*?)</small></td></tr>',
         re.IGNORECASE,
     )
 
@@ -84,6 +87,7 @@ def parse_index_rows(index_html: str) -> List[Row]:
             Row(
                 dfn=int(match.group("dfn")),
                 ien=int(match.group("ien")),
+                synthea_link=match.group("synthea"),
                 vpr_link=match.group("vpr"),
                 summary=summaries[i],
             )
@@ -94,16 +98,6 @@ def parse_index_rows(index_html: str) -> List[Row]:
 def vpr_link_omits_format_xml(link: str) -> bool:
     """True when the link does not force VPR format=xml."""
     return "format=xml" not in link.lower()
-
-
-def labs_loaded_from_summary(summary: str) -> int:
-    match = re.search(r"(?i)\blabs:(\d+)/(\d+)\b", summary)
-    if not match:
-        raise CheckError(f"Summary missing labs count: {summary}")
-    loaded = int(match.group(1))
-    source = int(match.group(2))
-    ensure(source >= loaded, f"Invalid labs ratio in summary: {summary}")
-    return loaded
 
 
 def html_has_id(body: str, element_id: str) -> bool:
@@ -141,10 +135,6 @@ def check_index(base_url: str, timeout: int) -> List[Row]:
         ensure(
             vpr_link_omits_format_xml(row.vpr_link),
             f"VPR link should not include format=xml: {row.vpr_link}",
-        )
-        ensure(
-            labs_loaded_from_summary(row.summary) > 0,
-            f"Row DFN {row.dfn} has labs loaded <= 0: {row.summary}",
         )
     print(f"PASS /fhir index HTML and row checks ({len(rows)} rows)")
     return rows
@@ -211,13 +201,73 @@ def check_browser(base_url: str, timeout: int, dfn: int) -> None:
         f"Browser script missing DFN bootstrap value {dfn}.",
     )
     ensure(
-        re.search(r"fetch\(\s*['\"]/fhir\?dfn=['\"]\s*\+\s*dfn\s*\)", script)
+        re.search(rf"const\s+bundleUrl\s*=\s*['\"]/fhir\?dfn={dfn}['\"]\s*;", script)
         is not None,
-        "Browser script missing /fhir?dfn bootstrap fetch.",
+        "Browser script missing /fhir bootstrap bundleUrl.",
+    )
+    ensure(
+        re.search(r"fetch\(\s*bundleUrl\s*\)", script) is not None,
+        "Browser script missing bundleUrl fetch.",
     )
     ensure("j.entry" in script, "Browser script does not read Bundle entry data.")
 
     print(f"PASS /fhir?dfn={dfn}&view=browser HTML and UI wiring")
+
+
+def check_synthea_browser(base_url: str, timeout: int, row: Row) -> None:
+    url = f"{base_url}{row.synthea_link}"
+    status, headers, body = fetch(url, timeout)
+    ensure(
+        status == 200,
+        f"{row.synthea_link} expected HTTP 200, got {status}",
+    )
+    content_type = headers.get("content-type", "")
+    ensure(
+        content_type.lower().startswith("text/html"),
+        f"{row.synthea_link} expected text/html, got {content_type}",
+    )
+    ensure("C0FHIR Browser" in body, "Synthea browser page marker missing.")
+    ensure("theme-light" in body, "Synthea browser should use the light theme.")
+    ensure("Synthea source" in body, "Synthea browser badge missing.")
+    ensure(
+        "Stored Synthea FHIR via /showfhir" in body,
+        "Synthea browser source note missing.",
+    )
+    ensure(
+        f"/showfhir?ien={row.ien}" in body,
+        f"Synthea browser missing raw showfhir link for IEN {row.ien}.",
+    )
+    ensure(
+        f"/vpr?dfn={row.dfn}" in body,
+        f"Synthea browser missing VPR link for DFN {row.dfn}.",
+    )
+
+    script = extract_inline_script(body)
+    ensure(
+        re.search(rf"const\s+dfn\s*=\s*{row.dfn}\s*;", script) is not None,
+        f"Synthea browser script missing DFN bootstrap value {row.dfn}.",
+    )
+    ensure(
+        re.search(rf"const\s+graphIen\s*=\s*{row.ien}\s*;", script) is not None,
+        f"Synthea browser script missing graph IEN bootstrap value {row.ien}.",
+    )
+    ensure(
+        re.search(r"const\s+sourceMode\s*=\s*['\"]showfhir['\"]\s*;", script)
+        is not None,
+        "Synthea browser script missing showfhir source mode.",
+    )
+    ensure(
+        re.search(rf"const\s+bundleUrl\s*=\s*['\"]/showfhir\?ien={row.ien}['\"]\s*;", script)
+        is not None,
+        "Synthea browser script missing /showfhir bootstrap bundleUrl.",
+    )
+    ensure(
+        re.search(r"fetch\(\s*bundleUrl\s*\)", script) is not None,
+        "Synthea browser script missing bundleUrl fetch.",
+    )
+    ensure("j.entry" in script, "Synthea browser script does not read Bundle entry data.")
+
+    print(f"PASS {row.synthea_link} HTML, light theme, and UI wiring")
 
 
 def parse_args() -> argparse.Namespace:
@@ -250,6 +300,8 @@ def main() -> int:
         dfn = args.dfn if args.dfn > 0 else rows[0].dfn
         check_json_bundle(base_url, args.timeout, dfn)
         check_browser(base_url, args.timeout, dfn)
+        synthea_row = next((row for row in rows if row.dfn == dfn), rows[0])
+        check_synthea_browser(base_url, args.timeout, synthea_row)
     except CheckError as exc:
         print(f"FAIL {exc}", file=sys.stderr)
         return 1

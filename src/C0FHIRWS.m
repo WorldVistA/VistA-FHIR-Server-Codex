@@ -7,11 +7,12 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  ; RTN:    Output array (passed by reference)
  ; FILTER: Input/Output array (passed by reference)
  ;
- N DFN,NAME,VIEW
+ N DFN,IEN,NAME,VIEW
  K RTN
  S FILTER("type")="application/json" ; default mime type
  ;
  S DFN=$G(FILTER("dfn"))
+ S IEN=+$G(FILTER("ien"))
  S NAME=$G(FILTER("name"))
  S VIEW=$$UPCASE^C0FHIR($G(FILTER("view")))
  ;
@@ -21,25 +22,47 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  . D SEARCH(.RTN,NAME)
  . S HTTPRSP("mime")="text/html"
  ;
- ; Mode 2: No DFN supplied -> HTML patient index
- I DFN="" D  Q
+ ; Mode 2: Interactive browser (HTML) for one patient or stored source bundle
+ I VIEW="BROWSER",(DFN'=""!(IEN>0)) D  Q
  . S FILTER("type")="text/html"
- . D FHIRIDX^C0FHIR(.RTN)
+ . D BROWSER(.RTN,.FILTER)
  . S HTTPRSP("mime")="text/html"
  ;
- ; Mode 3: Interactive browser (HTML) for one patient
- I VIEW="BROWSER" D  Q
+ ; Mode 3: No identifiers supplied -> HTML patient index
+ I DFN="",IEN<1 D  Q
  . S FILTER("type")="text/html"
- . D BROWSER(.RTN,DFN)
+ . D FHIRIDX^C0FHIR(.RTN)
  . S HTTPRSP("mime")="text/html"
  ;
  ; Mode 4: Core FHIR aggregator (JSON)
  D GETFHIR^C0FHIR(.RTN,.FILTER)
  Q
  ;
-BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson_bg.* + tjson_bg.wasm.b64 in M user www)
- N D
- S D=+$G(DFN)
+BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhir bundles
+ N ALTLBL,ALTRAW,BADGE,D,IEN,LOADURL,RAWLBL,RAWURL,SRC,SRCNOTE,THEME,TOPLINKS
+ S D=+$G(FILTER("dfn"))
+ S IEN=+$G(FILTER("ien"))
+ S SRC=$$UPCASE^C0FHIR($G(FILTER("source")))
+ I SRC="SYNTHEA" S SRC="SHOWFHIR"
+ I SRC="" S SRC=$S(IEN>0:"SHOWFHIR",1:"FHIR")
+ I SRC="SHOWFHIR" D
+ . S THEME="theme-light"
+ . S BADGE="Synthea source"
+ . S SRCNOTE="Stored Synthea FHIR via /showfhir"
+ . S LOADURL=$S(IEN>0:"/showfhir?ien="_IEN,D>0:"/showfhir?dfn="_D,1:"/showfhir")
+ . S RAWLBL="raw synthea"
+ . S RAWURL=LOADURL
+ . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
+ . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")
+ E  D
+ . S THEME="theme-dark"
+ . S BADGE="VistA source"
+ . S SRCNOTE="VistA-generated FHIR via /fhir"
+ . S LOADURL="/fhir?dfn="_D
+ . S RAWLBL="raw fhir"
+ . S RAWURL=LOADURL
+ . S ALTRAW=""
+ . S ALTLBL=""
  K RTN
  D ADDLN(.RTN,"<!DOCTYPE html>")
  D ADDLN(.RTN,"<html>")
@@ -48,34 +71,46 @@ BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson
  D ADDLN(.RTN,"<meta name='viewport' content='width=device-width, initial-scale=1'>")
  D ADDLN(.RTN,"<title>C0FHIR Browser</title>")
  D ADDLN(.RTN,"<style>")
- D ADDLN(.RTN,"body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#e2e8f0;}")
- D ADDLN(.RTN,".top{padding:12px 16px;border-bottom:1px solid #334155;background:#111827;}")
- D ADDLN(.RTN,".top a{color:#93c5fd;text-decoration:none;margin-right:10px;}")
- D ADDLN(.RTN,".sub{font-size:12px;color:#94a3b8;margin-top:4px;}")
+ D ADDLN(.RTN,"body.theme-dark{color-scheme:dark;--bg:#0b1220;--fg:#e2e8f0;--top-bg:#111827;--top-border:#334155;--link:#93c5fd;--muted:#94a3b8;}")
+ D ADDLN(.RTN,"body.theme-dark{--panel:#0f172a;--divider:#334155;--item-border:#1f2937;--item-hover:#111827;--item-active:#172554;}")
+ D ADDLN(.RTN,"body.theme-dark{--accent:#1d4ed8;--accent-2:#60a5fa;--btn-border:#334155;--btn-bg:#0f172a;}")
+ D ADDLN(.RTN,"body.theme-dark{--btn-active:#1d4ed8;--btn-active-border:#2563eb;--btn-active-fg:#ffffff;--badge-bg:#1e3a8a;--badge-fg:#dbeafe;}")
+ D ADDLN(.RTN,"body.theme-light{color-scheme:light;--bg:#f8fafc;--fg:#0f172a;--top-bg:#e2e8f0;--top-border:#cbd5e1;--link:#1d4ed8;--muted:#475569;}")
+ D ADDLN(.RTN,"body.theme-light{--panel:#ffffff;--divider:#cbd5e1;--item-border:#e2e8f0;--item-hover:#eff6ff;--item-active:#dbeafe;}")
+ D ADDLN(.RTN,"body.theme-light{--accent:#0284c7;--accent-2:#0369a1;--btn-border:#94a3b8;--btn-bg:#ffffff;}")
+ D ADDLN(.RTN,"body.theme-light{--btn-active:#0f766e;--btn-active-border:#0d9488;--btn-active-fg:#ffffff;--badge-bg:#dbeafe;--badge-fg:#0c4a6e;}")
+ D ADDLN(.RTN,"body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--fg);}")
+ D ADDLN(.RTN,".top{padding:12px 16px;border-bottom:1px solid var(--top-border);background:var(--top-bg);}")
+ D ADDLN(.RTN,".topline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}")
+ D ADDLN(.RTN,".badge{font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:4px 8px;border-radius:999px;background:var(--badge-bg);color:var(--badge-fg);}")
+ D ADDLN(.RTN,".top a{color:var(--link);text-decoration:none;margin-right:10px;}")
+ D ADDLN(.RTN,".sub{font-size:12px;color:var(--muted);margin-top:4px;}")
+ D ADDLN(.RTN,".srcnote{color:var(--muted);}")
  D ADDLN(.RTN,".wrap{display:flex;height:calc(100vh - 64px);min-height:0;box-sizing:border-box;}")
- D ADDLN(.RTN,".left{width:360px;flex:0 0 360px;min-width:0;border-right:1px solid #334155;display:flex;flex-direction:column;min-height:0;}")
+ D ADDLN(.RTN,".left{width:360px;flex:0 0 360px;min-width:0;border-right:1px solid var(--divider);display:flex;flex-direction:column;min-height:0;}")
  D ADDLN(.RTN,".right{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;}")
- D ADDLN(.RTN,".bar{padding:10px;border-bottom:1px solid #334155;}")
- D ADDLN(.RTN,"input,select{width:100%;padding:8px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#e2e8f0;}")
+ D ADDLN(.RTN,".bar{padding:10px;border-bottom:1px solid var(--divider);}")
+ D ADDLN(.RTN,"input,select{width:100%;padding:8px;border:1px solid var(--btn-border);border-radius:6px;background:var(--panel);color:var(--fg);}")
+ D ADDLN(.RTN,"input::placeholder{color:var(--muted);}")
  D ADDLN(.RTN,".list{overflow:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch;}")
- D ADDLN(.RTN,".item{padding:10px;border-bottom:1px solid #1f2937;cursor:pointer;}")
- D ADDLN(.RTN,".item.parent{border-left:3px solid #1d4ed8;}")
- D ADDLN(.RTN,".item.child{padding-left:28px;background:#0f172a;}")
- D ADDLN(.RTN,".item:hover{background:#111827;}")
- D ADDLN(.RTN,".item.active{background:#172554;}")
- D ADDLN(.RTN,".rt{font-size:11px;color:#93c5fd;text-transform:uppercase;}")
- D ADDLN(.RTN,".item.child .rt{font-size:10px;color:#60a5fa;}")
+ D ADDLN(.RTN,".item{padding:10px;border-bottom:1px solid var(--item-border);cursor:pointer;}")
+ D ADDLN(.RTN,".item.parent{border-left:3px solid var(--accent);}")
+ D ADDLN(.RTN,".item.child{padding-left:28px;background:var(--panel);}")
+ D ADDLN(.RTN,".item:hover{background:var(--item-hover);}")
+ D ADDLN(.RTN,".item.active{background:var(--item-active);}")
+ D ADDLN(.RTN,".rt{font-size:11px;color:var(--link);text-transform:uppercase;}")
+ D ADDLN(.RTN,".item.child .rt{font-size:10px;color:var(--accent-2);}")
  D ADDLN(.RTN,".nm{font-weight:600;margin-top:2px;}")
- D ADDLN(.RTN,".id{font-size:12px;color:#94a3b8;}")
- D ADDLN(.RTN,"pre{margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word;flex:1;min-height:0;-webkit-overflow-scrolling:touch;}")
+ D ADDLN(.RTN,".id{font-size:12px;color:var(--muted);}")
+ D ADDLN(.RTN,"pre{margin:0;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-word;flex:1;min-height:0;-webkit-overflow-scrolling:touch;background:var(--panel);}")
  D ADDLN(.RTN,".bar-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}")
  D ADDLN(.RTN,".fmtbtns{display:flex;gap:6px;flex-shrink:0;}")
- D ADDLN(.RTN,".fmtbtn{padding:6px 12px;border:1px solid #334155;border-radius:6px;background:#0f172a;color:#e2e8f0;cursor:pointer;font-size:12px;}")
- D ADDLN(.RTN,".fmtbtn.active{background:#1d4ed8;border-color:#2563eb;color:#fff;}")
+ D ADDLN(.RTN,".fmtbtn{padding:6px 12px;border:1px solid var(--btn-border);border-radius:6px;background:var(--btn-bg);color:var(--fg);cursor:pointer;font-size:12px;}")
+ D ADDLN(.RTN,".fmtbtn.active{background:var(--btn-active);border-color:var(--btn-active-border);color:var(--btn-active-fg);}")
  D ADDLN(.RTN,"@media (max-width:960px){")
  D ADDLN(.RTN,"html{overflow-y:scroll;-webkit-overflow-scrolling:touch;}")
  D ADDLN(.RTN,".wrap{flex-direction:column;height:auto;min-height:calc(100vh - 64px);min-height:calc(100dvh - 64px);}")
- D ADDLN(.RTN,".left{width:100%;flex:0 0 auto;max-height:clamp(140px,32vmax,300px);min-height:120px;border-right:none;border-bottom:1px solid #334155;}")
+ D ADDLN(.RTN,".left{width:100%;flex:0 0 auto;max-height:clamp(140px,32vmax,300px);min-height:120px;border-right:none;border-bottom:1px solid var(--divider);}")
  D ADDLN(.RTN,".right{flex:0 0 auto;min-height:0;}")
  D ADDLN(.RTN,".list{overscroll-behavior:contain;touch-action:pan-y;}")
  D ADDLN(.RTN,"pre{flex:none;min-height:35vh;min-height:min(40dvh,280px);max-height:none;overflow-x:auto;overflow-y:visible;}")
@@ -85,9 +120,16 @@ BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson
  D ADDLN(.RTN,"}")
  D ADDLN(.RTN,"</style>")
  D ADDLN(.RTN,"</head>")
- D ADDLN(.RTN,"<body>")
- D ADDLN(.RTN,"<div class='top'><strong>C0FHIR Browser</strong>")
- D ADDLN(.RTN,"<div class='sub'><a href='/fhir'>index</a><a href='/fhir?dfn="_D_"'>raw fhir</a><a href='/vpr?dfn="_D_"'>vpr</a> DFN "_D_"</div></div>")
+ D ADDLN(.RTN,"<body class='"_THEME_"'>")
+ D ADDLN(.RTN,"<div class='top'><div class='topline'><strong>C0FHIR Browser</strong><span class='badge'>"_BADGE_"</span></div>")
+ S TOPLINKS="<div class='sub'><a href='/fhir'>index</a><a href="""_RAWURL_""">"_RAWLBL_"</a>"
+ I ALTRAW'="" S TOPLINKS=TOPLINKS_"<a href="""_ALTRAW_""">"_ALTLBL_"</a>"
+ I D>0 S TOPLINKS=TOPLINKS_"<a href=""/vpr?dfn="_D_""">vpr</a>"
+ S TOPLINKS=TOPLINKS_"<span class='srcnote'>"_SRCNOTE_"</span>"
+ I D>0 S TOPLINKS=TOPLINKS_" | DFN "_D
+ I SRC="SHOWFHIR",IEN>0 S TOPLINKS=TOPLINKS_" | IEN "_IEN
+ S TOPLINKS=TOPLINKS_"</div></div>"
+ D ADDLN(.RTN,TOPLINKS)
  D ADDLN(.RTN,"<div class='wrap'>")
  D ADDLN(.RTN,"<section class='left'>")
  D ADDLN(.RTN,"<div class='bar'><input id='q' placeholder='Search text'></div>")
@@ -101,6 +143,10 @@ BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson
  D ADDLN(.RTN,"</div>")
  D ADDLN(.RTN,"<script>")
  D ADDLN(.RTN,"const dfn="_D_";")
+ D ADDLN(.RTN,"const graphIen="_IEN_";")
+ D ADDLN(.RTN,"const sourceMode='"_$S(SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
+ D ADDLN(.RTN,"const sourceLabel=sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR';")
+ D ADDLN(.RTN,"const bundleUrl='"_LOADURL_"';")
  D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson.js?v=0.5.0';")
  D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")
  D ADDLN(.RTN,"try{const x=sessionStorage.getItem('c0fhirBrowserFmt');if(x==='json'||x==='tjson')st.fmt=x;}catch(e){}")
@@ -162,7 +208,7 @@ BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson
  D ADDLN(.RTN," try{sessionStorage.setItem('c0fhirBrowserFmt',f);}catch(e){}")
  D ADDLN(.RTN," updateFmtButtons();draw();}")
  D ADDLN(.RTN,"async function drawDetailAsync(){")
- D ADDLN(.RTN," el('meta').textContent=st.visible.length+' visible resources in '+st.tree.length+' top-level rows ('+st.all.length+' total)';")
+ D ADDLN(.RTN," el('meta').textContent=sourceLabel+': '+st.visible.length+' visible resources in '+st.tree.length+' top-level rows ('+st.all.length+' total)';")
  D ADDLN(.RTN," if(!st.pick){el('detail').textContent='Select a resource';return;}")
  D ADDLN(.RTN," const obj=(st.pick||{}).resource||{};")
  D ADDLN(.RTN," if(st.fmt==='json'){el('detail').textContent=JSON.stringify(obj,null,2);return;}")
@@ -175,8 +221,8 @@ BROWSER(RTN,DFN) ; Interactive FHIR browser (TJSON: /filesystem/tjson.js + tjson
  D ADDLN(.RTN,"}")
  D ADDLN(.RTN,"function draw(){drawList();updateFmtButtons();drawDetailAsync();}")
  D ADDLN(.RTN,"async function boot(){")
- D ADDLN(.RTN," const [r]=await Promise.all([fetch('/fhir?dfn='+dfn),ensureTjson().catch(()=>null)]);")
- D ADDLN(.RTN," if(!r.ok) throw new Error('HTTP '+r.status+' loading /fhir?dfn='+dfn);")
+ D ADDLN(.RTN," const [r]=await Promise.all([fetch(bundleUrl),ensureTjson().catch(()=>null)]);")
+ D ADDLN(.RTN," if(!r.ok) throw new Error('HTTP '+r.status+' loading '+bundleUrl);")
  D ADDLN(.RTN," const j=await r.json();")
  D ADDLN(.RTN," st.all=(j&&Array.isArray(j.entry))?j.entry:[];")
  D ADDLN(.RTN," refillTypes();")
