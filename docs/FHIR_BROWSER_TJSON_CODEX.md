@@ -20,6 +20,7 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
    Under **`vendor/tjson/`**:
    - `tjson_bg.js`, `tjson_bg.wasm`, `tjson.d.ts` from `https://unpkg.com/@rfanth/tjson@0.5.0/`.
    - **`tjson.js`** is a **patched** entry (not the stock npm file): see steps 7–10.
+   - Supported refresh path: **`./scripts/update-vendored-tjson.sh <version>`**. It vendors the npm package, regenerates **`.b64`**, and updates the browser cache-bust token in **`src/C0FHIRWS.m`** to the readable vendored version (for example **`0.5.0`**).
 
 4. **Serve via `%W0` `/filesystem/<file>`**  
    Static files must live under the M user’s **`www`** tree (listener-dependent mapping):
@@ -27,6 +28,7 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
    - **VEHU / vehu10 / fhirdev22 (vehu):** `GET /filesystem/foo` → `/home/vehu/www/filesystem/foo` (nested `filesystem` segment).
 
 5. **Sync scripts**  
+   - **`scripts/update-vendored-tjson.sh`**: supported entry point for changing vendored **`@rfanth/tjson`**; rewrites **`vendor/tjson/`**, regenerates **`tjson_bg.wasm.b64`**, writes **`vendor/tjson/VERSION`**, and updates the visible **`tjson.js?v=<version>`** token in **`C0FHIRWS.m`**.
    - **`scripts/regen-tjson-wasm-b64.sh`**: refresh **`tjson_bg.wasm.b64`** from **`tjson_bg.wasm`** with a round-trip verify (run automatically before vendor copy in **`local-fhir-container-sync.sh`** and **`fhirdev-codex-sync.sh`** unless **`TJSON_SKIP_REGEN_B64=1`**).  
    - **`scripts/local-fhir-container-sync.sh`**: `docker cp` `src/*.m` and `vendor/tjson/*` into the container; default **`FHIR_REMOTE_WWW=/home/<user>/www`** for `fhir`.
    - **`scripts/vehu10-fhir-sync.sh`**: exports **`FHIR_REMOTE_WWW=/home/vehu/www/filesystem`**.
@@ -56,14 +58,15 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
     - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.
 
 11. **`C0FHIRWS.m` — JS API (0.4+ / 0.5.x)**  
-    Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=050`** to reduce stale cached JS vs wasm. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
+    Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=<version>`** to reduce stale cached JS vs wasm while keeping the live browser token readable. **`update-vendored-tjson.sh`** rewrites this token from **`vendor/tjson/VERSION`**; sync scripts verify it before deploy unless **`TJSON_SKIP_VERIFY_TOKEN=1`**. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
 
 12. **`C0FHIRWS.m` error string**  
     On failure, the UI mentions syncing **`vendor/tjson`** including **`.b64`** and redeploying.
 
 ## Operational checklist
 
-- [ ] After changing wasm: regenerate **`tjson_bg.wasm.b64`** and redeploy all four vendor files.
+- [ ] When updating vendored **`@rfanth/tjson`**: run **`./scripts/update-vendored-tjson.sh <version>`**.
+- [ ] After changing wasm manually: regenerate **`tjson_bg.wasm.b64`** and verify the visible **`tjson.js?v=<version>`** token matches before deploy.
 - [ ] **fhir:** files in **`/home/osehra/www/`** (flat).
 - [ ] **vehu10 / fhirdev22:** files in **`/home/vehu/www/filesystem/`**.
 - [ ] Run **`D EN^SYNWEBRG`** (or your site’s route registration) after routine updates; restart **`%webreq`** if required.
@@ -76,7 +79,9 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 | Browser HTML/JS (M-embedded) | `src/C0FHIRWS.m` |
 | Route registration | `src/SYNWEBRG.m` |
 | Vendored TJSON (patched entry) | `vendor/tjson/` |
+| Update vendored package + cache token | `scripts/update-vendored-tjson.sh` |
 | Regenerate wasm sidecar | `scripts/regen-tjson-wasm-b64.sh` |
+| Verify cache token matches vendored assets | `scripts/check-tjson-cache-token.sh` |
 | Local Docker sync | `scripts/local-fhir-container-sync.sh`, `vehu10-fhir-sync.sh` |
 | Remote **fhirdev22** sync | `scripts/fhirdev-codex-sync.sh` (uses **SSH multiplexing** so many `scp`/`ssh` calls do not trip **MaxStartups** / rate limits; set `FHIRDEV_SSH_NO_MUX=1` to disable) |
 

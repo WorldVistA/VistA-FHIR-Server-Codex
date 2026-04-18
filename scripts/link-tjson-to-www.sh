@@ -17,7 +17,7 @@ W="${TJSON_WWW:-$HOME/www}"
 
 for f in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
   [[ -f "$V/$f" ]] || {
-    echo "Missing $V/$f — fetch npm files or run: $ROOT/scripts/regen-tjson-wasm-b64.sh" >&2
+    echo "Missing $V/$f — update with $ROOT/scripts/update-vendored-tjson.sh <version>" >&2
     exit 1
   }
 done

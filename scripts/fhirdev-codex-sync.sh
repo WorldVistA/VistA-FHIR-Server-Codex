@@ -12,8 +12,9 @@
 #
 # Env: FHIRDEV_SSH, FHIRDEV_CONTAINER, FHIRDEV_ROUTINE_DIR, FHIRDEV_WWW, VEHU_ENV,
 #      FHIRDEV_MUMPS, FHIRDEV_HTTP_BASE, FHIRDEV_M_USER (default vehu; use osehra for fhir.vistaplex.org)
-#      FHIRDEV_SSH_NO_MUX=1  — disable ControlMaster (debug only; increases TCP churn)
+#      FHIRDEV_SSH_NO_MUX=1   — disable ControlMaster (debug only; increases TCP churn)
 #      TJSON_SKIP_REGEN_B64=1 — skip scripts/regen-tjson-wasm-b64.sh before vendor scp
+#      TJSON_SKIP_VERIFY_TOKEN=1 — skip cache-token verification against src/C0FHIRWS.m
 set -euo pipefail
 shopt -s nullglob
 
@@ -62,17 +63,20 @@ trap cleanup EXIT
 SRC_M=( "$SRC"/*.m )
 RG_M=( "$RG_SRC"/*.m )
 TJSON_FILES=( "$V/tjson.js" "$V/tjson_bg.js" "$V/tjson_bg.wasm" "$V/tjson_bg.wasm.b64" )
+if [[ "${TJSON_SKIP_REGEN_B64:-0}" != "1" ]]; then
+  echo "==> regen tjson_bg.wasm.b64 (verify decode matches wasm)"
+  bash "$ROOT/scripts/regen-tjson-wasm-b64.sh"
+fi
+if [[ "${TJSON_SKIP_VERIFY_TOKEN:-0}" != "1" ]]; then
+  echo "==> verify C0FHIRWS tjson cache token"
+  bash "$ROOT/scripts/check-tjson-cache-token.sh"
+fi
 for tf in "${TJSON_FILES[@]}"; do
   [[ -f "$tf" ]] || {
     echo "error: missing vendor file: $tf" >&2
     exit 1
   }
 done
-
-if [[ "${TJSON_SKIP_REGEN_B64:-0}" != "1" ]]; then
-  echo "==> regen tjson_bg.wasm.b64 (verify decode matches wasm)"
-  bash "$ROOT/scripts/regen-tjson-wasm-b64.sh"
-fi
 
 echo "==> scp batched routines + tjson -> stage (few connections)"
 if ((${#SRC_M[@]})); then

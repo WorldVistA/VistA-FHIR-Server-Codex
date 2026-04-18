@@ -26,6 +26,7 @@
 #   FHIR_MUMPS       (default: /home/${FHIR_M_USER}/lib/gtm/mumps)
 #   FHIR_USE_SSH=1   FHIR_SSH_HOST PORT USER KEY — scp to container SSH
 #   TJSON_SKIP_REGEN_B64=1 — skip scripts/regen-tjson-wasm-b64.sh before vendor copy
+#   TJSON_SKIP_VERIFY_TOKEN=1 — skip cache-token verification against src/C0FHIRWS.m
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -91,7 +92,7 @@ copy_vendor_tjson_via_docker() {
   # C0FHIR browser loads ESM from /filesystem/tjson.js (%W0 maps to ~/www/<file>).
   local v="$ROOT/vendor/tjson" f
   [[ -f "$v/tjson.js" && -f "$v/tjson_bg.js" && -f "$v/tjson_bg.wasm" && -f "$v/tjson_bg.wasm.b64" ]] || {
-    echo "WARN: vendor/tjson incomplete — need tjson.js, tjson_bg.js, tjson_bg.wasm, tjson_bg.wasm.b64 (regen b64: base64 -w0 vendor/tjson/tjson_bg.wasm > vendor/tjson/tjson_bg.wasm.b64)" >&2
+    echo "WARN: vendor/tjson incomplete — update with ./scripts/update-vendored-tjson.sh <version>" >&2
     return 0
   }
   echo "==> docker cp vendor/tjson/* -> $FHIR_CONTAINER:$FHIR_REMOTE_WWW/ (for /filesystem/tjson.js)"
@@ -132,7 +133,7 @@ copy_rehmp_rpc_demo_via_ssh() {
 copy_vendor_tjson_via_ssh() {
   local v="$ROOT/vendor/tjson" f
   [[ -f "$v/tjson.js" && -f "$v/tjson_bg.js" && -f "$v/tjson_bg.wasm" && -f "$v/tjson_bg.wasm.b64" ]] || {
-    echo "WARN: vendor/tjson incomplete — skip SSH vendor copy" >&2
+    echo "WARN: vendor/tjson incomplete — update with ./scripts/update-vendored-tjson.sh <version>" >&2
     return 0
   }
   FHIR_SSH_HOST="${FHIR_SSH_HOST:-127.0.0.1}"
@@ -192,6 +193,10 @@ restart_web_and_register() {
 if [[ "${TJSON_SKIP_REGEN_B64:-0}" != "1" ]]; then
   echo "==> regen tjson_bg.wasm.b64 (verify decode matches wasm)"
   bash "$ROOT/scripts/regen-tjson-wasm-b64.sh"
+fi
+if [[ "${TJSON_SKIP_VERIFY_TOKEN:-0}" != "1" ]]; then
+  echo "==> verify C0FHIRWS tjson cache token"
+  bash "$ROOT/scripts/check-tjson-cache-token.sh"
 fi
 
 if [[ "$FHIR_USE_SSH" == "1" ]]; then
