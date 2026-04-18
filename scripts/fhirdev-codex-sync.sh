@@ -8,7 +8,7 @@
 # sshd MaxStartups and yield mid-run "Connection refused"). Prefer leaving multiplexing
 # **enabled** (omit FHIRDEV_SSH_NO_MUX) when the server allows it.
 #
-# Defaults: root@fhirdev.vistaplex.org, container fhirdev22, smoke http://fhirdev.vistaplex.org:9080
+# Defaults: root@devfhir.vistaplex.org, container fhirdev22, smoke https://devfhir.vistaplex.org
 #
 # Env: FHIRDEV_SSH, FHIRDEV_CONTAINER, FHIRDEV_ROUTINE_DIR, FHIRDEV_WWW, VEHU_ENV,
 #      FHIRDEV_MUMPS, FHIRDEV_HTTP_BASE, FHIRDEV_M_USER (default vehu; use osehra for fhir.vistaplex.org)
@@ -24,13 +24,13 @@ V="$ROOT/vendor/tjson"
 REHMP_ROOT="${REHMP_ROOT:-$ROOT/../rehmp}"
 RG_SRC="${REHMP_C0RG_DIR:-$REHMP_ROOT/C0RG}"
 
-FHIRDEV_SSH="${FHIRDEV_SSH:-root@fhirdev.vistaplex.org}"
+FHIRDEV_SSH="${FHIRDEV_SSH:-root@devfhir.vistaplex.org}"
 FHIRDEV_CONTAINER="${FHIRDEV_CONTAINER:-fhirdev22}"
 REMOTE_P="${FHIRDEV_ROUTINE_DIR:-/home/vehu/p}"
 REMOTE_WWW="${FHIRDEV_WWW:-/home/vehu/www/filesystem}"
 VEHU_ENV="${VEHU_ENV:-/home/vehu/etc/env}"
 MUMPS="${FHIRDEV_MUMPS:-/home/vehu/lib/gtm/mumps}"
-HTTP_BASE="${FHIRDEV_HTTP_BASE:-http://fhirdev.vistaplex.org:9080}"
+HTTP_BASE="${FHIRDEV_HTTP_BASE:-https://devfhir.vistaplex.org}"
 FHIRDEV_M_USER="${FHIRDEV_M_USER:-vehu}"
 
 CTL="${TMPDIR:-/tmp}/fhirdev-codex-$$.sock"
