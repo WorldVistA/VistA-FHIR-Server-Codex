@@ -266,6 +266,10 @@ def check_synthea_browser(base_url: str, timeout: int, row: Row) -> None:
         "Synthea browser script missing bundleUrl fetch.",
     )
     ensure("j.entry" in script, "Synthea browser script does not read Bundle entry data.")
+    ensure("prepareForTjson" in script, "Synthea browser missing TJSON preparation hook.")
+    ensure("DocumentReference" in script, "Synthea browser missing DocumentReference detection.")
+    ensure("decodeBase64Utf8" in script, "Synthea browser missing base64 decode helper.")
+    ensure("text/plain" in script or "plain/text" in script, "Synthea browser missing plain-text MIME detection.")
 
     print(f"PASS {row.synthea_link} HTML, light theme, and UI wiring")
 

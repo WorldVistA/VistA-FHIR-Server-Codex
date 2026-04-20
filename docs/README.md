@@ -15,6 +15,7 @@ This directory stores detailed project documentation for implementation tracking
 - `ICN_GENERATION_FHIR_INTAKE.md`: ICN assignment for FHIR intake (`newIcn2^SYNFPAT`): Synthea UUID, FHIR-supplied ICN, SSN pseudo-base (`8` + nine digits), and deploy notes for Data-Loader routines.
 - `FHIR_BROWSER_TJSON.md`: Feasibility and sources for browser TJSON (WASM/npm); points to the runbook below. Same file in **tjson-tooling** `docs/`.
 - `FHIR_BROWSER_TJSON_CODEX.md`: C0FHIR browser TJSON (WASM) integration: vendoring, `/filesystem/` paths, MIME/gzip pitfalls, `tjson_bg.wasm.b64`, sync scripts, **fhirdev22** (`fhirdev-codex-sync.sh` with SSH multiplexing). Mirrored under **`tjson-tooling/docs/`**; keep copies identical.
+- `FHIR_BROWSER_DOCUMENTREFERENCE_TEXT_DECODING_2026-04-20.md`: Follow-up note for the browser-side `DocumentReference` plain-text attachment decode path that base64-decodes stored Synthea note content before passing it to TJSON, while leaving raw JSON unchanged.
 - `FHIR_INTAKE_CURL_RECIPES.md`: Copy-paste curls for container sync, VEHU bundle pull, `POST /addpatient` and `POST /updatepatient`, and smoke checks.
 - `VISTA_VISIT_NOTE_ORDERING.md`: PCE visit vs TIU note ordering (visit-first integration vs CPRS note-first workflow), inpatient visit linkage and `ORWPCE1`/`PXRPC`/`PXAI` roles, and SYN/TIU caveats.
 - `FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`: Incident note covering the root-level malicious binaries found inside `fhirdev`, the cron persistence chain removed from the container, and the separate `%webreq` CLOSE_WAIT worker leak.

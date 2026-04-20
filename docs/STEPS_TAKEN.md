@@ -84,6 +84,12 @@ Use this file as a chronological log of concrete implementation work.
 - Added `docs/M_WEBSERVER_HTTP_RESPONSE_ENHANCEMENTS.md` as a maintainer-facing request for two HTTP response-layer fixes discovered during `/rehmp` integration: preserve application-supplied JSON bodies on non-2xx responses and allow explicit `200` success on `POST` instead of forcing `201`.
 - Added `docs/RUNNING_DEMOS.md` as a living demo runbook, starting with the `rehmp` regression demo command, progress output, artifact layout, and the current observable HTTP-layer behaviors shown by the demo.
 
+## 2026-04-20
+- Updated the interactive browser in `src/C0FHIRWS.m` so `DocumentReference` resources with `text/plain` / `plain/text` base64 attachments are decoded to UTF-8 text before being passed to TJSON, while raw JSON mode still shows the original base64 payload unchanged.
+- Confirmed on live `devfhir` `/showfhir` data that stored Synthea bundles contain matching `DocumentReference` note attachments and that the generated `/fhir` bundle path does not rely on this decode behavior.
+- Extended `scripts/fhir_regression_smoke.py` so the Synthea browser smoke asserts the presence of the TJSON preparation hook, `DocumentReference` detection, base64 decode helper, and plain-text MIME recognition.
+- Added `docs/FHIR_BROWSER_DOCUMENTREFERENCE_TEXT_DECODING_2026-04-20.md` to capture the request, implementation shape, live payload example, and local plus `devfhir` validation steps for this display-only decode behavior.
+
 ## Template For New Entries
 - Date:
 - Change:
