@@ -6,7 +6,7 @@
      so we cannot force identity.
    Load wasm bytes from ASCII sidecar tjson_bg.wasm.b64 (atob → ArrayBuffer). */
 
-import * as bg from "./tjson_bg.js";
+import * as bg from "./tjson_bg.js?v=0.5.0";
 
 function wasmBytesFromBase64Text(t) {
   const s = String(t || "").replace(/\s/g, "");
@@ -16,7 +16,7 @@ function wasmBytesFromBase64Text(t) {
   return u8.buffer;
 }
 
-const b64res = await fetch(new URL("tjson_bg.wasm.b64", import.meta.url));
+const b64res = await fetch(new URL("tjson_bg.wasm.b64?v=0.5.0", import.meta.url));
 const buf = wasmBytesFromBase64Text(await b64res.text());
 const wasmMod = await WebAssembly.compile(buf);
 const importDesc = WebAssembly.Module.imports(wasmMod);
@@ -35,4 +35,4 @@ instance.exports.__wbindgen_start();
 
 // Re-export whatever tjson_bg.js provides (0.4+; 0.5.x adds toJson). Do not use
 // `export { fromJson, ... }` — that is a parse-time error if an old tjson_bg.js is deployed.
-export * from "./tjson_bg.js";
+export * from "./tjson_bg.js?v=0.5.0";

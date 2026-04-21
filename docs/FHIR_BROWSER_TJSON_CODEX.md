@@ -40,10 +40,10 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 
 7. **Patched `tjson.js` — fetch + `WebAssembly.compile` / `instantiate`**  
    Upstream **`tjson.js` (0.4+)** uses `import * as wasm from "./tjson_bg.wasm"`, which is fragile behind wrong MIME / gzip. Our patch:
-   - Imports `./tjson_bg.js`.
-   - Loads bytes from **`tjson_bg.wasm.b64`** (text), **`atob` → `compile` / `instantiate`**.
+   - Imports `./tjson_bg.js?v=<token>`.
+   - Loads bytes from **`tjson_bg.wasm.b64?v=<token>`** (text), **`atob` → `compile` / `instantiate`**.
    - Calls **`__wbg_set_wasm`** and **`__wbindgen_start`**.
-   - Re-exports with **`export * from "./tjson_bg.js"`** (not `export { fromJson, … }`) so a site with an **older** `tjson_bg.js` still parses; the browser uses **`fromJson`** when present and **`stringify(jsonString)`** when not.
+   - Re-exports with **`export * from "./tjson_bg.js?v=<token>"`** (not `export { fromJson, … }`) so a site with an **older** `tjson_bg.js` still parses; the browser uses **`fromJson`** when present and **`stringify(jsonString)`** when not.
 
 8. **Gzip corruption on binary (minimal `fhir`)**  
    With **`Accept-Encoding: gzip`**, the server sometimes produced a **bad uncompressed length** for the wasm body. After gunzip, **`WebAssembly.compile`** failed.
@@ -54,11 +54,11 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 10. **Base64 sidecar `tjson_bg.wasm.b64`**  
     - Generate (preferred): `./scripts/regen-tjson-wasm-b64.sh` (encodes and **verifies** decode matches wasm).  
     - Manual: `base64 -w0 vendor/tjson/tjson_bg.wasm > vendor/tjson/tjson_bg.wasm.b64`  
-    - Loader fetches **`tjson_bg.wasm.b64`** as **text**, strips whitespace with **`.replace(/\s/g, "")`**, **`atob` → `Uint8Array` → `compile`**.  
+    - Loader fetches **`tjson_bg.wasm.b64?v=<token>`** as **text**, strips whitespace with **`.replace(/\s/g, "")`**, **`atob` → `Uint8Array` → `compile`**.  
     - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.
 
 11. **`C0FHIRWS.m` — JS API (0.4+ / 0.5.x)**  
-    Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=<version>`** to reduce stale cached JS vs wasm while keeping the live browser token readable. **`update-vendored-tjson.sh`** rewrites this token from **`vendor/tjson/VERSION`**; sync scripts verify it before deploy unless **`TJSON_SKIP_VERIFY_TOKEN=1`**. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
+    Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=<version>`** to reduce stale cached JS vs wasm while keeping the live browser token readable, and the vendored loader now applies that same token to **`tjson_bg.js`** and **`tjson_bg.wasm.b64`** so subordinate assets do not stay stale across upgrades. **`update-vendored-tjson.sh`** rewrites these tokens from **`vendor/tjson/VERSION`**; sync scripts verify them before deploy unless **`TJSON_SKIP_VERIFY_TOKEN=1`**. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
 
 12. **`C0FHIRWS.m` error string**  
     On failure, the UI mentions syncing **`vendor/tjson`** including **`.b64`** and redeploying.
@@ -66,7 +66,7 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
 ## Operational checklist
 
 - [ ] When updating vendored **`@rfanth/tjson`**: run **`./scripts/update-vendored-tjson.sh <version>`**.
-- [ ] After changing wasm manually: regenerate **`tjson_bg.wasm.b64`** and verify the visible **`tjson.js?v=<version>`** token matches before deploy.
+- [ ] After changing wasm manually: regenerate **`tjson_bg.wasm.b64`** and verify the visible **`tjson.js?v=<version>`** token, plus the vendored **`tjson_bg.js`** / **`.b64`** subordinate URLs, match before deploy.
 - [ ] **fhir:** files in **`/home/osehra/www/`** (flat).
 - [ ] **vehu10 / fhirdev22:** files in **`/home/vehu/www/filesystem/`**.
 - [ ] Run **`D EN^SYNWEBRG`** (or your site’s route registration) after routine updates; restart **`%webreq`** if required.

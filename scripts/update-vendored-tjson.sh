@@ -68,7 +68,22 @@ text2, n = re.subn(
 )
 if n != 1:
     raise SystemExit("error: could not update version comment in vendor/tjson/tjson.js")
-path.write_text(text2)
+text3, n = re.subn(
+    r'"\./tjson_bg\.js(?:\?v=[^"]+)?"',
+    rf'"./tjson_bg.js?v={version}"',
+    text2,
+)
+if n != 2:
+    raise SystemExit("error: could not update tjson_bg.js cache tokens in vendor/tjson/tjson.js")
+text4, n = re.subn(
+    r'"tjson_bg\.wasm\.b64(?:\?v=[^"]+)?"',
+    rf'"tjson_bg.wasm.b64?v={version}"',
+    text3,
+    count=1,
+)
+if n != 1:
+    raise SystemExit("error: could not update tjson_bg.wasm.b64 cache token in vendor/tjson/tjson.js")
+path.write_text(text4)
 PY
 
 echo "==> regen wasm sidecar"
