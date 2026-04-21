@@ -147,7 +147,7 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"const sourceMode='"_$S(SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
  D ADDLN(.RTN,"const sourceLabel=sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR';")
  D ADDLN(.RTN,"const bundleUrl='"_LOADURL_"';")
- D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson.js?v=0.5.0';")
+ D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson.js?v=0.6.0';")
  D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")
  D ADDLN(.RTN,"try{const x=sessionStorage.getItem('c0fhirBrowserFmt');if(x==='json'||x==='tjson')st.fmt=x;}catch(e){}")
  D ADDLN(.RTN,"let tjsonMod=null;")

@@ -8,7 +8,7 @@ This note ties together the official **TJSON** / **TextJSON** project ([textjson
 |--------|-----|-----------|
 | Project site | [https://textjson.com/](https://textjson.com/) | Format description, live demo (JSON ↔ TJSON), install pointers, **updated JS API** (`toJson`, `fromJson`, ESM examples) |
 | Rust + WASM reference repo | [https://github.com/rfanth/tjson](https://github.com/rfanth/tjson) | README: **binary, library (including WASM), serde** |
-| npm package (browser build) | [https://www.npmjs.com/package/@rfanth/tjson](https://www.npmjs.com/package/@rfanth/tjson) | **ESM + `.wasm`** (~396 KB wasm @ 0.5.x, zero runtime deps); see “Files” on npm |
+| npm package (browser build) | [https://www.npmjs.com/package/@rfanth/tjson](https://www.npmjs.com/package/@rfanth/tjson) | **ESM + `.wasm`** (~382 KB wasm @ 0.6.0, zero runtime deps); see “Files” on npm |
 | Type declarations (unpkg) | `@rfanth/tjson` → `tjson.d.ts` | JS API surface |
 
 ### What “runs in the browser” means today
@@ -18,7 +18,7 @@ The published **`@rfanth/tjson`** package is **not** a pure-JS parser. It is **R
 - `tjson.js` — ESM entry (upstream may use `import` of `.wasm`; we **vendor a patched** loader — see runbook).
 - `tjson_bg.wasm` — the engine
 
-The **consumer-facing API** (verified for **`@rfanth/tjson@0.5.0`**) is:
+The **consumer-facing API** (verified for **`@rfanth/tjson@0.6.0`**) is:
 
 | Export | Role |
 |--------|------|
@@ -72,7 +72,7 @@ For **WorldVistA / container** images, **B** is usually the most predictable.
 
 ## Recommended next steps (Codex + tjson-tooling)
 
-1. **Pin a version** in docs and deploy scripts (currently **`@rfanth/tjson@0.5.0`**).
+1. **Pin a version** in docs and deploy scripts (currently **`@rfanth/tjson@0.6.0`**).
 2. On upgrade: replace **`tjson_bg.js`**, **`tjson_bg.wasm`**, re-patch **`tjson.js`** (b64 loader), regenerate **`tjson_bg.wasm.b64`**, sync **`www`** / **`www/filesystem`**.
 
 ## Bottom line
@@ -82,7 +82,7 @@ For **WorldVistA / container** images, **B** is usually the most predictable.
 
 ## Implementation status
 
-**Shipped** in **`VistA-FHIR-Server-Codex`**: same-origin **`/filesystem/tjson.js`**, vendored **`@rfanth/tjson@0.5.0`** (patched loader + **`tjson_bg.wasm.b64`**).
+**Shipped** in **`VistA-FHIR-Server-Codex`**: same-origin **`/filesystem/tjson.js`**, vendored **`@rfanth/tjson@0.6.0`** (patched loader + **`tjson_bg.wasm.b64`**).
 
 **Documents (keep in sync in both repos):** this note (**`FHIR_BROWSER_TJSON.md`**) and the operational runbook (**`FHIR_BROWSER_TJSON_CODEX.md`**) live under **`docs/`** in **VistA-FHIR-Server-Codex** and in **tjson-tooling** (`~/work/vista-stack/tjson-tooling`, remote **`glilly/tjson-tools`**). After editing, copy both files to the other repo so they stay identical.
 

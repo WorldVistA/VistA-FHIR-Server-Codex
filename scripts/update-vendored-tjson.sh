@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "usage: $0 <npm-version-or-spec>" >&2
-  echo "example: $0 0.5.0" >&2
+  echo "example: $0 0.6.0" >&2
   echo "example: $0 @rfanth/tjson@0.5.1" >&2
   exit 1
 }

@@ -1,12 +1,12 @@
 /* @ts-self-types="./tjson.d.ts" */
-/* Vendored @rfanth/tjson 0.5.0 (+ this patch). */
+/* Vendored @rfanth/tjson 0.6.0 (+ this patch). */
 /* Patched for %W0 static /filesystem:
    - ESM cannot import .wasm (wrong MIME).
    - fetch(.wasm) gets gzip with wrong ISIZE; browsers ignore fetch(…, { headers: { Accept-Encoding } })
      so we cannot force identity.
    Load wasm bytes from ASCII sidecar tjson_bg.wasm.b64 (atob → ArrayBuffer). */
 
-import * as bg from "./tjson_bg.js?v=0.5.0";
+import * as bg from "./tjson_bg.js?v=0.6.0";
 
 function wasmBytesFromBase64Text(t) {
   const s = String(t || "").replace(/\s/g, "");
@@ -16,7 +16,7 @@ function wasmBytesFromBase64Text(t) {
   return u8.buffer;
 }
 
-const b64res = await fetch(new URL("tjson_bg.wasm.b64?v=0.5.0", import.meta.url));
+const b64res = await fetch(new URL("tjson_bg.wasm.b64?v=0.6.0", import.meta.url));
 const buf = wasmBytesFromBase64Text(await b64res.text());
 const wasmMod = await WebAssembly.compile(buf);
 const importDesc = WebAssembly.Module.imports(wasmMod);
@@ -33,6 +33,6 @@ const instance = await WebAssembly.instantiate(wasmMod, imports);
 bg.__wbg_set_wasm(instance.exports);
 instance.exports.__wbindgen_start();
 
-// Re-export whatever tjson_bg.js provides (0.4+; 0.5.x adds toJson). Do not use
+// Re-export whatever tjson_bg.js provides (0.4+; 0.5+ adds toJson). Do not use
 // `export { fromJson, ... }` — that is a parse-time error if an old tjson_bg.js is deployed.
-export * from "./tjson_bg.js?v=0.5.0";
+export * from "./tjson_bg.js?v=0.6.0";
