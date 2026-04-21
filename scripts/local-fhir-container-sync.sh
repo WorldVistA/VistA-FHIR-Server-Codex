@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Sync VistA-FHIR-Server-Codex src/*.m into a local FHIR/VEHU Docker container,
-# restart the M web listener, re-register routes, and smoke-test HTTP.
+# Sync VistA-FHIR-Server-Codex src/*.m plus required top-level routines
+# (currently SYNWEBUT.m) into a local FHIR/VEHU Docker container, restart
+# the M web listener, re-register routes, and smoke-test HTTP.
 #
 # Defaults target the minimal **fhir** image (port 9081, user osehra). For patients
 # with real visit-linked **TIU** notes, use the VEHU dataset instead — see
@@ -33,6 +34,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/src"
 REHMP_ROOT="${REHMP_ROOT:-$ROOT/../rehmp}"
 RG_SRC="${REHMP_C0RG_DIR:-$REHMP_ROOT/C0RG}"
+EXTRA_M=()
+if [[ -f "$ROOT/SYNWEBUT.m" ]]; then
+  EXTRA_M+=( "$ROOT/SYNWEBUT.m" )
+fi
 
 FHIR_CONTAINER="${FHIR_CONTAINER:-fhir}"
 FHIR_HTTP_BASE="${FHIR_HTTP_BASE:-http://127.0.0.1:9081}"
@@ -57,6 +62,10 @@ demos_parent_dir() {
 copy_via_docker() {
   local f
   for f in "$SRC"/*.m; do
+    [[ -f "$f" ]] || continue
+    docker cp "$f" "$FHIR_CONTAINER:$FHIR_REMOTE_P/"
+  done
+  for f in "${EXTRA_M[@]}"; do
     [[ -f "$f" ]] || continue
     docker cp "$f" "$FHIR_CONTAINER:$FHIR_REMOTE_P/"
   done
@@ -157,6 +166,10 @@ copy_via_ssh() {
   SCP_BASE=(scp -i "$FHIR_SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -P "$FHIR_SSH_PORT")
   echo "==> Copying routines from $SRC to ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
   "${SCP_BASE[@]}" "$SRC"/*.m "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
+  if ((${#EXTRA_M[@]})); then
+    echo "==> Copying top-level routines to ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
+    "${SCP_BASE[@]}" "${EXTRA_M[@]}" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
+  fi
   if ls "$RG_SRC"/*.m >/dev/null 2>&1; then
     echo "==> Copying C0RG routines from $RG_SRC to ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
     "${SCP_BASE[@]}" "$RG_SRC"/*.m "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
@@ -173,6 +186,10 @@ restart_web_and_register() {
   {
     local f
     for f in "$SRC"/*.m; do
+      [[ -f "$f" ]] || continue
+      printf 'zlink "%s"\n' "$(basename "$f" .m)"
+    done
+    for f in "${EXTRA_M[@]}"; do
       [[ -f "$f" ]] || continue
       printf 'zlink "%s"\n' "$(basename "$f" .m)"
     done
@@ -205,6 +222,9 @@ if [[ "$FHIR_USE_SSH" == "1" ]]; then
   copy_rehmp_rpc_demo_via_ssh
 else
   echo "==> docker cp $SRC/*.m -> $FHIR_CONTAINER:$FHIR_REMOTE_P/"
+  if ((${#EXTRA_M[@]})); then
+    echo "==> docker cp top-level routines -> $FHIR_CONTAINER:$FHIR_REMOTE_P/"
+  fi
   if [[ -d "$RG_SRC" ]]; then
     echo "==> docker cp $RG_SRC/*.m -> $FHIR_CONTAINER:$FHIR_REMOTE_P/"
   fi

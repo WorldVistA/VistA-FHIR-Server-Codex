@@ -142,15 +142,18 @@ setError1 ;
  ; Cache specific functions (selected one support GT.M too!)
  ;
 GMT() ; return HTTP date string (this is really using UTC instead of GMT)
- N TM,DAY,OUT,ZV
- S ZV=$ZVERSION
- I $$UP(ZV)["CACHE" Q "UNIMPLEMENTED"
- I $$UP(ZV)["GT.M" D  Q OUT
+ N TM,DAY
+ I $$UP($ZV)["CACHE" D  Q $P(DAY," ")_", "_$ZDATETIME(TM,2)_" GMT"
+ . S TM=$ZTIMESTAMP,DAY=$ZDATETIME(TM,11)
+ ;
+ N OUT
+ I $$UP($ZV)["GT.M" D  Q OUT
  . N D S D="datetimepipe"
  . N OLDIO S OLDIO=$I
  . O D:(shell="/bin/sh":comm="date -u +'%a, %d %b %Y %H:%M:%S %Z'|sed 's/UTC/GMT/g'")::"pipe"
- . U D R OUT:1
+ . U D R OUT:1 
  . U OLDIO C D
+ ;
  QUIT "UNIMPLEMENTED"
  ;
  ;

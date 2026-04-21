@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Push VistA-FHIR-Server-Codex src/*.m + vendor/tjson/* to remote fhirdev22 (SSH + docker).
+# Push VistA-FHIR-Server-Codex src/*.m plus required top-level routines
+# (currently SYNWEBUT.m) and vendor/tjson/* to remote fhirdev22 (SSH + docker).
 # Matches vehu layout: routines /home/vehu/p, static /home/vehu/www/filesystem (GET /filesystem/...).
 #
 # Uses SSH connection multiplexing (ControlMaster) so all scp/ssh share one TCP session.
@@ -61,6 +62,10 @@ cleanup() {
 trap cleanup EXIT
 
 SRC_M=( "$SRC"/*.m )
+EXTRA_M=()
+if [[ -f "$ROOT/SYNWEBUT.m" ]]; then
+  EXTRA_M+=( "$ROOT/SYNWEBUT.m" )
+fi
 RG_M=( "$RG_SRC"/*.m )
 TJSON_FILES=( "$V/tjson.js" "$V/tjson_bg.js" "$V/tjson_bg.wasm" "$V/tjson_bg.wasm.b64" )
 if [[ "${TJSON_SKIP_REGEN_B64:-0}" != "1" ]]; then
@@ -81,6 +86,9 @@ done
 echo "==> scp batched routines + tjson -> stage (few connections)"
 if ((${#SRC_M[@]})); then
   "${SCP[@]}" "${SRC_M[@]}" "$FHIRDEV_SSH:$STAGE/"
+fi
+if ((${#EXTRA_M[@]})); then
+  "${SCP[@]}" "${EXTRA_M[@]}" "$FHIRDEV_SSH:$STAGE/"
 fi
 if ((${#RG_M[@]})); then
   "${SCP[@]}" "${RG_M[@]}" "$FHIRDEV_SSH:$STAGE/"
@@ -107,6 +115,10 @@ EOS
 echo "==> ZLINK + EN^SYNWEBRG + %webreq restart in $FHIRDEV_CONTAINER"
 {
   for f in "$SRC"/*.m; do
+    [[ -f "$f" ]] || continue
+    printf 'zlink "%s"\n' "$(basename "$f" .m)"
+  done
+  for f in "${EXTRA_M[@]}"; do
     [[ -f "$f" ]] || continue
     printf 'zlink "%s"\n' "$(basename "$f" .m)"
   done
