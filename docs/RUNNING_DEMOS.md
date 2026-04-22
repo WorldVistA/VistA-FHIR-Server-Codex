@@ -51,6 +51,62 @@ Operational note:
 - This Codex runbook intentionally keeps only the demo-facing summary so the
   environment-specific truth lives in one place.
 
+### Local UI Against The `fhir` Container
+
+The browser-side demo apps live in the sibling `rehmp` repo.
+
+For the local RPC UI against the minimal `fhir` container backend:
+
+```bash
+cd /home/glilly/work/vista-stack/rehmp/ehmp-ui/rehmp-rpc-demo
+npm run dev:wsl:fhir
+```
+
+Then open:
+
+```text
+http://localhost:5173/demos/rpc/
+```
+
+For the local FHIR UI against the same backend:
+
+```bash
+cd /home/glilly/work/vista-stack/rehmp/ehmp-ui/rehmp-fhir-demo
+npm run dev:wsl:fhir
+```
+
+Then open:
+
+```text
+http://localhost:5173/demos/fhir/
+```
+
+If you want the backend-generated FHIR index page itself on `localhost:5177`
+with the `rehmp` link redirected to the local UI, run:
+
+```bash
+cd /home/glilly/work/vista-stack/rehmp/ehmp-ui/rehmp-rpc-demo
+npm run dev:wsl:fhir
+```
+
+in one terminal, then:
+
+```bash
+cd /home/glilly/work/vista-stack/rehmp/ehmp-ui/rehmp-fhir-demo
+npm run dev:wsl:links:fhir
+```
+
+in a second terminal, and open:
+
+```text
+http://localhost:5177/fhir
+```
+
+For the full browser-demo details, including `vehu10`, see:
+
+- `../work/vista-stack/rehmp/ehmp-ui/rehmp-rpc-demo/README.txt`
+- `../work/vista-stack/rehmp/ehmp-ui/rehmp-fhir-demo/README.txt`
+
 ### Easiest Command
 
 Run this from the repo root:
