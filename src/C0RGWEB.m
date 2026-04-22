@@ -7,18 +7,30 @@ C0RGWEB ; VEHU/Codex - HTTP bridge for rehmp C0RG operations ;Apr 11, 2026
  Q
  ;
 wsRehmp(ARGS,BODY,RESULT) ; Backward-compatible label spelling for existing %web registrations
- Q $$WSREHMP(.ARGS,.BODY,.RESULT)
+ IF '$DATA(RESULT) DO  QUIT ""
+ . DO WSREHMP2(.ARGS,.BODY)
+ DO WSREHMP2(.RESULT,.BODY)
+ QUIT ""
  ;
 WSREHMP(ARGS,BODY,RESULT) ; %web POST handler
- NEW RESP,JERR,STATUS,REQID,ECODE,EMSG,OK
+ IF '$DATA(RESULT) DO  QUIT ""
+ . DO WSREHMP2(.ARGS,.BODY)
+ DO WSREHMP2(.RESULT,.BODY)
+ QUIT ""
+ ;
+WSREHMP2(RESULT,BODY) ; Core POST handler for old/new %web call conventions
+ NEW ARGS,RESP,JERR,STATUS,REQID,ECODE,EMSG,OK
  KILL RESULT
  SET HTTPRSP("mime")="application/json"
+ ; Older %web stacks can treat any non-empty return value from POST handlers as a
+ ; created-resource location, producing HTTP 201 + Location with no response body.
+ ; This handler writes RESULT/HTTPERR directly, so always return an empty string.
  ; TEMPORARY: same Kernel job context bootstrap as GETFHIR^C0FHIR (ENVINIT^C0FHIR).
  ; GET /fhir runs WEB^C0FHIRWS -> GETFHIR^C0FHIR, which always DO ENVINIT^C0FHIR first.
  ; POST /rehmp does not, so DUZ/U/DT can be unset and downstream C0RG -> FHIR work can hang
  ; or fail until a real authenticated session establishes DUZ for this %web worker.
  IF $T(ENVINIT^C0FHIR)'="" DO ENVINIT^C0FHIR
- IF '$DATA(BODY) DO  QUIT 1
+ IF '$DATA(BODY) DO  QUIT ""
  . DO ERR^C0RGRES(.RESULT,"","VALIDATION","Empty request body")
  . SET HTTPERR=400
  SET REQID="",ECODE="",EMSG=""
@@ -28,7 +40,7 @@ WSREHMP(ARGS,BODY,RESULT) ; %web POST handler
  SET STATUS=$$HTTPSTAT($NA(RESP),$NA(JERR))
  IF STATUS>0 SET HTTPERR=STATUS
  ELSE  SET HTTPERR=0
- QUIT 1
+ QUIT ""
  ;
 HTTPSTAT(RESPROOT,JERRROOT) ; $$ - derive HTTP status from a ResponseEnvelope
  IF $$HASERR(JERRROOT) QUIT 500

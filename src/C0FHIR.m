@@ -623,7 +623,7 @@ GSROOT() ; Resolve graph-store root across deployments
  NEW PROOT,R
  IF $T(setroot^SYNWD)'="" DO
  . SET R=$$setroot^SYNWD("fhir-intake")
- . IF $L(R),$DATA(@R@("DFN")) SET PROOT=R QUIT
+ . IF $$HASDFNROOT(R) SET PROOT=R QUIT
  . SET PROOT=""
  IF $G(PROOT)'="" QUIT PROOT
  ; Fallback: detect which backend has the graph.
@@ -631,6 +631,16 @@ GSROOT() ; Resolve graph-store root across deployments
  SET PROOT="^"_$CHAR(37)_"wd(17.040801,3)"
  IF $DATA(@PROOT@("DFN")) QUIT PROOT
  QUIT PROOT
+ ;
+HASDFNROOT(R) ; True if graph root string is well-formed and has a DFN index
+ NEW IEN
+ SET R=$GET(R)
+ IF R="^"_$CHAR(37)_"wd(17.040801,3)" QUIT $DATA(@R@("DFN"))
+ IF $EXTRACT(R,1,20)'="^SYNGRAPH(2002.801," QUIT 0
+ IF $EXTRACT(R,$LENGTH(R))'=")" QUIT 0
+ SET IEN=$EXTRACT(R,21,$LENGTH(R)-1)
+ IF IEN'?1.N QUIT 0
+ QUIT $DATA(@R@("DFN"))
  ;
 VPROK() ; True when VPR is available on this system (so /vpr link works)
  IF '$D(^VA(200)) QUIT 0
