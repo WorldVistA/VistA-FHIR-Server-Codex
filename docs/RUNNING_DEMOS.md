@@ -51,6 +51,17 @@ Operational note:
 - This Codex runbook intentionally keeps only the demo-facing summary so the
   environment-specific truth lives in one place.
 
+### Recommended laptop workflow (Vite)
+
+On a laptop, **Vite** is the usual way to run the `rehmp` browser demos. The dev
+server uses the same published `base` paths (for example `/demos/rpc/` and
+`/demos/fhir/`) and proxies `/rehmp`, `/fhir`, and the related M routes to your
+local `fhir` or `vehu10` container ports. That is the same shape as production:
+`npm run build` produces static assets; the public host serves those files while
+the edge still reverse-proxies the M listener. You do not need to copy `dist/`
+into a container’s `www` tree for day-to-day work—only the commands below, run
+from the `rehmp` repo, are required.
+
 ### Local UI Against The `fhir` Container
 
 The browser-side demo apps live in the sibling `rehmp` repo.
