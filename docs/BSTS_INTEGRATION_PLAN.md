@@ -4,6 +4,12 @@ This document describes how to integrate **BSTS** (BSTS for VistA, `C0TS*` + `BS
 
 **Note on evidence in-tree:** The canonical **C0RG** implementation (`C0RGAPI` and related) lives in the **sibling rehmp repository**, not in this repo (this project only carries the HTTP bridge `src/C0RGWEB.m`). When that sibling is checked out (e.g. `work/vista-stack/rehmp`), run a quick inventory of `C0RG` entry points and `RequestEnvelope` `operation` values to align the phases below with actual operations. This plan is written from **architecture and published docs** in this project plus the BSTS analysis in `docs/BSTS_C0TS_FORMAT_WEB_SERVICES.md`.
 
+### Decisions (first implementation pass)
+
+- **Start with Option A** (see section 3): clients use **`GET /bsts/*?format=…`** on the same origin as `/rehmp` and `/fhir`; no new `C0RG` / `RequestEnvelope` operation is required for that phase.
+- **rehmp** documents that choice in **`docs/BSTS_TERMINOLOGY_OPTION_A.md`** (Vite/proxy and when to add Option B).
+- **`bsts-vista`** carries the updated **`C0TSWS` / `C0TSWSU`** on branch **`feature/c0ts-format-bsts-integration`**, with deploy notes in that repo’s **`docs/C0TS_HTTP_FORMAT_DEPLOY.md`**. This repo’s **`src/C0TSWS.m`** and **`src/C0TSWSU.m`** stay in sync for image builds and review.
+
 ---
 
 ## 1. Current landscape (as relevant to BSTS)
