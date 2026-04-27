@@ -471,7 +471,7 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  DO ADDLN(.RTN,"<h1>FHIR Patient Index</h1>")
  DO ADDLN(.RTN,"<p>Click Name for the VistA FHIR browser. The Synthea FHIR column opens the stored source bundle in a light-theme browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea).</p>")
  DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
- SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>rehmp rpc</th>"
+ SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>rehmp CPRS</th>"
  IF HASGRAPH SET ROW=ROW_"<th>Synthea FHIR</th><th>Load Log</th>"
  IF HASVPR SET ROW=ROW_"<th>VPR</th>"
  DO ADDLN(.RTN,ROW_"</tr>")
@@ -507,7 +507,7 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . SET FURL="/fhir?dfn="_DFN
  . SET BURL="/fhir?dfn="_DFN_"&view=browser"
  . SET VURL="/vpr?dfn="_DFN
- . SET RURL="/demos/rpc/?dfn="_DFN_"&rehmpBase=/rehmp"
+ . SET RURL="/demos/cprs/?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
  . SET JURL=$SELECT(HASGRAPH&(+IEN>0):"/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN,1:"")
  . SET LURL=$SELECT(HASGRAPH&(+IEN>0):$$LOADLOGURL(ROOT,IEN),1:"")
  . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
