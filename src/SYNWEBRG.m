@@ -15,9 +15,11 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  DO LOADDEF^SYNWEBRG
  IF $T(wsReplayIntake^SYNFHIR)'="" DO addService^%webutils("GET","replayIntake","wsReplayIntake^SYNFHIR")
  IF $T(wsReplayIntake^SYNFHIR)'="" DO addService^%webutils("GET","replayImport","wsReplayIntake^SYNFHIR")
- IF $T(wsIntakeVitals^SYNFVIT)'="" DO addService^%webutils("POST","addvitals","wsIntakeVitals^SYNFVIT")
- IF $T(wsIntakeEncounters^SYNFENC)'="" DO addService^%webutils("POST","addencounter","wsIntakeEncounters^SYNFENC")
- IF $T(wsIntakeConditions^SYNFCON)'="" DO addService^%webutils("POST","addcondition","wsIntakeConditions^SYNFCON")
+ NEW VIT,ENC,CON
+ SET VIT="wsIntakeVitals^SYNFVIT",ENC="wsIntakeEncounters^SYNFENC",CON="wsIntakeConditions^SYNFCON"
+ IF $T(@VIT)'="" DO addService^%webutils("POST","addvitals",VIT)
+ IF $T(@ENC)'="" DO addService^%webutils("POST","addencounter",ENC)
+ IF $T(@CON)'="" DO addService^%webutils("POST","addcondition",CON)
  IF $T(WSREHMP^C0RGWEB)'="" DO
  . NEW PARAMS
  . SET PARAMS(1)="B"
@@ -26,6 +28,12 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(WEB^C0FHIRWS)'="" DO addService^%webutils("GET","fhir","WEB^C0FHIRWS")
  IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")
  IF $T(wsTIUVPatients^C0FTIUST)'="" DO addService^%webutils("GET","tiuvpatients","wsTIUVPatients^C0FTIUST")
+ IF $T(WSSAVE^C0RGWBS)'="" DO
+ . DO addService^%webutils("POST","writebacksaves","WSSAVE^C0RGWBS")
+ . DO addService^%webutils("GET","writebacksaves","WSLIST^C0RGWBS")
+ . DO addService^%webutils("GET","writebacksaves/{id}","WSGET^C0RGWBS")
+ . DO addService^%webutils("POST","writebacksaves/{id}/rename","WSRENAME^C0RGWBS")
+ . DO addService^%webutils("POST","writebacksaves/{id}/archive","WSARCH^C0RGWBS")
  QUIT
  ;
 LOADDEF ; Same routes as SYNINIT LOADHAND^SYNINIT (master) when branch has no LOADHAND
