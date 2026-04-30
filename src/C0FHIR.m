@@ -511,7 +511,7 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . SET FURL="/fhir?dfn="_DFN
  . SET BURL="/fhir?dfn="_DFN_"&view=browser"
  . SET VURL="/vpr?dfn="_DFN
- . SET RURL="/demos/cprs/?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
+ . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
  . SET JURL=$SELECT(HASGRAPH&(+IEN>0):"/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN,1:"")
  . SET LURL=$SELECT(HASGRAPH&(+IEN>0):$$LOADLOGURL(ROOT,IEN),1:"")
  . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
