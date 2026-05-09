@@ -21,13 +21,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  I PKG<1 S PKG=$$FIND1^DIC(9.4,,"","?")
  S SOURCE="C0FW WRITEBACK"
  K ENCDATA,ZZERR,ZZERDESC,VISIT
- S ENCDATA("ENCOUNTER",1,"PATIENT")=DFN
- S ENCDATA("ENCOUNTER",1,"ENCOUNTER TYPE")="P"
- S ENCDATA("ENCOUNTER",1,"ENC D/T")=FMDT
- S ENCDATA("ENCOUNTER",1,"HOS LOC")=LOC
- S ENCDATA("ENCOUNTER",1,"SERVICE CATEGORY")=$$SERCAT(FMDT)
- S ENCDATA("PROVIDER",1,"NAME")=USER
- S ENCDATA("PROVIDER",1,"PRIMARY")=1
+ D BUILD(.ENCDATA,ROOT,IEN,RIEN,DFN,FMDT,LOC,USER)
  S DUZ=USER
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
  I +$G(DUZ(2))<1 S DUZ(2)=500
@@ -38,7 +32,66 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  . D ERR(ROOT,IEN,RIEN,MSG,.RETURN)
  I +$G(VISIT)<1 D ERR(ROOT,IEN,RIEN,"DATA2PCE did not return a visit IEN",.RETURN) Q
  D LOADED(ROOT,IEN,RIEN,+VISIT,$S(+$G(RET)=-5:"Encounter filed through DATA2PCE with warnings",1:"Encounter filed through DATA2PCE"),.RETURN)
+ D POSTFILE(ROOT,IEN,RIEN,+VISIT)
  I +$G(RET)=-5 S @ROOT@(IEN,"load","Encounter",RIEN,"warning")=$$WARNMSG(.ZZERR,.ZZERDESC)
+ Q
+ ;
+BUILD(ENCDATA,ROOT,IEN,RIEN,DFN,FMDT,LOC,USER) ; Build unified encounter DATA2PCE payload
+ S ENCDATA("ENCOUNTER",1,"PATIENT")=DFN
+ S ENCDATA("ENCOUNTER",1,"ENCOUNTER TYPE")="P"
+ S ENCDATA("ENCOUNTER",1,"ENC D/T")=FMDT
+ S ENCDATA("ENCOUNTER",1,"HOS LOC")=LOC
+ S ENCDATA("ENCOUNTER",1,"SERVICE CATEGORY")=$$SERCAT(FMDT)
+ S ENCDATA("ENCOUNTER",1,"EC")=0
+ S ENCDATA("PROVIDER",1,"NAME")=USER
+ S ENCDATA("PROVIDER",1,"PRIMARY")=1
+ D ADDPOV(.ENCDATA,ROOT,IEN,RIEN,FMDT,USER)
+ D ADDHF(.ENCDATA,ROOT,IEN,RIEN,FMDT)
+ Q
+ ;
+ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT) ; Add VistA Health Factor Encounter extensions
+ N CNT,EI,HF,HFIEN,MAG,NAME,NOTE,URL
+ S (CNT,EI)=0
+ F  S EI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI)) Q:+EI=0  D
+ . S URL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"url"))
+ . Q:URL'=$$HFURL()
+ . S NAME=$$EXTVAL(ROOT,IEN,RIEN,EI,"name")
+ . S MAG=$$EXTVAL(ROOT,IEN,RIEN,EI,"magnitude")
+ . S NOTE=$$EXTVAL(ROOT,IEN,RIEN,EI,"comment")
+ . I NAME="" D HFSTAT(ROOT,IEN,RIEN,EI,"skipped","Health Factor extension missing name") Q
+ . S HFIEN=+$O(^AUTTHF("B",NAME,0))
+ . I HFIEN<1 D HFSTAT(ROOT,IEN,RIEN,EI,"skipped","Health Factor not found in ^AUTTHF: "_NAME) Q
+ . S CNT=CNT+1,HF=$O(ENCDATA("HEALTH FACTOR",""),-1)+1
+ . S ENCDATA("HEALTH FACTOR",HF,"HEALTH FACTOR")=HFIEN
+ . S ENCDATA("HEALTH FACTOR",HF,"EVENT D/T")=FMDT
+ . I $$SEV(MAG)'="" S ENCDATA("HEALTH FACTOR",HF,"LEVEL/SEVERITY")=$$SEV(MAG)
+ . I NOTE'="" S ENCDATA("HEALTH FACTOR",HF,"COMMENTS")=NOTE
+ . D HFSTAT(ROOT,IEN,RIEN,EI,"queued","Health Factor queued: "_NAME)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor","queued")=CNT
+ Q
+ ;
+ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension or reasonCode
+ N CODE,CODESYS,DIAG,NARR,PI,PRI
+ S CODE=$$POVEXT(ROOT,IEN,RIEN,"code")
+ S CODESYS=$$POVEXT(ROOT,IEN,RIEN,"system")
+ S NARR=$$POVEXT(ROOT,IEN,RIEN,"display")
+ I NARR="" S NARR=$$POVEXT(ROOT,IEN,RIEN,"text")
+ S PRI=$$POVEXT(ROOT,IEN,RIEN,"primary")
+ I CODE="" D
+ . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",1,"coding",1,"code"))
+ . S CODESYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",1,"coding",1,"system"))
+ . S NARR=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",1,"text"))
+ . I NARR="" S NARR=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",1,"coding",1,"display"))
+ I CODE="" Q
+ S DIAG=$$ICDIEN(CODE,CODESYS,FMDT)
+ I DIAG<1 D POVSTAT(ROOT,IEN,RIEN,"skipped","POV code is not an ICD-9/ICD-10 code resolvable by C0FW: "_CODE_" "_CODESYS) Q
+ S PI=$O(ENCDATA("DX/PL",""),-1)+1
+ S ENCDATA("DX/PL",PI,"DIAGNOSIS")=DIAG
+ S ENCDATA("DX/PL",PI,"NARRATIVE")=$S(NARR'="":NARR,1:$P($$ICDDX^ICDEX(DIAG),"^",4))
+ S ENCDATA("DX/PL",PI,"SERVICE CATEGORY")=$$SERCAT(FMDT)
+ S ENCDATA("DX/PL",PI,"PRIMARY")=$S($$BOOL(PRI):1,1:0)
+ S ENCDATA("DX/PL",PI,"ENC PROVIDER")=USER
+ D POVSTAT(ROOT,IEN,RIEN,"queued","POV queued: "_CODE)
  Q
  ;
 FMDT(ROOT,IEN,RIEN) ; $$ - Encounter start/end as FileMan date/time
@@ -95,6 +148,74 @@ VISITREF(ROOT,IEN,REF) ; $$ - visit ien for a FHIR Encounter reference
  I RIEN>0 S VISIT=+$G(@ROOT@(IEN,"load","Encounter",RIEN,"visitIen")) I VISIT>0 Q VISIT
  Q 0
  ;
+EXTVAL(ROOT,IEN,RIEN,EI,NAME) ; $$ - value from named child extension
+ N NI,VAL
+ S NI=0
+ F  S NI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"extension",NI)) Q:+NI=0  D  Q:$D(VAL)
+ . Q:$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"extension",NI,"url"))'=NAME
+ . S VAL=$$VALNODE(ROOT,IEN,RIEN,EI,NI)
+ Q $G(VAL)
+ ;
+VALNODE(ROOT,IEN,RIEN,EI,NI) ; $$ - first primitive value[x] on child extension
+ N KEY,VAL
+ S KEY=""
+ F  S KEY=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"extension",NI,KEY)) Q:KEY=""  D  Q:$D(VAL)
+ . Q:KEY="url"
+ . I $E(KEY,1,5)="value" S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"extension",NI,KEY))
+ Q $G(VAL)
+ ;
+POVEXT(ROOT,IEN,RIEN,NAME) ; $$ - value from VistA POV Encounter extension
+ N EI,URL,VAL
+ S EI=0
+ F  S EI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI)) Q:+EI=0  D  Q:$D(VAL)
+ . S URL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"url"))
+ . Q:URL'=$$POVURL()
+ . S VAL=$$EXTVAL(ROOT,IEN,RIEN,EI,NAME)
+ Q $G(VAL)
+ ;
+HFURL() ; $$ - canonical Health Factor extension URL
+ Q "http://vistaplex.org/fhir/StructureDefinition/vista-health-factor"
+ ;
+POVURL() ; $$ - canonical POV extension URL
+ Q "http://vistaplex.org/fhir/StructureDefinition/vista-pov"
+ ;
+ICDIEN(CODE,SYS,FMDT) ; $$ - ICD diagnosis ien for Encounter POV
+ N CS,RET
+ S CODE=$G(CODE),SYS=$G(SYS)
+ I CODE="" Q 0
+ S CS=$$ICDCS(SYS,FMDT)
+ I CS<1 Q 0
+ S RET=$$ICDDX^ICDEX(CODE,CS)
+ I +RET<1,CS=30,CODE'?1.E1".",$L(CODE)=3 S RET=$$ICDDX^ICDEX(CODE_".",CS)
+ Q $S(+RET>0:+RET,1:0)
+ ;
+ICDCS(SYS,FMDT) ; $$ - ICDEX coding system id
+ S SYS=$$UP($G(SYS))
+ I SYS["SNOMED" Q 0
+ I SYS["SCT" Q 0
+ I SYS["ICD-10" Q 30
+ I SYS["ICD10" Q 30
+ I SYS["ICD-9" Q 1
+ I SYS["ICD9" Q 1
+ Q 0
+ ;
+BOOL(X) ; $$ - true for FHIR-ish boolean values
+ S X=$$UP($G(X))
+ Q $S(X=1:1,X="TRUE":1,X="YES":1,1:0)
+ ;
+SEV(X) ; $$ - map FHIR magnitude to V Health Factor severity code
+ S X=$$UP($G(X))
+ I X="" Q ""
+ I X="M"!(X="MINIMAL") Q "M"
+ I X="MO"!(X="MODERATE") Q "MO"
+ I X="H"!(X="HEAVY")!(X="SEVERE")!(X="HEAVY/SEVERE") Q "H"
+ I +X<2 Q "M"
+ I +X<3 Q "MO"
+ Q "H"
+ ;
+UP(X) ; $$ - uppercase
+ Q $TR($G(X),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ ;
 LOADED(ROOT,IEN,RIEN,VISIT,MSG,RETURN) ; Record loaded visit status
  N ID
  S ID=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","id"))
@@ -102,6 +223,40 @@ LOADED(ROOT,IEN,RIEN,VISIT,MSG,RETURN) ; Record loaded visit status
  S @ROOT@(IEN,"load","Encounter",RIEN,"visitIen")=+VISIT
  I ID'="" D SETIDXGN^C0FWFUTL($NA(@ROOT@(IEN)),RIEN,"visitIen",ID)
  S RETURN("domains","Encounter","visitIen")=+VISIT
+ Q
+ ;
+POSTFILE(ROOT,IEN,RIEN,VISIT) ; Confirm queued Encounter-native PCE rows after filing
+ N EI,HFIEN,NAME,POV
+ S EI=0
+ F  S EI=$O(@ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI)) Q:+EI=0  D
+ . Q:$G(@ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"status"))'="queued"
+ . S NAME=$$EXTVAL(ROOT,IEN,RIEN,EI,"name")
+ . S HFIEN=+$O(^AUTTHF("B",NAME,0))
+ . I HFIEN>0,$$HASHF(VISIT,HFIEN) D HFSTAT(ROOT,IEN,RIEN,EI,"filed","Health Factor filed: "_NAME) Q
+ . D HFSTAT(ROOT,IEN,RIEN,EI,"unknown","Health Factor was queued but not found after DATA2PCE: "_NAME)
+ S POV=$G(@ROOT@(IEN,"load","Encounter",RIEN,"pov","status"))
+ I POV="queued" D
+ . I $$HASPOV(VISIT) D POVSTAT(ROOT,IEN,RIEN,"filed",$G(@ROOT@(IEN,"load","Encounter",RIEN,"pov","message"))) Q
+ . D POVSTAT(ROOT,IEN,RIEN,"unknown","POV was queued but not found after DATA2PCE")
+ Q
+ ;
+HASHF(VISIT,HFIEN) ; $$ - true if visit has V Health Factor row
+ N IND
+ S IND=0
+ F  S IND=$O(^AUPNVHF("AD",+$G(VISIT),IND)) Q:+IND=0  I +$P($G(^AUPNVHF(IND,0)),"^")=+$G(HFIEN) Q
+ Q $S(+IND>0:1,1:0)
+ ;
+HASPOV(VISIT) ; $$ - true if visit has any V POV row
+ Q $S(+$O(^AUPNVPOV("AD",+$G(VISIT),0))>0:1,1:0)
+ ;
+HFSTAT(ROOT,IEN,RIEN,EI,STATUS,MSG) ; Record Health Factor extension detail
+ S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"status")=$G(STATUS)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"message")=$G(MSG)
+ Q
+ ;
+POVSTAT(ROOT,IEN,RIEN,STATUS,MSG) ; Record POV extension detail
+ S @ROOT@(IEN,"load","Encounter",RIEN,"pov","status")=$G(STATUS)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"pov","message")=$G(MSG)
  Q
  ;
 ERR(ROOT,IEN,RIEN,MSG,RETURN) ; Record error status
