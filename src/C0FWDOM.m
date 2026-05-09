@@ -11,16 +11,25 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources without SYNF/ISI impor
  S FIRST=+$G(ARGS("firstEntry"))
  S LAST=+$G(ARGS("lastEntry"))
  S COUNT=0
+ ; Encounters are filed first so later domains can resolve a visit pointer.
  S RIEN=$S(FIRST>0:FIRST-1,1:0)
  F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
- . I BUNDLE'="",$G(@ROOT@(IEN,"json","entry",RIEN,"bundle"))'=BUNDLE Q
+ . I '$$INBUND(ROOT,IEN,RIEN,BUNDLE) Q
+ . S TYPE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))
+ . S DOMAIN=$$DOMAIN(ROOT,IEN,RIEN,TYPE)
+ . Q:DOMAIN'="Encounter"
+ . S COUNT=COUNT+1
+ . D LOAD^C0FWENC(ROOT,IEN,RIEN,.RETURN)
+ S RIEN=$S(FIRST>0:FIRST-1,1:0)
+ F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
+ . I '$$INBUND(ROOT,IEN,RIEN,BUNDLE) Q
  . S TYPE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))
  . S DOMAIN=$$DOMAIN(ROOT,IEN,RIEN,TYPE)
  . Q:DOMAIN=""
+ . Q:DOMAIN="Encounter"
  . S COUNT=COUNT+1
  . I DOMAIN="Observation" D LOAD^C0FWVIT(ROOT,IEN,RIEN,.RETURN) Q
  . I DOMAIN="Lab" D LOAD^C0FWLAB(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="Encounter" D LOAD^C0FWENC(ROOT,IEN,RIEN,.RETURN) Q
  . I DOMAIN="Condition" D LOAD^C0FWCON(ROOT,IEN,RIEN,.RETURN) Q
  . I DOMAIN="DocumentReference" D LOAD^C0FWTIU(ROOT,IEN,RIEN,.RETURN) Q
  . I DOMAIN="Immunization" D LOAD^C0FWIMM(ROOT,IEN,RIEN,.RETURN) Q
@@ -65,4 +74,10 @@ SUMMARY(RETURN,COUNT) ; $$ - overall load summary
  I LOADED Q "loaded"
  I NOTIMP Q "not_implemented"
  Q "skipped"
+ ;
+INBUND(ROOT,IEN,RIEN,BUNDLE) ; $$ - true if entry belongs to requested bundle
+ I $G(BUNDLE)="" Q 1
+ I $G(@ROOT@(IEN,RIEN,"bundle"))=$G(BUNDLE) Q 1
+ I $G(@ROOT@(IEN,"json","entry",RIEN,"bundle"))=$G(BUNDLE) Q 1
+ Q 0
  ;

@@ -4,12 +4,18 @@ C0FWCTX ; VEHU/Codex - C0FW runtime context ;May 09, 2026
  Q
  ;
 DUZ() ; Establish minimal Kernel user context for C0FW update paths
- I $G(DUZ)="" S DUZ=+$G(^TMP("C0FW",$J,"DUZ"))
- I $G(DUZ)="" S DUZ=1
+ I +$G(DUZ)<1 S DUZ=+$G(^TMP("C0FW",$J,"DUZ"))
+ I +$G(DUZ)<1 S DUZ=1
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
- I $G(DUZ(2))="" S DUZ(2)=+$G(^TMP("C0FW",$J,"DUZ",2))
- I $G(DUZ(2))="" S DUZ(2)=500
+ I +$G(DUZ(2))<1 S DUZ(2)=+$G(^TMP("C0FW",$J,"DUZ",2))
+ I +$G(DUZ(2))<1 S DUZ(2)=500
  Q DUZ
+ ;
+IO() ; Establish minimal IO variables used by filing APIs in web jobs
+ I $G(IOST)="" S IOST="C-VT100"
+ I +$G(IOM)<1 S IOM=80
+ I +$G(IOSL)<1 S IOSL=24
+ Q
  ;
 SYS() ; $$ - stable system id used in reminder UIDs
  N SYS
