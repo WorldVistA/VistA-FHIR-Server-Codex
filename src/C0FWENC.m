@@ -85,7 +85,8 @@ VISITREF(ROOT,IEN,REF) ; $$ - visit ien for a FHIR Encounter reference
  N ID,RIEN,VISIT
  S REF=$G(REF)
  I REF="" Q 0
- I REF["/" S ID=$P(REF,"/",2)
+ I REF["urn:uuid:" S ID=$P(REF,"urn:uuid:",2)
+ E  I REF["/" S ID=$P(REF,"/",2)
  E  S ID=REF
  S ID=$P(ID,";",1)
  I ID?1"E".N S VISIT=+$E(ID,2,99) I $D(^AUPNVSIT(VISIT,0)) Q VISIT
