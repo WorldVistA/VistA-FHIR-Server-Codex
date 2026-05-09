@@ -114,7 +114,7 @@ RNAME(RIEN) ; Reminder display name
  ;
 UID(RIEN) ; Stable reminder uid
  NEW SYS
- SET SYS=$SELECT($TEXT(SYS^HMPUTILS)'="":$$SYS^HMPUTILS,1:"vista")
+ SET SYS=$$SYS^C0FWCTX()
  QUIT "urn:va:pxrm:"_SYS_":"_+$GET(RIEN)
  ;
 REMLOC(DFN) ; Most recent patient visit location for reminder list context

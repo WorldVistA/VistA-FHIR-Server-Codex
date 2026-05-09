@@ -28,7 +28,13 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(WEB^C0FHIRWS)'="" DO addService^%webutils("GET","fhir","WEB^C0FHIRWS")
  IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")
  IF $T(wsTIUVPatients^C0FTIUST)'="" DO addService^%webutils("GET","tiuvpatients","wsTIUVPatients^C0FTIUST")
- IF $T(WSSAVE^C0RGWBS)'="" DO
+ IF $T(WSSAVE^C0FWWBS)'="" DO
+ . DO addService^%webutils("POST","writebacksaves","WSSAVE^C0FWWBS")
+ . DO addService^%webutils("GET","writebacksaves","WSLIST^C0FWWBS")
+ . DO addService^%webutils("GET","writebacksaves/{id}","WSGET^C0FWWBS")
+ . DO addService^%webutils("POST","writebacksaves/{id}/rename","WSRENAME^C0FWWBS")
+ . DO addService^%webutils("POST","writebacksaves/{id}/archive","WSARCH^C0FWWBS")
+ E  IF $T(WSSAVE^C0RGWBS)'="" DO
  . DO addService^%webutils("POST","writebacksaves","WSSAVE^C0RGWBS")
  . DO addService^%webutils("GET","writebacksaves","WSLIST^C0RGWBS")
  . DO addService^%webutils("GET","writebacksaves/{id}","WSGET^C0RGWBS")
@@ -39,7 +45,8 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
 LOADDEF ; Same routes as SYNINIT LOADHAND^SYNINIT (master) when branch has no LOADHAND
  ; addpatient: new bundle -> new graph row + IMPORTPT. updatepatient: merge bundle into existing row (use ?ien=&dfn=&icn=).
  DO addService^%webutils("POST","addpatient","wsPostFHIR^SYNFHIR")
- DO addService^%webutils("POST","updatepatient","wsUpdatePatient^SYNFHIRU")
+ IF $T(wsUpdatePatient^C0FWUPD)'="" DO addService^%webutils("POST","updatepatient","wsUpdatePatient^C0FWUPD")
+ E  DO addService^%webutils("POST","updatepatient","wsUpdatePatient^SYNFHIRU")
  DO addService^%webutils("GET","loadstatus","wsLoadStatus^SYNFHIR")
  DO addService^%webutils("GET","showfhir","wsShow^SYNFHIR")
  DO addService^%webutils("GET","vpr/{dfn}","wsVPR^SYNVPR")

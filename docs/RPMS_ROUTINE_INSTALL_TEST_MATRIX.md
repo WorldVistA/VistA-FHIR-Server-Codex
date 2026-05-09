@@ -55,7 +55,9 @@ Install these from `VistA-FHIR-Server-Codex/src/`.
 | `C0FHIRGF` | Broker RPC wrapper for full FHIR bundle. | Register RPC with `C0FHIRSE`; call `C0FHIR GET FULL BUNDLE` through Broker if RPMS Broker path is in scope. |
 | `C0FHIRSE` | RPC/context option setup for Broker use. | `D EN^C0FHIRSE`; inspect file `#8994` and option file `#19`. |
 | `C0RGWEB` | HTTP bridge for `POST /rehmp`. | `POST /rehmp` health, patient search, bundle get, bad request/error mapping. |
-| `C0RGWBS` | Writeback-save graph artifact API. | `POST /writebacksaves`, `GET /writebacksaves`, get by id, rename, archive. |
+| `C0FWUPD`, `C0FWIDX`, `C0FWLNK`, `C0FWFUTL`, `C0FWDOM`, `C0FWVIT`, `C0FWGRT`, `C0FWCTX` | Codex-owned `/updatepatient` merge, graph indexing/linking, runtime context, no-SYNF/ISI domain dispatch, and first vertical C0FW vital-sign writeback slice. | `POST /updatepatient` with `dfn`, `ien`, or `icn`; verify graph merge/index/link response, `Observation` vital filing through `GMVDCSAV`, and deterministic not-implemented statuses for domains not yet implemented. |
+| `C0FWWBS` | Writeback-save graph artifact API. | `POST /writebacksaves`, `GET /writebacksaves`, get by id, rename, archive. |
+| `C0RGWBS` | Compatibility shim for legacy callers of the writeback-save graph artifact API. | Smoke only if an older route or caller still invokes `C0RGWBS`; primary route should use `C0FWWBS`. |
 | `C0TSWS` | BSTS/C0TS terminology HTTP service wrappers. | `/bsts/codeset?format=json`, `/bsts/codes?id=<id>&format=json&max=...`. |
 | `C0TSWSU` | BSTS/C0TS formatting utilities. | JSON/XML/CSV formatting smoke for one codeset and code list. |
 
@@ -103,7 +105,7 @@ graph storage, or Synthea-backed demos are in scope.
 | Routine | Required For | Tests |
 | --- | --- | --- |
 | `SYNFHIR` | Main FHIR import/replay web handlers. | `POST /addpatient`, `GET /loadstatus`, replay endpoints if enabled. |
-| `SYNFHIRU` | Update existing patient from FHIR bundle. | `POST /updatepatient` with `dfn`, `ien`, or `icn`. |
+| `SYNFHIRU` | Legacy Data-Loader update handler for non-Codex-only stacks. Codex route registration prefers `wsUpdatePatient^C0FWUPD` when installed. | Regression only when deliberately using the Data-Loader route fallback; Codex no-SYNF/ISI update smoke should target `C0FWUPD`. |
 | `SYNFHIR2` | Legacy/alternate FHIR import support. | Regression only if referenced by installed SYN routes. |
 | `SYNINIT` | SYN route/setup support. | Verify route registration does not conflict with `SYNWEBRG`. |
 | `SYNAUDIT` | Install health audit. | `D EN^SYNAUDIT`; capture missing files/routines/maps. |
@@ -183,7 +185,9 @@ Operational tests:
 ## Install Set E: Reminders-on-FHIR And Writeback Evidence
 
 The current Codex read path is `C0FHIRR`. The current safe writeback persistence
-path is `C0RGWBS`. Those are required.
+path is `C0FWWBS`; `C0RGWBS` is a compatibility shim. The Codex-owned
+`/updatepatient` path is `C0FWUPD` with helper routines listed in Install Set A.
+Those are required.
 
 The sibling `reminders-on-fhir` repo currently carries legacy HMP writeback
 references under `src/legacy-hmp-writeback/`. These routines are **evidence and
