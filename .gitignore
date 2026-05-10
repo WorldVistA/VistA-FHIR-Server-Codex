@@ -10,3 +10,6 @@ scripts/routine-sync-repos.conf
 
 # Demo/test artifacts
 tmp/demo-artifacts/
+
+# Node (local tooling / demos)
+node_modules/

@@ -14,16 +14,18 @@ LOADENC(ROOT,IEN,RIEN,RETURN) ; File Encounter.note annotations as visit-linked 
  I $G(ROOT)="" D ERR(ROOT,IEN,RIEN,"Missing graph root",.RETURN) Q
  I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="Encounter" Q
  I '$D(@ROOT@(IEN,"json","entry",RIEN,"resource","note")) Q
- S DFN=+$O(@ROOT@("SPO",IEN,"DFN",""))
+ S DFN=$$DFN^C0FWENC(ROOT,IEN,RIEN)
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
  S VISIT=+$G(@ROOT@(IEN,"load","Encounter",RIEN,"visitIen"))
  I VISIT<1 S VISIT=$$VISITREF^C0FWENC(ROOT,IEN,$G(@ROOT@(IEN,"json","entry",RIEN,"resource","id")))
  I VISIT<1 D ERR(ROOT,IEN,RIEN,"Encounter.note has no visit pointer",.RETURN) Q
  S (NI,NOTES)=0
+ S @ROOT@(IEN,"load","encounters",RIEN,"log",$O(@ROOT@(IEN,"load","encounters",RIEN,"log",""),-1)+1)="FHIR Encounter.note ingest: graph=1 tiu=1"
  F  S NI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","note",NI)) Q:+NI=0  D
  . S TXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","note",NI,"text"))
  . Q:TXT=""
  . S NOTES=NOTES+1
+ . D NOTEMIR(ROOT,IEN,RIEN,NI,TXT)
  . D FILENOTE(ROOT,IEN,RIEN,NI,DFN,VISIT,TXT)
  I NOTES<1 Q
  D SUMMARY(ROOT,IEN,RIEN,.RETURN)
@@ -45,7 +47,22 @@ FILENOTE(ROOT,IEN,RIEN,NI,DFN,VISIT,TXT) ; File one Encounter.note
  I +RES>0 D  Q
  . S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"status")="filed"
  . S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"ien")=+RES
+ . S @ROOT@(IEN,"load","encounters",RIEN,"tiu",NI,"status")="filed"
+ . S @ROOT@(IEN,"load","encounters",RIEN,"tiu",NI,"ien")=+RES
+ . S @ROOT@(IEN,"load","encounters",RIEN,"tiu",NI,"result")=RES
+ . S @ROOT@(IEN,"load","encounters",RIEN,"tiu",NI,"title")=TITLE
+ . S @ROOT@(IEN,"load","encounters",RIEN,"tiu",NI,"visitIen")=+VISIT
+ . S @ROOT@(IEN,"load","encounters",RIEN,"log",$O(@ROOT@(IEN,"load","encounters",RIEN,"log",""),-1)+1)="FHIR note: TIU IEN="_+RES
+ . S @ROOT@(IEN,"load","encounters",RIEN,"log",$O(@ROOT@(IEN,"load","encounters",RIEN,"log",""),-1)+1)="FHIR note ni="_NI_" TIU="_+RES
  S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"status")="error"
+ Q
+ ;
+NOTEMIR(ROOT,IEN,RIEN,NI,TXT) ; Mirror Encounter.note text in legacy load log
+ N I,LINE
+ S @ROOT@(IEN,"load","encounters",RIEN,"note",1)="-------- FHIR note #"_NI_" --------"
+ F I=1:1:$L($G(TXT),$C(10)) D
+ . S LINE=$P(TXT,$C(10),I)
+ . S @ROOT@(IEN,"load","encounters",RIEN,"note",I+1)=LINE
  Q
  ;
 MAKE(DFN,VISIT,TXT,TITLE) ; $$ - create visit-linked TIU note

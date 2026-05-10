@@ -22,7 +22,9 @@
 #   FHIR_REMOTE_DEMOS_ROOT — parent dir for URL /demos/rpc/ (default: same as FHIR_REMOTE_WWW
 #     for fhir; for vehu10 .../www/filesystem use .../www so files land in ~/www/demos/rpc/)
 #   FHIR_SKIP_RPC_DEMO=1 — do not copy rehmp-rpc-demo into www (see below)
+#   FHIR_SKIP_WRITE_DEMO=1 — do not copy reminders-on-fhir writeback UI (see below)
 #   REHMP_RPC_DEMO     — path to rehmp-rpc-demo package (default: $REHMP_ROOT/ehmp-ui/rehmp-rpc-demo)
+#   REMINDERS_FHIR_WRITE_DEMO — path to reminders-on-fhir ui/fhir-write-demo (Codex www build)
 #   FHIR_M_USER      (default: osehra) — su - target for ZLINK / %webreq
 #   FHIR_MUMPS       (default: /home/${FHIR_M_USER}/lib/gtm/mumps)
 #   FHIR_USE_SSH=1   FHIR_SSH_HOST PORT USER KEY — scp to container SSH
@@ -33,6 +35,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/src"
 REHMP_ROOT="${REHMP_ROOT:-$ROOT/../rehmp}"
+REMINDERS_FHIR_WRITE_DEMO="${REMINDERS_FHIR_WRITE_DEMO:-$ROOT/../reminders-on-fhir/ui/fhir-write-demo}"
 RG_SRC="${REHMP_C0RG_DIR:-$REHMP_ROOT/C0RG}"
 EXTRA_M=()
 if [[ -f "$ROOT/SYNWEBUT.m" ]]; then
@@ -97,6 +100,25 @@ copy_rehmp_rpc_demo_via_docker() {
   docker exec "$FHIR_CONTAINER" chown -R "${FHIR_M_USER}:${FHIR_M_USER}" "$dest" 2>/dev/null || true
 }
 
+copy_fhir_write_demo_via_docker() {
+  local demo d dest
+  demo="$REMINDERS_FHIR_WRITE_DEMO"
+  d="$demo/dist-codex-www"
+  dest="$FHIR_REMOTE_WWW/demos/fhir-write"
+  [[ "${FHIR_SKIP_WRITE_DEMO:-0}" == "1" ]] && return 0
+  [[ -f "$d/index.html" ]] || {
+    echo "WARN: reminder FHIR writeback demo missing ($d/index.html) — build: (cd $demo && npm ci && npm run build:codex-www)" >&2
+    return 0
+  }
+  echo "==> docker cp reminder writeback demo -> $FHIR_CONTAINER:$dest/ (GET /filesystem/demos/fhir-write/)"
+  docker exec "$FHIR_CONTAINER" mkdir -p "$dest/assets"
+  docker cp "$d/index.html" "$FHIR_CONTAINER:$dest/"
+  if [[ -d "$d/assets" ]]; then
+    docker cp "$d/assets/." "$FHIR_CONTAINER:$dest/assets/"
+  fi
+  docker exec "$FHIR_CONTAINER" chown -R "${FHIR_M_USER}:${FHIR_M_USER}" "$dest" 2>/dev/null || true
+}
+
 copy_vendor_tjson_via_docker() {
   # C0FHIR browser loads ESM from /filesystem/tjson.js (%W0 maps to ~/www/<file>).
   local v="$ROOT/vendor/tjson" f
@@ -136,6 +158,30 @@ copy_rehmp_rpc_demo_via_ssh() {
   "${SCP_BASE[@]}" -r "$d/assets" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${dest}/"
   if [[ -d "$d/examples" ]]; then
     "${SCP_BASE[@]}" -r "$d/examples" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${dest}/"
+  fi
+}
+
+copy_fhir_write_demo_via_ssh() {
+  local demo d dest
+  demo="$REMINDERS_FHIR_WRITE_DEMO"
+  d="$demo/dist-codex-www"
+  dest="$FHIR_REMOTE_WWW/demos/fhir-write"
+  [[ "${FHIR_SKIP_WRITE_DEMO:-0}" == "1" ]] && return 0
+  [[ -f "$d/index.html" ]] || {
+    echo "WARN: reminder FHIR writeback demo missing ($d/index.html) — skip SSH copy" >&2
+    return 0
+  }
+  FHIR_SSH_HOST="${FHIR_SSH_HOST:-127.0.0.1}"
+  FHIR_SSH_PORT="${FHIR_SSH_PORT:-2223}"
+  FHIR_SSH_USER="${FHIR_SSH_USER:-osehra}"
+  FHIR_SSH_KEY="${FHIR_SSH_KEY:-$HOME/.ssh/id_ed25519_cursor_agent_test}"
+  SSH_BASE=(ssh -i "$FHIR_SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -p "$FHIR_SSH_PORT")
+  SCP_BASE=(scp -i "$FHIR_SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -P "$FHIR_SSH_PORT")
+  echo "==> scp reminder writeback demo -> ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:$dest/"
+  "${SSH_BASE[@]}" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}" "mkdir -p $(printf '%q' "$dest/assets")"
+  "${SCP_BASE[@]}" "$d/index.html" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${dest}/"
+  if [[ -d "$d/assets" ]]; then
+    "${SCP_BASE[@]}" -r "$d/assets" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${dest}/"
   fi
 }
 
@@ -220,6 +266,7 @@ if [[ "$FHIR_USE_SSH" == "1" ]]; then
   copy_via_ssh
   copy_vendor_tjson_via_ssh
   copy_rehmp_rpc_demo_via_ssh
+  copy_fhir_write_demo_via_ssh
 else
   echo "==> docker cp $SRC/*.m -> $FHIR_CONTAINER:$FHIR_REMOTE_P/"
   if ((${#EXTRA_M[@]})); then
@@ -231,6 +278,7 @@ else
   copy_via_docker
   copy_vendor_tjson_via_docker
   copy_rehmp_rpc_demo_via_docker
+  copy_fhir_write_demo_via_docker
 fi
 
 echo "==> Restarting M web listener and re-registering routes in $FHIR_CONTAINER"
@@ -248,6 +296,12 @@ if [[ -z "$DFN" ]]; then
     echo "==> Smoke: GET $FHIR_HTTP_BASE/demos/rpc/ (rehmp UI; needs dist copied above)"
     curl -sS -o /tmp/fhir-smoke-rpc.html -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/demos/rpc/?dfn=1&rehmpBase=/rehmp" | tail -1
     head -c 80 /tmp/fhir-smoke-rpc.html | cat
+    echo
+  fi
+  if [[ -f "$REMINDERS_FHIR_WRITE_DEMO/dist-codex-www/index.html" ]]; then
+    echo "==> Smoke: GET $FHIR_HTTP_BASE/filesystem/demos/fhir-write/index.html (reminder writeback UI)"
+    curl -sS -o /tmp/fhir-smoke-write.html -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/filesystem/demos/fhir-write/index.html" | tail -1
+    head -c 100 /tmp/fhir-smoke-write.html | cat
     echo
   fi
   echo "==> Smoke: GET $FHIR_HTTP_BASE/tiuvpatients?limit=2 (visit-linked TIU DFN sample)"
