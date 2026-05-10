@@ -69,7 +69,7 @@ ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT) ; Add VistA Health Factor Encounter extensions
  . . I +$P($G(^AUTTHF(HFIEN,220)),"^",4)>0 S ENCDATA("HEALTH FACTOR",HF,"MAGNITUDE")=MAG Q
  . . D HFMAG(ROOT,IEN,RIEN,EI,"skipped","Health Factor magnitude skipped; Health Factor has no UCUM measurement definition")
  . I $$SEV(SEV)'="" S ENCDATA("HEALTH FACTOR",HF,"LEVEL/SEVERITY")=$$SEV(SEV)
- . I NOTE'="" S ENCDATA("HEALTH FACTOR",HF,"COMMENTS")=NOTE
+ . I NOTE'="" S ENCDATA("HEALTH FACTOR",HF,"COMMENT")=NOTE
  . D HFSTAT(ROOT,IEN,RIEN,EI,"queued","Health Factor queued: "_NAME)
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor","queued")=CNT
  Q
