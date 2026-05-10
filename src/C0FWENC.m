@@ -50,13 +50,14 @@ BUILD(ENCDATA,ROOT,IEN,RIEN,DFN,FMDT,LOC,USER) ; Build unified encounter DATA2PC
  Q
  ;
 ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT) ; Add VistA Health Factor Encounter extensions
- N CNT,EI,HF,HFIEN,MAG,NAME,NOTE,URL
+ N CNT,EI,HF,HFIEN,MAG,NAME,NOTE,SEV,URL
  S (CNT,EI)=0
  F  S EI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI)) Q:+EI=0  D
  . S URL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"url"))
  . Q:URL'=$$HFURL()
  . S NAME=$$EXTVAL(ROOT,IEN,RIEN,EI,"name")
  . S MAG=$$EXTVAL(ROOT,IEN,RIEN,EI,"magnitude")
+ . S SEV=$$EXTVAL(ROOT,IEN,RIEN,EI,"severity")
  . S NOTE=$$EXTVAL(ROOT,IEN,RIEN,EI,"comment")
  . I NAME="" D HFSTAT(ROOT,IEN,RIEN,EI,"skipped","Health Factor extension missing name") Q
  . S HFIEN=+$O(^AUTTHF("B",NAME,0))
@@ -64,7 +65,10 @@ ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT) ; Add VistA Health Factor Encounter extensions
  . S CNT=CNT+1,HF=$O(ENCDATA("HEALTH FACTOR",""),-1)+1
  . S ENCDATA("HEALTH FACTOR",HF,"HEALTH FACTOR")=HFIEN
  . S ENCDATA("HEALTH FACTOR",HF,"EVENT D/T")=FMDT
- . I $$SEV(MAG)'="" S ENCDATA("HEALTH FACTOR",HF,"LEVEL/SEVERITY")=$$SEV(MAG)
+ . I MAG'="" D
+ . . I +$P($G(^AUTTHF(HFIEN,220)),"^",4)>0 S ENCDATA("HEALTH FACTOR",HF,"MAGNITUDE")=MAG Q
+ . . D HFMAG(ROOT,IEN,RIEN,EI,"skipped","Health Factor magnitude skipped; Health Factor has no UCUM measurement definition")
+ . I $$SEV(SEV)'="" S ENCDATA("HEALTH FACTOR",HF,"LEVEL/SEVERITY")=$$SEV(SEV)
  . I NOTE'="" S ENCDATA("HEALTH FACTOR",HF,"COMMENTS")=NOTE
  . D HFSTAT(ROOT,IEN,RIEN,EI,"queued","Health Factor queued: "_NAME)
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor","queued")=CNT
@@ -252,6 +256,11 @@ HASPOV(VISIT) ; $$ - true if visit has any V POV row
 HFSTAT(ROOT,IEN,RIEN,EI,STATUS,MSG) ; Record Health Factor extension detail
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"status")=$G(STATUS)
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"message")=$G(MSG)
+ Q
+ ;
+HFMAG(ROOT,IEN,RIEN,EI,STATUS,MSG) ; Record Health Factor magnitude detail
+ S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"magnitudeStatus")=$G(STATUS)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"magnitudeMessage")=$G(MSG)
  Q
  ;
 POVSTAT(ROOT,IEN,RIEN,STATUS,MSG) ; Record POV extension detail
