@@ -4,19 +4,19 @@ C0FWCON ; VEHU/Codex - C0FW condition writeback adapter ;May 09, 2026
  Q
  ;
 LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
- N CODE,CODESYS,DFN,FMDT,ICD,MSG,PKG,PROBDATA,RET,USER,VISIT,ZZERR,ZZERDESC
+ N ADDPL,DFN,FMDT,ICD,MSG,PKG,PROBDATA,RET,USER,VISIT,ZZERR,ZZERDESC
  I $G(ROOT)="" D ERR(ROOT,IEN,RIEN,"Missing graph root",.RETURN) Q
  S DFN=+$O(@ROOT@("SPO",IEN,"DFN",""))
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
  I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="Condition" D ERR(ROOT,IEN,RIEN,"Resource is not Condition",.RETURN) Q
  S VISIT=$$VISIT(ROOT,IEN,RIEN)
  I VISIT<1 D ERR(ROOT,IEN,RIEN,"Condition has no resolved encounter visit pointer",.RETURN) Q
- S CODE=$$CODE(ROOT,IEN,RIEN),CODESYS=$$CODESYS(ROOT,IEN,RIEN)
- S ICD=$$ICDIEN(CODE,CODESYS,$$FMDT(ROOT,IEN,RIEN))
- I ICD<1 D  Q
- . S MSG="Condition code is not an ICD-9/ICD-10 code resolvable by C0FW: "_CODE_" "_CODESYS
- . D ERR(ROOT,IEN,RIEN,MSG,.RETURN)
  S FMDT=$$FMDT(ROOT,IEN,RIEN)
+ S ICD=$$RESICD(ROOT,IEN,RIEN,FMDT)
+ I ICD<1 D  Q
+ . S MSG="Condition has no ICD-10/ICD-9 diagnosis resolvable from codings (ICD or SNOMED CT to ICD-10 map)."
+ . D ERR(ROOT,IEN,RIEN,MSG,.RETURN)
+ S ADDPL=$$ADDPL(ROOT,IEN,RIEN)
  I FMDT<1 S FMDT=+$P($G(^AUPNVSIT(VISIT,0)),"^")
  I FMDT<1 D ERR(ROOT,IEN,RIEN,"Missing Condition onset and visit date",.RETURN) Q
  S USER=$$USER^C0FWENC()
@@ -28,7 +28,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  S PROBDATA("ENCOUNTER",1,"HOS LOC")=+$P($G(^AUPNVSIT(VISIT,0)),"^",22)
  S PROBDATA("ENCOUNTER",1,"SERVICE CATEGORY")=$$SERCAT(VISIT,FMDT)
  S PROBDATA("ENCOUNTER",1,"EC")=0
- S PROBDATA("DX/PL",1,"PL ADD")=1
+ S PROBDATA("DX/PL",1,"PL ADD")=ADDPL
  S PROBDATA("DX/PL",1,"PL ONSET DATE")=FMDT\1
  S PROBDATA("DX/PL",1,"DIAGNOSIS")=ICD
  S PROBDATA("DX/PL",1,"NARRATIVE")=$$NARR(ICD,ROOT,IEN,RIEN)
@@ -42,7 +42,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  D IO^C0FWCTX
  S RET=$$DATA2PCE^PXAI("PROBDATA",PKG,"C0FW WRITEBACK",.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
  I +$G(RET)'=1,+$G(RET)'=-5,'$$HASPOV(VISIT,ICD) D ERR(ROOT,IEN,RIEN,$$ERRMSG(RET,.ZZERR,.ZZERDESC),.RETURN) Q
- D LOADED(ROOT,IEN,RIEN,VISIT,ICD,$S(+$G(RET)'=1:"Condition filed through DATA2PCE with warnings",1:"Condition filed through DATA2PCE"),.RETURN)
+ D LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,$S(+$G(RET)'=1:"Condition filed through DATA2PCE with warnings",1:"Condition filed through DATA2PCE"),.RETURN)
  I +$G(RET)'=1 S @ROOT@(IEN,"load","Condition",RIEN,"warning")=$$WARNMSG(RET,.ZZERR,.ZZERDESC)
  Q
  ;
@@ -58,6 +58,56 @@ CODE(ROOT,IEN,RIEN) ; $$ - first coding code
  ;
 CODESYS(ROOT,IEN,RIEN) ; $$ - first coding system
  Q $G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",1,"system"))
+ ;
+RESICD(ROOT,IEN,RIEN,FMDT) ; $$ - ICD diagnosis ien from Condition.code codings (ICD first, then SNOMED)
+ N CODE,CS,ICD,NI,SYS
+ S ICD=0
+ S NI=0 F  S NI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI)) Q:+NI=0  Q:ICD>0  D
+ . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"code"))
+ . S SYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"system"))
+ . Q:CODE=""
+ . S CS=$$ICDCS(SYS,FMDT)
+ . I CS>0 S ICD=$$ICDIEN(CODE,SYS,FMDT) Q:ICD>0
+ . I $$SCTSYS(SYS) S ICD=$$SCTICD10(CODE) Q:ICD>0
+ Q +ICD
+ ;
+SCTSYS(SYS) ; $$ - true if coding system is SNOMED CT
+ S SYS=$$UP($G(SYS))
+ Q $S(SYS["SNOMED":1,SYS["SCT":1,1:0)
+ ;
+SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien via Lexicon map 5217693
+ N ICDTX,LEX,MAPVUID,RET,Y
+ I $G(U)="" S U="^"
+ S SCT=$G(SCT) I SCT="" Q 0
+ S MAPVUID=5217693
+ K LEX S Y=$$GETASSN^LEXTRAN1(SCT,MAPVUID)
+ S ICDTX="" S ICDTX=$O(LEX(1,ICDTX))
+ I ICDTX="" Q 0
+ S RET=$$ICDDX^ICDEX(ICDTX,30)
+ I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
+ Q $S(+RET>0:+RET,1:0)
+ ;
+ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only
+ N EI,FND,VB,VS
+ S (EI,FND)=0
+ F  S EI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI)) Q:+EI=0  D
+ . Q:$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"url"))'=$$PLURL()
+ . S FND=1
+ . S VB=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"valueBoolean"))
+ . S VS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"valueString"))
+ . I VS'="" S VB=VS
+ Q $S(FND:$$BOOLPL(VB),1:1)
+ ;
+BOOLPL(V) ; $$ - truthy for PL ADD
+ I $G(V)=0 Q 0
+ I $G(V)=1 Q 1
+ S V=$$UP($G(V))
+ I V="" Q 1
+ I V="0"!(V="FALSE")!(V="N")!(V="NO") Q 0
+ Q 1
+ ;
+PLURL() ; $$ - Condition extension URL for Add to Problem List
+ Q "http://vistaplex.org/fhir/StructureDefinition/vista-add-to-problem-list"
  ;
 FMDT(ROOT,IEN,RIEN) ; $$ - onset as FileMan date/time
  N DT
@@ -121,11 +171,13 @@ ACTIVE(ROOT,IEN,RIEN) ; $$ - VistA problem active flag
  S STAT=$$UP(STAT)
  Q $S(STAT["INACTIVE":"I",STAT["RESOLVED":"I",1:"A")
  ;
-LOADED(ROOT,IEN,RIEN,VISIT,ICD,MSG,RETURN) ; Record loaded status
+LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,MSG,RETURN) ; Record loaded status
  D SET^C0FWSTAT(ROOT,IEN,RIEN,"Condition","Condition","loaded",$G(MSG),.RETURN)
  S @ROOT@(IEN,"load","Condition",RIEN,"visitIen")=+VISIT
  S @ROOT@(IEN,"load","Condition",RIEN,"diagnosisIen")=+ICD
+ S @ROOT@(IEN,"load","Condition",RIEN,"addToProblemList")=+$G(ADDPL)
  S RETURN("domains","Condition","visitIen")=+VISIT
+ S RETURN("domains","Condition","addToProblemList")=+$G(ADDPL)
  Q
  ;
 ERR(ROOT,IEN,RIEN,MSG,RETURN) ; Record error status
