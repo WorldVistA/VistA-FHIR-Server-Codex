@@ -33,7 +33,10 @@ The target shape is:
 
 The current route registration is centered in `src/SYNWEBRG.m`:
 
-- `POST /addpatient` and `POST /updatepatient` call SYN FHIR intake routines.
+- `POST /addpatient` and `POST /updatepatient` prefer Codex C0FW handlers when
+  installed. `/addpatient` creates a `fhir-intake` graph row and files a minimal
+  Patient directly through FileMan without SYN or ISI routines; `/updatepatient`
+  merges bundle slices into an existing graph row.
 - `GET /fhir` and `REGTFHIR^C0FHIR` expose the FHIR read surface.
 - `GET /vpr/{dfn}` and related query forms expose SYN/VPR JSON.
 - `POST /rehmp` calls `WSREHMP^C0RGWEB`.

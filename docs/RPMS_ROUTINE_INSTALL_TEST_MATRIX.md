@@ -55,7 +55,7 @@ Install these from `VistA-FHIR-Server-Codex/src/`.
 | `C0FHIRGF` | Broker RPC wrapper for full FHIR bundle. | Register RPC with `C0FHIRSE`; call `C0FHIR GET FULL BUNDLE` through Broker if RPMS Broker path is in scope. |
 | `C0FHIRSE` | RPC/context option setup for Broker use. | `D EN^C0FHIRSE`; inspect file `#8994` and option file `#19`. |
 | `C0RGWEB` | HTTP bridge for `POST /rehmp`. | `POST /rehmp` health, patient search, bundle get, bad request/error mapping. |
-| `C0FWUPD`, `C0FWIDX`, `C0FWLNK`, `C0FWFUTL`, `C0FWDOM`, `C0FWSTAT`, `C0FWVIT`, `C0FWLAB`, `C0FWENC`, `C0FWCON`, `C0FWTIU`, `C0FWIMM`, `C0FWALG`, `C0FWMED`, `C0FWPRC`, `C0FWAPT`, `C0FWCP`, `C0FWGRT`, `C0FWCTX` | Codex-owned `/updatepatient` merge, graph indexing/linking, runtime context, no-SYNF/ISI domain dispatch, first vertical C0FW vital-sign writeback slice, and explicit C0FW adapters for remaining domains. | `POST /updatepatient` with `dfn`, `ien`, or `icn`; verify graph merge/index/link response, `Observation` vital filing through `GMVDCSAV`, and deterministic adapter-specific not-implemented statuses for domains not yet clinically implemented. |
+| `C0FWADD`, `C0FWUPD`, `C0FWIDX`, `C0FWLNK`, `C0FWFUTL`, `C0FWDOM`, `C0FWSTAT`, `C0FWVIT`, `C0FWLAB`, `C0FWENC`, `C0FWCON`, `C0FWTIU`, `C0FWIMM`, `C0FWALG`, `C0FWMED`, `C0FWPRC`, `C0FWAPT`, `C0FWCP`, `C0FWGRT`, `C0FWCTX` | Codex-owned `/addpatient` graph intake and native FileMan Patient creation, `/updatepatient` merge, graph indexing/linking, runtime context, no-SYNF/ISI domain dispatch, first vertical C0FW vital-sign writeback slice, and explicit C0FW adapters for remaining domains. | `POST /addpatient` with a FHIR Bundle; verify graph row creation and DFN creation without SYN or ISI routines. `POST /updatepatient` with `dfn`, `ien`, or `icn`; verify graph merge/index/link response, `Observation` vital filing through `GMVDCSAV`, and deterministic adapter-specific not-implemented statuses for domains not yet clinically implemented. |
 | `C0FWWBS` | Writeback-save graph artifact API. | `POST /writebacksaves`, `GET /writebacksaves`, get by id, rename, archive. |
 | `C0RGWBS` | Compatibility shim for legacy callers of the writeback-save graph artifact API. | Smoke only if an older route or caller still invokes `C0RGWBS`; primary route should use `C0FWWBS`. |
 | `C0TSWS` | BSTS/C0TS terminology HTTP service wrappers. | `/bsts/codeset?format=json`, `/bsts/codes?id=<id>&format=json&max=...`. |
@@ -104,7 +104,7 @@ graph storage, or Synthea-backed demos are in scope.
 
 | Routine | Required For | Tests |
 | --- | --- | --- |
-| `SYNFHIR` | Main FHIR import/replay web handlers. | `POST /addpatient`, `GET /loadstatus`, replay endpoints if enabled. |
+| `SYNFHIR` | Legacy Data Loader FHIR import/replay helpers. Codex route registration prefers `WSPAT^C0FWADD` for `/addpatient` when installed; C0FW addpatient does not require SYNFHIR. | Regression only when deliberately using the Data Loader route fallback; replay endpoints if enabled. |
 | `SYNFHIRU` | Legacy Data-Loader update handler for non-Codex-only stacks. Codex route registration prefers `wsUpdatePatient^C0FWUPD` when installed. | Regression only when deliberately using the Data-Loader route fallback; Codex no-SYNF/ISI update smoke should target `C0FWUPD`. |
 | `SYNFHIR2` | Legacy/alternate FHIR import support. | Regression only if referenced by installed SYN routes. |
 | `SYNINIT` | SYN route/setup support. | Verify route registration does not conflict with `SYNWEBRG`. |
