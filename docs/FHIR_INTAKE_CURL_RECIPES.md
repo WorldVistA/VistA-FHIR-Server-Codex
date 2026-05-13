@@ -33,7 +33,7 @@ Required runtime pieces:
 - A supported C0FW graph backend for `fhir-intake`: `SYNGRAF`/`^SYNGRAPH` or
   legacy `%wd`.
 - Patient file `#2` / `^DPT` with standard fields for name, sex, DOB, SSN,
-  address, and phone.
+  marital status, patient type, veteran flag, address, and phone.
 
 Optional runtime piece:
 
@@ -72,6 +72,13 @@ curl -sS -w '\nHTTP %{http_code}\n' -H 'Expect:' -H 'Content-Type: application/j
 Successful JSON includes **`ien`** for the graph row and **`dfn`** when C0FW
 creates or links the VistA patient. It includes **`icn`** when an ICN is supplied
 or when `MPIFSPC` is installed and C0FW can derive/file an ICN base.
+
+C0FW's native patient create files the ISI-template fields that are available as
+direct Patient-file fields on the target: name, sex, DOB, SSN or local
+pseudo-SSN, marital status, patient type, veteran flag, street line 1/2, city,
+state, ZIP, phone, DFN graph link, and optional MPI ICN fields. Race and
+ethnicity are site/DD-dependent on current test targets and are reported as not
+filed rather than reintroducing SYN demographic maps.
 
 ---
 

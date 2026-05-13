@@ -69,7 +69,7 @@ WSPAT(ARGS,BODY,RESULT) ; POST /addpatient
  Q 1
  ;
 PATIENT(RETURN,IEN,ICN,ROOT) ; File Patient directly through FileMan
- N CITY,DFN,DIC,DOB,ERR,FDA,NAME,PENT,PHONE,SEX,SSN,STATE,STIEN,STREET,X,Y,ZIP
+ N CITY,DFN,DIC,DOB,ERR,FDA,MAR,NAME,PENT,PHONE,PTYPE,SEX,SSN,SSNIN,STATE,STIEN,STREET,STREET2,VET,X,Y,ZIP
  I $G(DT)="" S DT=$$DT^XLFDT
  S PENT=$$PENTRY(ROOT,IEN)
  I PENT<1 D PATSTAT(.RETURN,IEN,ROOT,"error","No Patient resource found in posted Bundle") Q
@@ -77,17 +77,22 @@ PATIENT(RETURN,IEN,ICN,ROOT) ; File Patient directly through FileMan
  I NAME="" D PATSTAT(.RETURN,IEN,ROOT,"error","Patient name is missing family or given") Q
  S SEX=$$SEX($G(@ROOT@(IEN,"json","entry",PENT,"resource","gender")))
  S DOB=$$DOB($G(@ROOT@(IEN,"json","entry",PENT,"resource","birthDate")))
- S SSN=$$SSN(ROOT,IEN,PENT)
- I '$$VALIDSSN(SSN) S SSN=$$PSEUDO(IEN)
+ S SSNIN=$$SSN(ROOT,IEN,PENT)
+ S SSN=SSNIN
+ I '$$VALIDSSN(SSN) S SSN=$$PSEUDO(IEN),RETURN("patient","ssnMessage")="FHIR SSN was missing or invalid for this VistA; filed local pseudo-SSN"
  I $D(^DPT("SSN",SSN)) D  Q
  . S DFN=+$O(^DPT("SSN",SSN,0))
  . D PATSTAT(.RETURN,IEN,ROOT,"duplicate","Patient SSN already exists in ^DPT; use /updatepatient?dfn="_DFN_" to merge into the existing patient")
  . S RETURN("dfn")=DFN
  S STREET=$G(@ROOT@(IEN,"json","entry",PENT,"resource","address",1,"line",1))
+ S STREET2=$G(@ROOT@(IEN,"json","entry",PENT,"resource","address",1,"line",2))
  S CITY=$G(@ROOT@(IEN,"json","entry",PENT,"resource","address",1,"city"))
  S STATE=$G(@ROOT@(IEN,"json","entry",PENT,"resource","address",1,"state"))
  S ZIP=$G(@ROOT@(IEN,"json","entry",PENT,"resource","address",1,"postalCode"))
- S PHONE=$G(@ROOT@(IEN,"json","entry",PENT,"resource","telecom",1,"value"))
+ S PHONE=$$PHONE(ROOT,IEN,PENT)
+ S MAR=$$MARITAL($G(@ROOT@(IEN,"json","entry",PENT,"resource","maritalStatus","coding",1,"code")))
+ S PTYPE=$$PTYPE()
+ S VET=$$VET(ROOT,IEN,PENT)
  K DIC,ERR,FDA,Y
  S DIC="^DPT(",DIC(0)="L",X=NAME
  D FILE^DICN
@@ -97,10 +102,14 @@ PATIENT(RETURN,IEN,ICN,ROOT) ; File Patient directly through FileMan
  I DOB>0 S FDA(2,DFN_",",.03)=DOB
  S FDA(2,DFN_",",.09)=SSN
  I STREET'="" S FDA(2,DFN_",",.111)=STREET
+ I STREET2'="" S FDA(2,DFN_",",.112)=STREET2
  I CITY'="" S FDA(2,DFN_",",.114)=CITY
  S STIEN=$$STATE(STATE) I STIEN>0 S FDA(2,DFN_",",.115)=STIEN
  I ZIP'="" S FDA(2,DFN_",",.116)=ZIP
  I PHONE'="" S FDA(2,DFN_",",.131)=PHONE
+ I MAR>0 S FDA(2,DFN_",",.05)=MAR
+ I PTYPE>0 S FDA(2,DFN_",",391)=PTYPE
+ I VET'="" S FDA(2,DFN_",",1901)=VET
  D FILE^DIE("","FDA","ERR")
  I $D(ERR) D  Q
  . D PATSTAT(.RETURN,IEN,ROOT,"error","FileMan failed to file Patient demographics")
@@ -109,6 +118,9 @@ PATIENT(RETURN,IEN,ICN,ROOT) ; File Patient directly through FileMan
  S RETURN("patient","engine")="C0FW/FileMan"
  S RETURN("patient","loadStatus")="loaded"
  S RETURN("patient","message")="Patient filed directly by C0FW"
+ S RETURN("patient","fields","name")=NAME
+ S RETURN("patient","fields","ssn")=SSN
+ S RETURN("patient","raceEthnicityMessage")="Race and ethnicity were not filed; this target Patient DD does not expose the same simple fields used by the ISI template"
  S @ROOT@(IEN,"load","Patient","status","DFN")=DFN
  S @ROOT@(IEN,"load","Patient","status","loadStatus")="loaded"
  S ICN=$$FILEICN(DFN,ROOT,IEN,PENT,SSN,.RETURN)
@@ -188,6 +200,37 @@ STATE(X) ; $$ - State file IEN from abbreviation or name
  I Y>0 Q Y
  S Y=$$FIND1^DIC(5,,"X",X,"B")
  Q +Y
+ ;
+PHONE(ROOT,IEN,RIEN) ; $$ - first phone telecom value
+ N IDX,SYS,VAL
+ S (IDX,VAL)=""
+ F  S IDX=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","telecom",IDX)) Q:IDX=""  D  Q:VAL'=""
+ . S SYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","telecom",IDX,"system"))
+ . I SYS'="",SYS'="phone" Q
+ . S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","telecom",IDX,"value"))
+ Q VAL
+ ;
+MARITAL(CODE) ; $$ - pointer to MARITAL STATUS file from FHIR code/text
+ N NAME,Y
+ S CODE=$G(CODE)
+ S NAME=$S(CODE="M":"MARRIED",CODE="S":"NEVER MARRIED",CODE="D":"DIVORCED",CODE="W":"WIDOWED",CODE="L":"SEPARATED",CODE="UNK":"UNKNOWN",1:"")
+ I NAME="" Q 0
+ S Y=$$FIND1^DIC(11,,"X",NAME,"B")
+ Q +Y
+ ;
+PTYPE() ; $$ - default Patient TYPE pointer
+ N Y
+ S Y=$$FIND1^DIC(391,,"X","NON-VETERAN (OTHER)","B")
+ Q +Y
+ ;
+VET(ROOT,IEN,RIEN) ; $$ - veteran flag from explicit extension if present
+ N IDX,URL,VAL
+ S IDX=""
+ F  S IDX=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",IDX)) Q:IDX=""  D  Q:$G(VAL)'=""
+ . S URL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",IDX,"url"))
+ . I URL'["veteran",URL'["Veteran" Q
+ . S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",IDX,"valueBoolean"))
+ Q $S($G(VAL)="true":"Y",$G(VAL)="false":"N",1:"N")
  ;
 FILEICN(DFN,ROOT,IEN,RIEN,SSN,RETURN) ; $$ - optional native ICN filing
  N BASE,CHK,ERR,FDA,FULL
