@@ -53,7 +53,6 @@ BUILD(ENCDATA,ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,VISIT) ; Build unified encounter D
  S ENCDATA("ENCOUNTER",1,"ENC D/T")=FMDT
  S ENCDATA("ENCOUNTER",1,"HOS LOC")=LOC
  S ENCDATA("ENCOUNTER",1,"SERVICE CATEGORY")=$$SERCAT(FMDT)
- S ENCDATA("ENCOUNTER",1,"EC")=0
  S ENCDATA("PROVIDER",1,"NAME")=USER
  S ENCDATA("PROVIDER",1,"PRIMARY")=1
  D ADDPOV(.ENCDATA,ROOT,IEN,RIEN,FMDT,USER)
@@ -129,20 +128,36 @@ LOC(ROOT,IEN,RIEN) ; $$ - hospital location
  S LOC=$O(^SC(0))
  Q +LOC
  ;
-DFN(ROOT,IEN,RIEN) ; $$ - patient DFN for this Encounter, preferring transaction subject
- N REF,DFN
+DFN(ROOT,IEN,RIEN) ; $$ - patient DFN for this Encounter
+ N ID,REF,DFN
  S REF=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","subject","reference"))
- I REF["Patient/" S DFN=+$P(REF,"Patient/",2) I DFN>0,$D(^DPT(DFN,0)) Q DFN
+ I REF["Patient/" D  I DFN>0 Q DFN
+ . S ID=$P(REF,"Patient/",2),ID=$P(ID,"/",1),ID=$P(ID,";",1)
+ . I ID?1.N S DFN=+ID I $D(^DPT(DFN,0)) Q
+ . S DFN=0
  S DFN=+$G(@ROOT@(IEN,"json","entry",RIEN,"resource","subject","identifier","value"))
  I DFN>0,$D(^DPT(DFN,0)) Q DFN
  Q +$O(@ROOT@("SPO",IEN,"DFN",""))
  ;
 USER() ; $$ - provider-capable filing user
  N USER
+ I $G(DT)="" S DT=$$DT^XLFDT
  S USER=$$DUZ^C0FWCTX()
- I USER>0,$D(^XUSEC("PROVIDER",USER)) Q USER
+ I USER>0,$D(^XUSEC("PROVIDER",USER)),$$ACTIVEPC(USER) Q USER
  S USER=+$O(^XUSEC("PROVIDER",0))
+ F  Q:USER<1  Q:$$ACTIVEPC(USER)  S USER=+$O(^XUSEC("PROVIDER",USER))
+ I USER>0 Q USER
+ S USER=+$O(^VA(200,0))
+ F  Q:USER<1  Q:$$ACTIVEPC(USER)  S USER=+$O(^VA(200,USER))
  Q $S(USER>0:USER,1:$$DUZ^C0FWCTX())
+ ;
+ACTIVEPC(USER) ; $$ - true if user has active person class for PCE
+ N PC
+ I $G(U)="" S U="^"
+ S USER=+$G(USER) Q:USER<1 0
+ I $T(GET^XUA4A72)="" Q 1
+ S PC=$$GET^XUA4A72(USER,$S($G(DT)>0:DT,1:$$DT^XLFDT))
+ Q $S(+PC>0:1,1:0)
  ;
 SERCAT(FMDT) ; $$ - PCE service category
  Q $S((+$G(FMDT)\1)<$$DT^XLFDT:"E",1:"A")
@@ -153,7 +168,7 @@ KNOWN(ROOT,IEN,RIEN,ID) ; $$ - known visit ien from graph or Encounter id
  I VISIT>0,$D(^AUPNVSIT(VISIT,0)) Q VISIT
  S ID=$G(ID)
  I ID?1"E".N S VISIT=+$E(ID,2,99) I $D(^AUPNVSIT(VISIT,0)) Q VISIT
- I +ID>0,$D(^AUPNVSIT(+ID,0)) Q +ID
+ I ID?1.N,$D(^AUPNVSIT(+ID,0)) Q +ID
  I ID'="" D  I VISIT>0 Q VISIT
  . S ERIEN=+$O(@ROOT@(IEN,"POS","visitIen",ID,""))
  . I ERIEN>0 S VISIT=+$G(@ROOT@(IEN,"load","Encounter",ERIEN,"visitIen"))
@@ -168,7 +183,7 @@ VISITREF(ROOT,IEN,REF) ; $$ - visit ien for a FHIR Encounter reference
  E  S ID=REF
  S ID=$P(ID,";",1)
  I ID?1"E".N S VISIT=+$E(ID,2,99) I $D(^AUPNVSIT(VISIT,0)) Q VISIT
- I +ID>0,$D(^AUPNVSIT(+ID,0)) Q +ID
+ I ID?1.N,$D(^AUPNVSIT(+ID,0)) Q +ID
  S RIEN=+$O(@ROOT@(IEN,"POS","visitIen",ID,""))
  I RIEN>0 S VISIT=+$G(@ROOT@(IEN,"load","Encounter",RIEN,"visitIen")) I VISIT>0 Q VISIT
  Q 0
@@ -253,15 +268,15 @@ LOGINIT(ROOT,IEN,RIEN,ID) ; Seed legacy operational load log
  S START=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","period","start"))
  S END=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","period","end"))
  S HL7=$$FHIRTHL7^C0FWFUTL(START),HL7END=$$FHIRTHL7^C0FWFUTL(END)
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","id")=$G(ID)
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","code")=CODE
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","codeSystem")=CODESYS
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","reasonCode")=REASON
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","reasonCodeSys")=REASONSYS
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","effectiveDateTime")=START
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","endDateTime")=END
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","hl7DateTime")=HL7
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","hl7endDateTime")=HL7END
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","id")=$G(ID)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","code")=CODE
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","codeSystem")=CODESYS
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","reasonCode")=REASON
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","reasonCodeSys")=REASONSYS
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","effectiveDateTime")=START
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","endDateTime")=END
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","hl7DateTime")=HL7
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","hl7endDateTime")=HL7END
  D LOG(ROOT,IEN,RIEN,"code is: "_CODE)
  D LOG(ROOT,IEN,RIEN,"code system is: "_CODESYS)
  D LOG(ROOT,IEN,RIEN,"reasonCode is: "_REASON)
@@ -278,34 +293,34 @@ LEGACYVARS(ROOT,IEN,RIEN,FMDT,LOC,USER,DFN) ; Add resolved filing context to leg
  S DHPPAT=$$DFN2ICN^C0FWFUTL(+$G(DFN))
  S ENCPROV=$P($G(^VA(200,+$G(USER),"PS")),"^",6)
  I ENCPROV="" S ENCPROV=$P($G(^VA(200,+$G(USER),0)),"^")
- S HL7=$G(@ROOT@(IEN,"load","encounters",RIEN,"vars","hl7DateTime"))
- S HL7END=$G(@ROOT@(IEN,"load","encounters",RIEN,"vars","hl7endDateTime"))
- S REASON=$G(@ROOT@(IEN,"load","encounters",RIEN,"vars","reasonCode"))
- S DXICDCS=$$ICDCS($G(@ROOT@(IEN,"load","encounters",RIEN,"vars","reasonCodeSys")),FMDT)
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","fmDateTime")=FMDT
- S @ROOT@(IEN,"load","encounters",RIEN,"vars","dxIcdCs")=DXICDCS
- S @ROOT@(IEN,"load","encounters",RIEN,"parms","DHPPAT")=DHPPAT
- S @ROOT@(IEN,"load","encounters",RIEN,"parms","SCTCPT")=$G(@ROOT@(IEN,"load","encounters",RIEN,"vars","code"))
- S @ROOT@(IEN,"load","encounters",RIEN,"parms","SCTDX")=REASON
- S @ROOT@(IEN,"load","encounters",RIEN,"parms","DXICDCS")=DXICDCS
- S @ROOT@(IEN,"load","encounters",RIEN,"parms","STARTDT")=HL7
- S @ROOT@(IEN,"load","encounters",RIEN,"parms","ENDDT")=HL7END
- S @ROOT@(IEN,"load","encounters",RIEN,"parms","ENCPROV")=ENCPROV
- S @ROOT@(IEN,"load","encounters",RIEN,"parms","CLINIC")=CLINIC
+ S HL7=$G(@ROOT@(IEN,"load","Encounter",RIEN,"vars","hl7DateTime"))
+ S HL7END=$G(@ROOT@(IEN,"load","Encounter",RIEN,"vars","hl7endDateTime"))
+ S REASON=$G(@ROOT@(IEN,"load","Encounter",RIEN,"vars","reasonCode"))
+ S DXICDCS=$$ICDCS($G(@ROOT@(IEN,"load","Encounter",RIEN,"vars","reasonCodeSys")),FMDT)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","fmDateTime")=FMDT
+ S @ROOT@(IEN,"load","Encounter",RIEN,"vars","dxIcdCs")=DXICDCS
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","DHPPAT")=DHPPAT
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","SCTCPT")=$G(@ROOT@(IEN,"load","Encounter",RIEN,"vars","code"))
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","SCTDX")=REASON
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","DXICDCS")=DXICDCS
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","STARTDT")=HL7
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","ENDDT")=HL7END
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","ENCPROV")=ENCPROV
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","CLINIC")=CLINIC
  D LOG(ROOT,IEN,RIEN,"fileman dateTime is: "_FMDT)
  D LOG(ROOT,IEN,RIEN,"Provider for outpatient is: "_ENCPROV)
  D LOG(ROOT,IEN,RIEN,"Location for outpatient is: "_CLINIC)
  Q
  ;
 LEGACYRET(ROOT,IEN,RIEN,RET,VISIT,ENCDATA,ZZERR,ZZERDESC) ; Mirror DATA2PCE return for old log readers
- S @ROOT@(IEN,"load","encounters",RIEN,"status","return")=$G(RET)_"^"_$G(VISIT)
- I $D(ENCDATA) M @ROOT@(IEN,"load","encounters",RIEN,"status","return","ENCDATA")=ENCDATA
- I $D(ZZERR) M @ROOT@(IEN,"load","encounters",RIEN,"status","return","ZZERR")=ZZERR
- I $D(ZZERDESC) M @ROOT@(IEN,"load","encounters",RIEN,"status","return","ZZERDESC")=ZZERDESC
+ S @ROOT@(IEN,"load","Encounter",RIEN,"status","return")=$G(RET)_"^"_$G(VISIT)
+ I $D(ENCDATA) M @ROOT@(IEN,"load","Encounter",RIEN,"status","return","ENCDATA")=ENCDATA
+ I $D(ZZERR) M @ROOT@(IEN,"load","Encounter",RIEN,"status","return","ZZERR")=ZZERR
+ I $D(ZZERDESC) M @ROOT@(IEN,"load","Encounter",RIEN,"status","return","ZZERDESC")=ZZERDESC
  Q
  ;
 LOG(ROOT,IEN,RIEN,TXT) ; Append legacy operational log line
- S @ROOT@(IEN,"load","encounters",RIEN,"log",$O(@ROOT@(IEN,"load","encounters",RIEN,"log",""),-1)+1)=$G(TXT)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"log",$O(@ROOT@(IEN,"load","Encounter",RIEN,"log",""),-1)+1)=$G(TXT)
  Q
  ;
 LOADED(ROOT,IEN,RIEN,VISIT,MSG,RETURN) ; Record loaded visit status
@@ -313,7 +328,6 @@ LOADED(ROOT,IEN,RIEN,VISIT,MSG,RETURN) ; Record loaded visit status
  S ID=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","id"))
  D SET^C0FWSTAT(ROOT,IEN,RIEN,"Encounter","Encounter","loaded",$G(MSG),.RETURN)
  S @ROOT@(IEN,"load","Encounter",RIEN,"visitIen")=+VISIT
- S @ROOT@(IEN,"load","encounters",RIEN,"visitIen")=+VISIT
  I ID'="" D SETIDXGN^C0FWFUTL($NA(@ROOT@(IEN)),RIEN,"visitIen",ID)
  S RETURN("domains","Encounter","visitIen")=+VISIT
  Q
@@ -351,29 +365,23 @@ POVONLY(ZZERR,ZZERDESC) ; $$ - true if DATA2PCE only complains about optional PO
 HFSTAT(ROOT,IEN,RIEN,EI,STATUS,MSG) ; Record Health Factor extension detail
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"status")=$G(STATUS)
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"message")=$G(MSG)
- S @ROOT@(IEN,"load","encounters",RIEN,"healthFactor",EI,"status")=$G(STATUS)
- S @ROOT@(IEN,"load","encounters",RIEN,"healthFactor",EI,"message")=$G(MSG)
  Q
  ;
 HFMAG(ROOT,IEN,RIEN,EI,STATUS,MSG) ; Record Health Factor magnitude detail
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"magnitudeStatus")=$G(STATUS)
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"magnitudeMessage")=$G(MSG)
- S @ROOT@(IEN,"load","encounters",RIEN,"healthFactor",EI,"magnitudeStatus")=$G(STATUS)
- S @ROOT@(IEN,"load","encounters",RIEN,"healthFactor",EI,"magnitudeMessage")=$G(MSG)
  Q
  ;
 HFPARM(ROOT,IEN,RIEN,EI,NAME,NOTE,MAG,SEV) ; Mirror requested HF into legacy parms log
- I $G(NAME)'="" S @ROOT@(IEN,"load","encounters",RIEN,"parms","HEALTH FACTOR",EI,"name")=$G(NAME)
- I $G(NOTE)'="" S @ROOT@(IEN,"load","encounters",RIEN,"parms","HEALTH FACTOR",EI,"comment")=$G(NOTE)
- I $G(MAG)'="" S @ROOT@(IEN,"load","encounters",RIEN,"parms","HEALTH FACTOR",EI,"magnitude")=$G(MAG)
- I $G(SEV)'="" S @ROOT@(IEN,"load","encounters",RIEN,"parms","HEALTH FACTOR",EI,"severity")=$G(SEV)
+ I $G(NAME)'="" S @ROOT@(IEN,"load","Encounter",RIEN,"parms","HEALTH FACTOR",EI,"name")=$G(NAME)
+ I $G(NOTE)'="" S @ROOT@(IEN,"load","Encounter",RIEN,"parms","HEALTH FACTOR",EI,"comment")=$G(NOTE)
+ I $G(MAG)'="" S @ROOT@(IEN,"load","Encounter",RIEN,"parms","HEALTH FACTOR",EI,"magnitude")=$G(MAG)
+ I $G(SEV)'="" S @ROOT@(IEN,"load","Encounter",RIEN,"parms","HEALTH FACTOR",EI,"severity")=$G(SEV)
  Q
  ;
 POVSTAT(ROOT,IEN,RIEN,STATUS,MSG) ; Record POV extension detail
  S @ROOT@(IEN,"load","Encounter",RIEN,"pov","status")=$G(STATUS)
  S @ROOT@(IEN,"load","Encounter",RIEN,"pov","message")=$G(MSG)
- S @ROOT@(IEN,"load","encounters",RIEN,"pov","status")=$G(STATUS)
- S @ROOT@(IEN,"load","encounters",RIEN,"pov","message")=$G(MSG)
  Q
  ;
 ERR(ROOT,IEN,RIEN,MSG,RETURN) ; Record error status

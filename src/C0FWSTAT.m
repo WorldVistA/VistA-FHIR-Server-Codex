@@ -22,10 +22,6 @@ SET(ROOT,IEN,RIEN,DOMAIN,TYPE,STATUS,MSG,RETURN) ; Record domain load status
  S @ROOT@(IEN,"load",DOMAIN,RIEN,"loadStatus")=$G(STATUS)
  S @ROOT@(IEN,"load",DOMAIN,RIEN,"resourceType")=$G(TYPE)
  S @ROOT@(IEN,"load",DOMAIN,RIEN,"message")=$G(MSG)
- I DOMAIN="Encounter" D
- . S @ROOT@(IEN,"load","encounters",RIEN,"status","loadstatus")=$G(STATUS)
- . S @ROOT@(IEN,"load","encounters",RIEN,"status","loadMessage")=$G(MSG)
- . S @ROOT@(IEN,"load","encounters",RIEN,"vars","resourceType")=$G(TYPE)
  S RETURN("domains",DOMAIN,"status")=$G(STATUS)
  S RETURN("domains",DOMAIN,"message")=$G(MSG)
  S RETURN("domains",DOMAIN,"entries",RIEN)=$G(STATUS)
