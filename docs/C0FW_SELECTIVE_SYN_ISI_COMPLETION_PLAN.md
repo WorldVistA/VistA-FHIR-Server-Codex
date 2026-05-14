@@ -15,9 +15,10 @@ and verify which engine handled each domain.
   domain dispatch.
 - `C0FWDOM` dispatches domains without calling SYN/ISI importers.
 - Native C0FW already has working slices for Patient, Encounter, vital
-  Observations, Encounter.note TIU filing, and some Condition/POV filing.
+  Observations, Encounter.note TIU filing, some Condition/POV filing, and a
+  minimum CVX Immunization filing path.
 - Several domains intentionally return deterministic `not_implemented` status:
-  Lab, Allergy, Immunization, Medication, Procedure, CarePlan, and Appointment.
+  Lab, Allergy, Medication, Procedure, CarePlan, and Appointment.
 - SYN/Data Loader still has mature domain routines such as `SYNFLAB`,
   `SYNFHF`, `SYNFIMM`, `SYNFPROC`, `SYNFTIU`, `SYNFMED`, and patient/encounter
   support through `SYNFPAT` and `SYNFENC`.
@@ -268,5 +269,20 @@ Initial implementation started with the lowest-risk pieces:
   `DocumentReference.content[].attachment.data` on import, and exports
   visit-linked TIU as both Encounter annotations and DocumentReference resources.
 
-The next slice should add either a Lab or Immunization SYN wrapper with full
-target-file idempotency checks before enabling it by default.
+The next slice should harden native Immunization or add a Lab SYN wrapper with
+full target-file idempotency checks before enabling it by default.
+
+## Slice 2 Status
+
+C0FW now has a minimum native Immunization path:
+
+- CVX is resolved directly through `^AUTTIMM("C",cvx)`.
+- The target Encounter reference is resolved through C0FW's Encounter visit
+  index.
+- Filing uses `DATA2PCE^PXAI` with a native `IMMUNIZATION` payload.
+- Reruns check `^AUPNVIMM("AD",visit,...)` for the same immunization IEN before
+  filing.
+
+Remaining immunization work is richer mapping, not the basic native filing path:
+route, anatomic site, dose units, lot, info source, reaction, contraindication,
+and manufacturer should be layered after fixture-based idempotency tests.
