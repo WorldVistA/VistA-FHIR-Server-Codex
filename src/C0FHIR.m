@@ -70,7 +70,9 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  DO SETELOC(.RTN,IDX,.ENC)
  DO SETESVC(.RTN,IDX,.ENC)
  DO SETERSN(.RTN,IDX,.ENC)
+ DO SETEHF(.RTN,IDX,ENCIEN)
  DO SETENOTE(.RTN,IDX,.ENC,ENCIEN)
+ DO SETDOCREF(.RTN,IDX,.ENC,ENCIEN,DFN)
  QUIT
  ;
 SETETYP(RTN,IDX,ENC) ; Populate Encounter.type from encounter CPT/OS5 when available
@@ -229,6 +231,36 @@ SETERSN(RTN,IDX,ENC) ; Add encounter reason from VistA POV data when available
  IF NARR'="" SET RTN("entry",IDX,"resource","reasonCode",1,"text")=NARR
  QUIT
  ;
+SETEHF(RTN,IDX,VIEN) ; Add V Health Factor rows as Encounter extensions
+ NEW EI,HFIEN,IEN,NAME,N,SEV,X0
+ SET VIEN=+$GET(VIEN) QUIT:VIEN<1
+ SET IEN=0
+ FOR  SET IEN=$ORDER(^AUPNVHF("AD",VIEN,IEN)) QUIT:IEN<1  DO
+ . SET X0=$GET(^AUPNVHF(IEN,0))
+ . SET HFIEN=+$PIECE(X0,U) QUIT:HFIEN<1
+ . SET NAME=$PIECE($GET(^AUTTHF(HFIEN,0)),U) QUIT:NAME=""
+ . SET N=$ORDER(RTN("entry",IDX,"resource","extension",""),-1)+1
+ . SET RTN("entry",IDX,"resource","extension",N,"url")=$$HFURL()
+ . SET EI=1
+ . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"url")="name"
+ . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"valueString")=NAME
+ . SET EI=EI+1
+ . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"url")="system"
+ . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"valueUri")="urn:va:health-factor"
+ . SET SEV=$PIECE(X0,U,4)
+ . IF SEV'="" DO
+ . . SET EI=EI+1
+ . . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"url")="severity"
+ . . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"valueCode")=SEV
+ . IF $GET(^AUPNVHF(IEN,811))'="" DO
+ . . SET EI=EI+1
+ . . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"url")="comment"
+ . . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"valueString")=$PIECE($GET(^AUPNVHF(IEN,811)),U)
+ QUIT
+ ;
+HFURL() ; Health Factor Encounter extension URL
+ QUIT "http://vistaplex.org/fhir/StructureDefinition/vista-health-factor"
+ ;
 SETENOTE(RTN,IDX,ENC,VIEN) ; Add encounter-linked TIU note text when available
  ; VPRDVSIT TIU^VPRDVSIT skips docs when $$INFO^VPRDTIU<1 (status outside 7-13, etc.).
  ; Merge any visit-linked ^TIU(8925) not already in ENC so /fhir round-trips intake notes.
@@ -248,6 +280,56 @@ SETENOTE(RTN,IDX,ENC,VIEN) ; Add encounter-linked TIU note text when available
  . SET TXT=$$DOCNOTE^C0FHIRBU(DOC,CONT)
  . IF TXT'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT)
  QUIT
+ ;
+SETDOCREF(RTN,EIDX,ENC,VIEN,DFN) ; Add visit-linked TIU as DocumentReference resources
+ NEW CONT,DA,DIDX,DOC,I,TXT,VST
+ SET VST=$$VISITIEN^C0FHIR(.ENC,+$GET(VIEN))
+ QUIT:VST<1
+ DO TIUVPRFILL^C0FHIR(VST,.ENC)
+ SET I=0
+ FOR  SET I=$ORDER(ENC("document",I)) QUIT:I<1  DO
+ . SET DOC=$GET(ENC("document",I))
+ . SET DA=+$GET(DOC) QUIT:DA<1
+ . SET CONT=$GET(ENC("document",I,"content"))
+ . IF CONT="" SET CONT=$$TIUNOTETX^C0FHIR(DA)
+ . SET TXT=$$DOCTEXT^C0FHIRBU(CONT) QUIT:TXT=""
+ . DO ADDDOCREF(.RTN,.DIDX,DA,DOC,TXT,VST,+$GET(DFN))
+ . SET RTN("entry",DIDX,"resource","context","encounter",1,"reference")=$GET(RTN("entry",EIDX,"fullUrl"))
+ . SET RTN("entry",DIDX,"resource","context","encounter",1,"type")="Encounter"
+ QUIT
+ ;
+ADDDOCREF(RTN,IDX,DA,DOC,TXT,VST,DFN) ; Add one TIU DocumentReference resource
+ NEW AUTH,DT,TITLE
+ DO ADDRES^C0FHIRBU(.RTN,"DocumentReference","D"_+$GET(DA),.IDX)
+ SET RTN("entry",IDX,"resource","resourceType")="DocumentReference"
+ SET RTN("entry",IDX,"resource","id")="D"_+$GET(DA)
+ SET RTN("entry",IDX,"resource","status")="current"
+ SET TITLE=$P($GET(DOC),U,2) I TITLE="" SET TITLE=$P($GET(DOC),U,3)
+ IF TITLE="" SET TITLE=$$GET1^DIQ(8925,+$GET(DA)_",",.01,"E")
+ IF TITLE'="" DO
+ . SET RTN("entry",IDX,"resource","type","text")=TITLE
+ . SET RTN("entry",IDX,"resource","description")=TITLE
+ SET DT=+$P($GET(DOC),U,6)
+ IF DT<1 SET DT=+$P($GET(^TIU(8925,+$GET(DA),0)),U,7)
+ IF DT>0 SET RTN("entry",IDX,"resource","date")=$$FM2FHIR^C0FHIRBU(DT)
+ IF +$GET(DFN)>0 SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET AUTH=$$DOCAUTH(DA)
+ IF AUTH'="" SET RTN("entry",IDX,"resource","author",1,"display")=AUTH
+ SET RTN("entry",IDX,"resource","content",1,"attachment","contentType")="text/plain"
+ SET RTN("entry",IDX,"resource","content",1,"attachment","title")=$S(TITLE'="":TITLE,1:"TIU Document")
+ SET RTN("entry",IDX,"resource","content",1,"attachment","data")=$$B64(TXT)
+ SET RTN("entry",IDX,"resource","content",1,"attachment","data","\s")=""
+ QUIT
+ ;
+DOCAUTH(DA) ; $$ - TIU author display
+ NEW AU
+ SET AU=+$P($GET(^TIU(8925,+$GET(DA),12)),U,2)
+ I AU>0 Q $P($GET(^VA(200,AU,0)),U)
+ Q ""
+ ;
+B64(TXT) ; $$ - base64 text for DocumentReference attachment
+ I $T(ENCODE64^SYNWEBUT)'="" Q $$ENCODE64^SYNWEBUT($G(TXT))
+ Q ""
  ;
 VISITIEN(ENC,VIEN) ; Numeric visit ien for ^TIU(8925,"V",...) / FIND^DIC index
  IF +$GET(VIEN)>0 QUIT VIEN

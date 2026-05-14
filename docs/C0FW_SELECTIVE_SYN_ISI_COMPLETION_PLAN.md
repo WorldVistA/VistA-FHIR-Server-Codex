@@ -251,3 +251,22 @@ Minimum Health Factor smoke:
    Immunization or Lab, with explicit `engine=syn` status.
 5. Add rerun/idempotency smoke tests for Patient plus Encounter plus Health
    Factor before enabling additional domains.
+
+## Slice 1 Status
+
+Initial implementation started with the lowest-risk pieces:
+
+- `C0FWPOL` provides per-domain engine selection with native defaults and
+  request override hooks for controlled testing.
+- `C0FWDOM` dispatches through the policy layer while preserving current native
+  behavior unless a domain is explicitly configured otherwise.
+- `C0FWHSYN` wraps `SYNFHF` for Health Factor dictionary resolution/creation.
+  Native `C0FWENC` still owns the actual visit-linked V Health Factor filing.
+- `C0FHIR` readback emits V Health Factor rows as Encounter extensions using
+  `http://vistaplex.org/fhir/StructureDefinition/vista-health-factor`.
+- C0FW TIU handling accepts both `Encounter.note` and text/plain
+  `DocumentReference.content[].attachment.data` on import, and exports
+  visit-linked TIU as both Encounter annotations and DocumentReference resources.
+
+The next slice should add either a Lab or Immunization SYN wrapper with full
+target-file idempotency checks before enabling it by default.

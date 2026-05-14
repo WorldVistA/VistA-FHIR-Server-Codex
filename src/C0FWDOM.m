@@ -3,7 +3,7 @@ C0FWDOM ; VEHU/Codex - C0FW update domain dispatcher ;May 09, 2026
  ;
  Q
  ;
-LOAD(RETURN,IEN,ARGS) ; Process appended update resources without SYNF/ISI importers
+LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  N ROOT,BUNDLE,RIEN,TYPE,DOMAIN,COUNT,FIRST,LAST
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
  Q:ROOT=""
@@ -19,7 +19,7 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources without SYNF/ISI impor
  . S DOMAIN=$$DOMAIN(ROOT,IEN,RIEN,TYPE)
  . Q:DOMAIN'="Encounter"
  . S COUNT=COUNT+1
- . D LOAD^C0FWENC(ROOT,IEN,RIEN,.RETURN)
+ . D DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,.ARGS,.RETURN)
  . D LOADENC^C0FWTIU(ROOT,IEN,RIEN,.RETURN)
  S RIEN=$S(FIRST>0:FIRST-1,1:0)
  F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
@@ -29,20 +29,52 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources without SYNF/ISI impor
  . Q:DOMAIN=""
  . Q:DOMAIN="Encounter"
  . S COUNT=COUNT+1
- . I DOMAIN="Observation" D LOAD^C0FWVIT(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="Lab" D LOAD^C0FWLAB(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="Condition" D LOAD^C0FWCON(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="DocumentReference" D LOAD^C0FWTIU(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="Immunization" D LOAD^C0FWIMM(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="Allergy" D LOAD^C0FWALG(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="Medication" D LOAD^C0FWMED(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="Procedure" D LOAD^C0FWPRC(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="CarePlan" D LOAD^C0FWCP(ROOT,IEN,RIEN,.RETURN) Q
- . I DOMAIN="Appointment" D LOAD^C0FWAPT(ROOT,IEN,RIEN,.RETURN) Q
- . D NI^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"No C0FW domain adapter selected",.RETURN)
+ . D DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,.ARGS,.RETURN)
  S RETURN("loadStatus")=$$SUMMARY(.RETURN,COUNT)
  S RETURN("load","engine")="C0FW"
  S RETURN("load","clinicalFiling")=$S($G(RETURN("loadStatus"))="loaded":"partial",1:$G(RETURN("loadStatus")))
+ Q
+ ;
+DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,ARGS,RETURN) ; Policy-aware domain dispatch
+ N ENG
+ S ENG=$$ENGINE^C0FWPOL(DOMAIN,.ARGS)
+ I ENG="off" D SKIP^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"C0FW policy skipped domain",.RETURN) Q
+ I ENG="syn" D  Q
+ . I DOMAIN="HealthFactor" D LOAD^C0FWHSYN(ROOT,IEN,RIEN,.RETURN) Q
+ . D NI^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"C0FW policy requested SYN but no SYN wrapper is implemented for "_DOMAIN,.RETURN)
+ I ENG="isi" D  Q
+ . D NI^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"C0FW policy requested ISI but no ISI wrapper is implemented for "_DOMAIN,.RETURN)
+ I DOMAIN="Encounter" D HFPOL(ROOT,IEN,RIEN,TYPE,.ARGS,.RETURN)
+ D NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,.RETURN)
+ I ENG="auto",$G(RETURN("domains",DOMAIN,"entries",RIEN))="not_implemented",DOMAIN="HealthFactor" D LOAD^C0FWHSYN(ROOT,IEN,RIEN,.RETURN)
+ Q
+ ;
+HFPOL(ROOT,IEN,RIEN,TYPE,ARGS,RETURN) ; Optional SYN pre-resolution for Encounter Health Factors
+ N HFENG
+ Q:'$$HFEXT(ROOT,IEN,RIEN)
+ S HFENG=$$ENGINE^C0FWPOL("HealthFactor",.ARGS)
+ I HFENG="syn"!(HFENG="auto") D LOAD^C0FWHSYN(ROOT,IEN,RIEN,.RETURN)
+ Q
+ ;
+HFEXT(ROOT,IEN,RIEN) ; $$ - true if Encounter has C0FW Health Factor extensions
+ N EI
+ S EI=0
+ F  S EI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI)) Q:+EI=0  I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"url"))=$$HFURL^C0FWENC() Q
+ Q $S(+EI>0:1,1:0)
+ ;
+NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Native C0FW adapter dispatch
+ I DOMAIN="Observation" D LOAD^C0FWVIT(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Lab" D LOAD^C0FWLAB(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Condition" D LOAD^C0FWCON(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="DocumentReference" D LOAD^C0FWTIU(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Immunization" D LOAD^C0FWIMM(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Allergy" D LOAD^C0FWALG(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Medication" D LOAD^C0FWMED(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Procedure" D LOAD^C0FWPRC(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="CarePlan" D LOAD^C0FWCP(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Appointment" D LOAD^C0FWAPT(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Encounter" D LOAD^C0FWENC(ROOT,IEN,RIEN,.RETURN) Q
+ D NI^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"No C0FW domain adapter selected",.RETURN)
  Q
  ;
 DOMAIN(ROOT,IEN,RIEN,TYPE) ; $$ - map FHIR resourceType to C0FW domain

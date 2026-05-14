@@ -4,9 +4,18 @@ C0FWTIU ; VEHU/Codex - C0FW TIU document writeback adapter ;May 09, 2026
  Q
  ;
 LOAD(ROOT,IEN,RIEN,RETURN) ; DocumentReference/TIU filing placeholder
- N MSG
- S MSG="DocumentReference TIU filing is not implemented in this C0FW slice; Encounter.note filing is supported."
- D NI^C0FWSTAT(ROOT,IEN,RIEN,"DocumentReference","DocumentReference",MSG,.RETURN)
+ N DFN,TITLE,TXT,VISIT
+ I $G(ROOT)="" D DOCERR(ROOT,IEN,RIEN,"Missing graph root",.RETURN) Q
+ I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="DocumentReference" D DOCERR(ROOT,IEN,RIEN,"Resource is not DocumentReference",.RETURN) Q
+ S DFN=+$O(@ROOT@("SPO",IEN,"DFN",""))
+ I DFN<1 D DOCERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
+ S VISIT=$$DOCVISIT(ROOT,IEN,RIEN)
+ I VISIT<1 D DOCERR(ROOT,IEN,RIEN,"DocumentReference has no resolved Encounter visit pointer",.RETURN) Q
+ S TXT=$$DOCTEXT(ROOT,IEN,RIEN)
+ I TXT="" D DOCERR(ROOT,IEN,RIEN,"DocumentReference has no text/plain attachment data",.RETURN) Q
+ S TITLE=$$DOCRTTL(ROOT,IEN,RIEN,TXT)
+ D FILENOTE(ROOT,IEN,RIEN,1,DFN,VISIT,TXT,TITLE)
+ D SUMMARY(ROOT,IEN,RIEN,.RETURN)
  Q
  ;
 LOADENC(ROOT,IEN,RIEN,RETURN) ; File Encounter.note annotations as visit-linked TIU
@@ -31,9 +40,9 @@ LOADENC(ROOT,IEN,RIEN,RETURN) ; File Encounter.note annotations as visit-linked 
  D SUMMARY(ROOT,IEN,RIEN,.RETURN)
  Q
  ;
-FILENOTE(ROOT,IEN,RIEN,NI,DFN,VISIT,TXT) ; File one Encounter.note
- N RES,TITLE
- S TITLE=$$TITLE(ROOT,IEN,RIEN,NI,TXT)
+FILENOTE(ROOT,IEN,RIEN,NI,DFN,VISIT,TXT,TITLE) ; File one Encounter.note/DocumentReference
+ N RES
+ I $G(TITLE)="" S TITLE=$$TITLE(ROOT,IEN,RIEN,NI,TXT)
  S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"title")=TITLE
  S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"visitIen")=+VISIT
  I $$HASFILE(VISIT,TXT) D  Q
@@ -55,6 +64,44 @@ FILENOTE(ROOT,IEN,RIEN,NI,DFN,VISIT,TXT) ; File one Encounter.note
  . S @ROOT@(IEN,"load","Encounter",RIEN,"log",$O(@ROOT@(IEN,"load","Encounter",RIEN,"log",""),-1)+1)="FHIR note: TIU IEN="_+RES
  . S @ROOT@(IEN,"load","Encounter",RIEN,"log",$O(@ROOT@(IEN,"load","Encounter",RIEN,"log",""),-1)+1)="FHIR note ni="_NI_" TIU="_+RES
  S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"status")="error"
+ Q
+ ;
+DOCVISIT(ROOT,IEN,RIEN) ; $$ - visit ien from DocumentReference encounter reference
+ N REF,VISIT
+ S REF=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","context","encounter",1,"reference"))
+ I REF="" S REF=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","context","encounter","reference"))
+ I REF="" S REF=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","encounter","reference"))
+ S VISIT=$$VISITREF^C0FWENC(ROOT,IEN,REF)
+ Q +VISIT
+ ;
+DOCTEXT(ROOT,IEN,RIEN) ; $$ - decoded text/plain DocumentReference attachment
+ N CI,CTYPE,DATA
+ S CI=""
+ F  S CI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","content",CI)) Q:CI=""  D  Q:$G(DATA)'=""
+ . S CTYPE=$$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","content",CI,"attachment","contentType")))
+ . Q:CTYPE'["TEXT/PLAIN"
+ . S DATA=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","content",CI,"attachment","data"))
+ I $G(DATA)="" Q ""
+ S DATA=$TR(DATA,$C(10)_$C(13)_" ","")
+ I $T(DECODE64^SYNWEBUT)'="" Q $$DECODE64^SYNWEBUT(DATA)
+ Q ""
+ ;
+DOCRTTL(ROOT,IEN,RIEN,TXT) ; $$ - title for DocumentReference-origin note
+ N TITLE
+ S TITLE=$$DOCTITLE($G(TXT))
+ I TITLE'="" Q TITLE
+ S TITLE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","content",1,"attachment","title"))
+ I TITLE'="" Q $$TRIM(TITLE)
+ S TITLE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","type","text"))
+ I TITLE'="" Q $$TRIM(TITLE)
+ Q "PROGRESS NOTES"
+ ;
+DOCERR(ROOT,IEN,RIEN,MSG,RETURN) ; Record DocumentReference import error
+ I $G(ROOT)'="",+$G(IEN)>0,+$G(RIEN)>0 D
+ . S @ROOT@(IEN,"load","DocumentReference",RIEN,"loadStatus")="error"
+ . S @ROOT@(IEN,"load","DocumentReference",RIEN,"resourceType")="DocumentReference"
+ . S @ROOT@(IEN,"load","DocumentReference",RIEN,"message")=$G(MSG)
+ D ERR^C0FWSTAT(ROOT,IEN,RIEN,"DocumentReference","DocumentReference",$G(MSG),.RETURN)
  Q
  ;
 NOTEMIR(ROOT,IEN,RIEN,NI,TXT) ; Mirror Encounter.note text in legacy load log
@@ -170,7 +217,7 @@ SUMMARY(ROOT,IEN,RIEN,RETURN) ; Record note filing aggregate
  . I $G(@ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"status"))="skipped" S SKIP=SKIP+1
  . I $G(@ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"status"))="error" S ERR=ERR+1
  S STATUS=$S(ERR>0:"error",FILED>0:"loaded",SKIP>0:"skipped",1:"skipped")
- D SET^C0FWSTAT(ROOT,IEN,RIEN,"DocumentReference","Encounter.note",STATUS,$S(FILED>0:"Encounter.note filed to TIU",ERR>0:"Encounter.note TIU filing error",1:"Encounter.note already matched TIU"),.RETURN)
+ D SET^C0FWSTAT(ROOT,IEN,RIEN,"DocumentReference","DocumentReference",STATUS,$S(FILED>0:"TIU note filed",ERR>0:"TIU note filing error",1:"TIU note already matched"),.RETURN)
  S @ROOT@(IEN,"load","DocumentReference",RIEN,"filed")=FILED
  S @ROOT@(IEN,"load","DocumentReference",RIEN,"skipped")=SKIP
  S @ROOT@(IEN,"load","DocumentReference",RIEN,"errors")=ERR

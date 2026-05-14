@@ -71,7 +71,7 @@ ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT,VISIT) ; Add VistA Health Factor Encounter exte
  . S NOTE=$$EXTVAL(ROOT,IEN,RIEN,EI,"comment")
  . D HFPARM(ROOT,IEN,RIEN,EI,NAME,NOTE,MAG,SEV)
  . I NAME="" D HFSTAT(ROOT,IEN,RIEN,EI,"skipped","Health Factor extension missing name") Q
- . S HFIEN=+$O(^AUTTHF("B",NAME,0))
+ . S HFIEN=$$HFIEN(ROOT,IEN,RIEN,EI,NAME)
  . I HFIEN<1 D HFSTAT(ROOT,IEN,RIEN,EI,"skipped","Health Factor not found in ^AUTTHF: "_NAME) Q
  . I +$G(VISIT)>0,$$HASHF(VISIT,HFIEN) D HFSTAT(ROOT,IEN,RIEN,EI,"skipped","Health Factor already filed on visit: "_NAME) Q
  . S CNT=CNT+1,HF=$O(ENCDATA("HEALTH FACTOR",""),-1)+1
@@ -203,6 +203,14 @@ VALNODE(ROOT,IEN,RIEN,EI,NI) ; $$ - first primitive value[x] on child extension
  . Q:KEY="url"
  . I $E(KEY,1,5)="value" S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"extension",NI,KEY))
  Q $G(VAL)
+ ;
+HFIEN(ROOT,IEN,RIEN,EI,NAME) ; $$ - Health Factor ien from native or SYN resolution
+ N HFIEN,SYN
+ S HFIEN=+$O(^AUTTHF("B",$G(NAME),0))
+ I HFIEN>0 Q HFIEN
+ S SYN=+$G(@ROOT@(IEN,"load","HealthFactor",RIEN,"healthFactor",EI,"ien"))
+ I SYN>0 Q SYN
+ Q 0
  ;
 POVEXT(ROOT,IEN,RIEN,NAME) ; $$ - value from VistA POV Encounter extension
  N EI,URL,VAL
