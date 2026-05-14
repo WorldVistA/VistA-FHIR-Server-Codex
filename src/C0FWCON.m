@@ -27,7 +27,6 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  S PROBDATA("ENCOUNTER",1,"ENC D/T")=+$P($G(^AUPNVSIT(VISIT,0)),"^")
  S PROBDATA("ENCOUNTER",1,"HOS LOC")=+$P($G(^AUPNVSIT(VISIT,0)),"^",22)
  S PROBDATA("ENCOUNTER",1,"SERVICE CATEGORY")=$$SERCAT(VISIT,FMDT)
- S PROBDATA("ENCOUNTER",1,"EC")=0
  S PROBDATA("DX/PL",1,"PL ADD")=ADDPL
  S PROBDATA("DX/PL",1,"PL ONSET DATE")=FMDT\1
  S PROBDATA("DX/PL",1,"DIAGNOSIS")=ICD
@@ -96,13 +95,13 @@ ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only
  . S VB=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"valueBoolean"))
  . S VS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"valueString"))
  . I VS'="" S VB=VS
- Q $S(FND:$$BOOLPL(VB),1:1)
+ Q $S(FND:$$BOOLPL(VB),1:0)
  ;
 BOOLPL(V) ; $$ - truthy for PL ADD
  I $G(V)=0 Q 0
  I $G(V)=1 Q 1
  S V=$$UP($G(V))
- I V="" Q 1
+ I V="" Q 0
  I V="0"!(V="FALSE")!(V="N")!(V="NO") Q 0
  Q 1
  ;

@@ -44,6 +44,12 @@ DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,ARGS,RETURN) ; Policy-aware domain dispatch
  . D NI^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"C0FW policy requested SYN but no SYN wrapper is implemented for "_DOMAIN,.RETURN)
  I ENG="isi" D  Q
  . D NI^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"C0FW policy requested ISI but no ISI wrapper is implemented for "_DOMAIN,.RETURN)
+ D SAFE(ROOT,IEN,RIEN,DOMAIN,TYPE,ENG,.ARGS,.RETURN)
+ Q
+ ;
+SAFE(ROOT,IEN,RIEN,DOMAIN,TYPE,ENG,ARGS,RETURN) ; Run native adapter with one-resource error isolation
+ N $ETRAP,$ESTACK
+ S $ETRAP="D DERR^C0FWDOM(ROOT,IEN,RIEN,DOMAIN,TYPE,.RETURN) S $ECODE="""" Q"
  I DOMAIN="Encounter" D HFPOL(ROOT,IEN,RIEN,TYPE,.ARGS,.RETURN)
  D NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,.RETURN)
  I ENG="auto",$G(RETURN("domains",DOMAIN,"entries",RIEN))="not_implemented",DOMAIN="HealthFactor" D LOAD^C0FWHSYN(ROOT,IEN,RIEN,.RETURN)
@@ -75,6 +81,14 @@ NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Native C0FW adapter dispatch
  I DOMAIN="Appointment" D LOAD^C0FWAPT(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Encounter" D LOAD^C0FWENC(ROOT,IEN,RIEN,.RETURN) Q
  D NI^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"No C0FW domain adapter selected",.RETURN)
+ Q
+ ;
+DERR(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Trap one domain adapter failure and continue
+ N MSG
+ S MSG=$ZS
+ I MSG="" S MSG=$ECODE
+ I MSG="" S MSG="unknown M error"
+ D ERR^C0FWSTAT(ROOT,IEN,RIEN,$G(DOMAIN),$G(TYPE),"C0FW "_$G(DOMAIN)_" adapter error: "_MSG,.RETURN)
  Q
  ;
 DOMAIN(ROOT,IEN,RIEN,TYPE) ; $$ - map FHIR resourceType to C0FW domain
