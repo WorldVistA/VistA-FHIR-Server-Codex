@@ -672,7 +672,7 @@ SHOWROW(ROOT,IEN) ; True when graph has one or more loaded labs
  . IF $$UPCASE(DOM)'="LABS" QUIT
  . SET ZI=0
  . FOR  SET ZI=$ORDER(@ROOT@(IEN,"load",DOM,ZI)) Q:+ZI<1  DO  Q:LD>0
- . . SET ST=$$UPCASE($GET(@ROOT@(IEN,"load",DOM,ZI,"status","loadstatus")))
+ . . SET ST=$$LOADST(ROOT,IEN,DOM,ZI)
  . . IF ST="LOADED" SET LD=1
  QUIT $SELECT(LD>0:1,1:0)
  ;
@@ -685,7 +685,7 @@ DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
  . SET ZI=0
  . FOR  SET ZI=$ORDER(@ROOT@(IEN,"load",DOM,ZI)) Q:+ZI<1  DO
  . . SET SRC=SRC+1
- . . SET ST=$$UPCASE($GET(@ROOT@(IEN,"load",DOM,ZI,"status","loadstatus")))
+ . . SET ST=$$LOADST(ROOT,IEN,DOM,ZI)
  . . IF ST="LOADED" SET LD=LD+1
  . ; Some domains (for example Patient) use only domain-level status nodes.
  . ; Prefer explicit status counters when present, then fallback to status/loadstatus.
@@ -694,7 +694,7 @@ DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
  . IF DOMSRC>0 SET SRC=DOMSRC
  . IF DOMLD>0 SET LD=DOMLD
  . IF SRC=0 DO
- . . SET STDOM=$$UPCASE($GET(@ROOT@(IEN,"load",DOM,"status","loadstatus")))
+ . . SET STDOM=$$DOMST(ROOT,IEN,DOM)
  . . IF STDOM'="" SET SRC=1,LD=$SELECT(STDOM="LOADED":1,1:0)
  . ; Hide empty domains so we do not display misleading 0/0 rows.
  . IF SRC=0,LD=0 QUIT
@@ -703,6 +703,22 @@ DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
  . SET TXT=TXT_SUM
  IF TXT="" SET TXT="No load summary available."
  QUIT TXT
+ ;
+LOADST(ROOT,IEN,DOM,RIEN) ; $$ - item status across C0FW and legacy loaders
+ NEW ST
+ SET ST=$GET(@ROOT@(IEN,"load",DOM,RIEN,"loadStatus"))
+ IF ST="" SET ST=$GET(@ROOT@(IEN,"load",DOM,RIEN,"status","loadstatus"))
+ IF ST="" SET ST=$GET(@ROOT@(IEN,"load",DOM,RIEN,"status","loadStatus"))
+ IF ST="" SET ST=$GET(@ROOT@(IEN,"load",DOM,RIEN,"status","return"))
+ QUIT $$UPCASE(ST)
+ ;
+DOMST(ROOT,IEN,DOM) ; $$ - domain-level status across C0FW and legacy loaders
+ NEW ST
+ SET ST=$GET(@ROOT@(IEN,"load",DOM,"loadStatus"))
+ IF ST="" SET ST=$GET(@ROOT@(IEN,"load",DOM,"status","loadstatus"))
+ IF ST="" SET ST=$GET(@ROOT@(IEN,"load",DOM,"status","loadStatus"))
+ IF ST="" SET ST=$GET(@ROOT@(IEN,"load",DOM,"status","return"))
+ QUIT $$UPCASE(ST)
  ;
 GSROOT() ; Resolve graph-store root across deployments
  ; Use SYNWD when present so graph location matches loader (^%wd vs ^SYNGRAPH).
