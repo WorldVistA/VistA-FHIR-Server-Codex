@@ -33,6 +33,7 @@ This directory stores detailed project documentation for implementation tracking
 - `RPMS_ROUTINE_INSTALL_TEST_MATRIX.md`: Routine/package install and validation matrix for making the full Codex, SYN, reHMP, BSTS, reminders, and writeback stack operational on RPMS.
 - `BSTS_C0TS_FORMAT_WEB_SERVICES.md`: BSTS/C0TS `/bsts/*` HTTP `format=` behavior, past defects (empty JSON, line-count prefix), streaming JSON, and follow-on options.
 - `BSTS_INTEGRATION_PLAN.md`: Phased plan to integrate the parallel `bsts-vista` repo with M web, rehmp, and picklist/terminology needs (options A/B/C, risks, checklists). **Decisions** block: Option A first; see sibling **`bsts-vista` `docs/C0TS_HTTP_FORMAT_DEPLOY.md`** and **`rehmp` `docs/BSTS_TERMINOLOGY_OPTION_A.md`**.
+- `C0RG_TERMINOLOGY_GATEWAY_OPTIONS.md`: C0RG terminology gateway design using online BSTS, local BSTS/FileMan cache, and a C0T/VistA Lexicon provider, including the live `KBAITLEX` `/term/diabetes` example.
 - `M_WEBSERVER_CLOSE_WAIT_FIX_OUTLINE.md`: Fix outline for the server-side CLOSE_WAIT leak (WAIT/ETDC and timeout handling so workers close and exit when the client disconnects).
 - `M_WEBSERVER_RUNAWAY_JOBS_ANALYSIS_2026-03-12.md`: Maintainer-facing root-cause analysis and validated hotfix for `%webrsp` runaway `mumps -direct` worker leaks (SENDATA traversal).
 - `STEPS_TAKEN.md`: Chronological log of work completed.
