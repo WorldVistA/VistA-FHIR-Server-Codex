@@ -86,7 +86,7 @@ ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT,VISIT) ; Add VistA Health Factor Encounter exte
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor","queued")=CNT
  Q
  ;
-ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension or reasonCode
+ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension, reasonCode, or STD CODES
  N CODE,CODESYS,DIAG,NARR,PI,PRI
  S CODE=$$POVEXT(ROOT,IEN,RIEN,"code")
  S CODESYS=$$POVEXT(ROOT,IEN,RIEN,"system")
@@ -100,7 +100,8 @@ ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension or reasonC
  . I NARR="" S NARR=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",1,"coding",1,"display"))
  I CODE="" Q
  S DIAG=$$ICDIEN(CODE,CODESYS,FMDT)
- I DIAG<1 D POVSTAT(ROOT,IEN,RIEN,"skipped","POV code is not an ICD-9/ICD-10 code resolvable by C0FW: "_CODE_" "_CODESYS) Q
+ I DIAG<1,$$SCTSYS(CODESYS) D ADDSTD(.ENCDATA,ROOT,IEN,RIEN,CODE,NARR,FMDT,USER) Q
+ I DIAG<1 D POVSTAT(ROOT,IEN,RIEN,"skipped","POV code is not an ICD-9/ICD-10 code or SNOMED CT standard code resolvable by C0FW: "_CODE_" "_CODESYS) Q
  S PI=$O(ENCDATA("DX/PL",""),-1)+1
  S ENCDATA("DX/PL",PI,"DIAGNOSIS")=DIAG
  S ENCDATA("DX/PL",PI,"NARRATIVE")=$S(NARR'="":NARR,1:$P($$ICDDX^ICDEX(DIAG),"^",4))
@@ -108,6 +109,20 @@ ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension or reasonC
  S ENCDATA("DX/PL",PI,"PRIMARY")=$S($$BOOL(PRI):1,1:0)
  S ENCDATA("DX/PL",PI,"ENC PROVIDER")=USER
  D POVSTAT(ROOT,IEN,RIEN,"queued","POV queued: "_CODE)
+ Q
+ ;
+ADDSTD(ENCDATA,ROOT,IEN,RIEN,CODE,NARR,FMDT,USER) ; Queue SNOMED-only standard code for DATA2PCE
+ N SI
+ S SI=$O(ENCDATA("STD CODES",""),-1)+1
+ S ENCDATA("STD CODES",SI,"CODE")=CODE
+ S ENCDATA("STD CODES",SI,"CODING SYSTEM")="SCT"
+ S ENCDATA("STD CODES",SI,"EVENT D/T")=FMDT
+ S ENCDATA("STD CODES",SI,"COMMENT")=$S($G(NARR)'="":NARR,1:"Purpose of Visit - POV.")
+ S ENCDATA("STD CODES",SI,"ENC PROVIDER")=USER
+ S @ROOT@(IEN,"load","Encounter",RIEN,"standardCode","status")="queued"
+ S @ROOT@(IEN,"load","Encounter",RIEN,"standardCode","code")=CODE
+ S @ROOT@(IEN,"load","Encounter",RIEN,"standardCode","system")="SCT"
+ D POVSTAT(ROOT,IEN,RIEN,"queued","SNOMED standard code queued: "_CODE)
  Q
  ;
 FMDT(ROOT,IEN,RIEN) ; $$ - Encounter start/end as FileMan date/time
@@ -246,6 +261,10 @@ ICDCS(SYS,FMDT) ; $$ - ICDEX coding system id
  I SYS["ICD-9" Q 1
  I SYS["ICD9" Q 1
  Q 0
+ ;
+SCTSYS(SYS) ; $$ - true if coding system is SNOMED CT
+ S SYS=$$UP($G(SYS))
+ Q $S(SYS["SNOMED":1,SYS["SCT":1,1:0)
  ;
 BOOL(X) ; $$ - true for FHIR-ish boolean values
  S X=$$UP($G(X))
