@@ -224,6 +224,18 @@ VISITREF(ROOT,IEN,REF) ; $$ - visit ien for a FHIR Encounter reference
  I RIEN>0 S VISIT=+$G(@ROOT@(IEN,"load","Encounter",RIEN,"visitIen")) I VISIT>0 Q VISIT
  Q 0
  ;
+MATCHVIS(ROOT,IEN,RIEN) ; $$ - best matching visit for this Encounter row
+ N DFN,FMDT,INV,LOC,VISIT
+ S DFN=$$DFN(ROOT,IEN,RIEN) Q:DFN<1 0
+ S FMDT=$$FMDT(ROOT,IEN,RIEN) Q:FMDT<1 0
+ S LOC=$$LOC(ROOT,IEN,RIEN)
+ S INV=9999999-(FMDT\1)
+ S VISIT=0
+ F  S VISIT=$O(^AUPNVSIT("AA",DFN,INV,VISIT)) Q:+VISIT=0  D  Q:+VISIT>0
+ . I LOC>0,+$P($G(^AUPNVSIT(VISIT,0)),"^",22)'=LOC S VISIT=0 Q
+ . I ($P($G(^AUPNVSIT(VISIT,0)),"^")\1)'=(FMDT\1) S VISIT=0 Q
+ Q +VISIT
+ ;
 EXTVAL(ROOT,IEN,RIEN,EI,NAME) ; $$ - value from named child extension
  N NI,VAL
  S NI=0

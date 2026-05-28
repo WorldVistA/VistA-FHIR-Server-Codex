@@ -99,6 +99,7 @@ PERSIST(ROOT,IEN,RIEN,DOMAIN,RETURN) ; Persist response-only domain facts needed
  Q:+$G(RIEN)<1
  Q:$G(DOMAIN)=""
  S VISIT=+$G(RETURN("domains",DOMAIN,"visitIen"))
+ I VISIT<1,DOMAIN="Encounter" S VISIT=$$MATCHVIS^C0FWENC(ROOT,IEN,RIEN)
  I VISIT>0 S @ROOT@(IEN,"load",DOMAIN,RIEN,"visitIen")=VISIT
  Q
  ;
