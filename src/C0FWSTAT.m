@@ -19,6 +19,9 @@ SKIP(ROOT,IEN,RIEN,DOMAIN,TYPE,MSG,RETURN) ; Record skipped status
 SET(ROOT,IEN,RIEN,DOMAIN,TYPE,STATUS,MSG,RETURN) ; Record domain load status
  Q:$G(ROOT)=""
  Q:$G(DOMAIN)=""
+ S IEN=+$G(IEN),RIEN=+$G(RIEN)
+ Q:IEN<1
+ Q:RIEN<1
  S @ROOT@(IEN,"load",DOMAIN,RIEN,"loadStatus")=$G(STATUS)
  S @ROOT@(IEN,"load",DOMAIN,RIEN,"resourceType")=$G(TYPE)
  S @ROOT@(IEN,"load",DOMAIN,RIEN,"message")=$G(MSG)
