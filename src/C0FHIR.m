@@ -70,6 +70,7 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  DO SETELOC(.RTN,IDX,.ENC)
  DO SETESVC(.RTN,IDX,.ENC)
  DO SETERSN(.RTN,IDX,.ENC)
+ DO SETESTD(.RTN,IDX,ENCIEN)
  DO SETEHF(.RTN,IDX,ENCIEN)
  DO SETENOTE(.RTN,IDX,.ENC,ENCIEN)
  DO SETDOCREF(.RTN,IDX,.ENC,ENCIEN,DFN)
@@ -230,6 +231,76 @@ SETERSN(RTN,IDX,ENC) ; Add encounter reason from VistA POV data when available
  IF NARR="" SET NARR=NAME
  IF NARR'="" SET RTN("entry",IDX,"resource","reasonCode",1,"text")=NARR
  QUIT
+ ;
+SETESTD(RTN,IDX,VIEN) ; Add V STANDARD CODES rows as Encounter.reasonCode
+ NEW CODE,DISP,IEN,N,SUP,SYS,X0
+ SET VIEN=+$GET(VIEN) QUIT:VIEN<1
+ SET IEN=0
+ FOR  SET IEN=$ORDER(^AUPNVSC("AD",VIEN,IEN)) QUIT:IEN<1  DO
+ . SET X0=$GET(^AUPNVSC(IEN,0))
+ . SET CODE=$PIECE(X0,U) QUIT:CODE=""
+ . SET SYS=$PIECE(X0,U,5)
+ . IF $$HASRC(.RTN,IDX,CODE,$$STDSYS(SYS)) QUIT
+ . SET SUP=$PIECE($GET(^AUPNVSC(IEN,811)),U)
+ . SET DISP=$$STDDISP(SUP,CODE)
+ . SET N=$ORDER(RTN("entry",IDX,"resource","reasonCode",""),-1)+1
+ . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"system")=$$STDSYS(SYS)
+ . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"code")=CODE
+ . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"code","\s")=""
+ . IF DISP'="" SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=DISP
+ . IF DISP'="" SET RTN("entry",IDX,"resource","reasonCode",N,"text")=DISP
+ . IF SUP'="" DO
+ . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"url")=$$RCSUPURL()
+ . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"valueString")=$$STDSUP(SUP)
+ QUIT
+ ;
+STDDISP(SUP,CODE) ; Best display text for a V STANDARD CODES row
+ NEW LINE,TXT
+ SET SUP=$GET(SUP),CODE=$GET(CODE),TXT=""
+ IF SUP'="" DO
+ . SET LINE=$PIECE(SUP,$CHAR(10),1)
+ . IF $EXTRACT(LINE,1,9)="Display: " SET TXT=$PIECE($EXTRACT(LINE,10,$LENGTH(LINE))," | Support: ",1) QUIT
+ . IF LINE[" (SCT "_CODE_")" SET TXT=$PIECE(LINE," (SCT "_CODE_")",1) QUIT
+ . IF LINE["SCT "_CODE SET TXT=$PIECE(LINE,"SCT "_CODE,1)
+ . IF TXT'="" SET TXT=$$TRIM($TRANSLATE(TXT,"()-","   "))
+ . IF TXT="" SET TXT=LINE
+ IF TXT="" SET TXT=$$SCTDISP(CODE)
+ QUIT TXT
+ ;
+STDSUP(SUP) ; Support text from V STANDARD CODES comment
+ NEW I,LINE,TXT
+ SET TXT=""
+ FOR I=1:1:$LENGTH($GET(SUP),$CHAR(10)) DO  QUIT:TXT'=""
+ . SET LINE=$PIECE(SUP,$CHAR(10),I)
+ . IF LINE[" | Support: " SET TXT=$PIECE(LINE," | Support: ",2,99) QUIT
+ . IF $EXTRACT(LINE,1,9)="Support: " SET TXT=$EXTRACT(LINE,10,$LENGTH(LINE))
+ QUIT $S(TXT'="":TXT,1:$GET(SUP))
+ ;
+SCTDISP(CODE) ; Display fallback for a SNOMED code when available
+ NEW TXT
+ SET TXT=""
+ IF $GET(CODE)'="" SET TXT=$GET(^LEX(757.02,"CODE",CODE))
+ QUIT TXT
+ ;
+HASRC(RTN,IDX,CODE,SYS) ; $$ - true if Encounter.reasonCode already has this coding
+ NEW CI,FOUND,RCI
+ SET FOUND=0
+ SET RCI=0
+ FOR  SET RCI=$ORDER(RTN("entry",IDX,"resource","reasonCode",RCI)) QUIT:RCI<1  DO  QUIT:FOUND
+ . SET CI=0
+ . FOR  SET CI=$ORDER(RTN("entry",IDX,"resource","reasonCode",RCI,"coding",CI)) QUIT:CI<1  DO  QUIT:FOUND
+ . . IF $GET(RTN("entry",IDX,"resource","reasonCode",RCI,"coding",CI,"code"))'=CODE QUIT
+ . . IF $GET(RTN("entry",IDX,"resource","reasonCode",RCI,"coding",CI,"system"))'=SYS QUIT
+ . . SET FOUND=1
+ QUIT FOUND
+ ;
+STDSYS(SYS) ; Map V STANDARD CODES coding system to FHIR system URL
+ SET SYS=$$UPCASE($GET(SYS))
+ IF SYS="SCT"!(SYS["SNOMED") QUIT "http://snomed.info/sct"
+ QUIT $$CONDSYS(SYS)
+ ;
+RCSUPURL() ; Canonical reasonCode support extension URL
+ QUIT "http://vistaplex.org/fhir/StructureDefinition/vista-reason-support"
  ;
 SETEHF(RTN,IDX,VIEN) ; Add V Health Factor rows as Encounter extensions
  NEW EI,HFIEN,IEN,NAME,N,SEV,X0

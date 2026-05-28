@@ -9,6 +9,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  S DFN=+$O(@ROOT@("SPO",IEN,"DFN",""))
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
  I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="Condition" D ERR(ROOT,IEN,RIEN,"Resource is not Condition",.RETURN) Q
+ I $$CAND(ROOT,IEN,RIEN) D SKIP(ROOT,IEN,RIEN,"Candidate reminder Condition is note evidence only; no V POV/problem filing attempted.",.RETURN) Q
  S VISIT=$$VISIT(ROOT,IEN,RIEN)
  I VISIT<1 D ERR(ROOT,IEN,RIEN,"Condition has no resolved encounter visit pointer",.RETURN) Q
  S FMDT=$$FMDT(ROOT,IEN,RIEN)
@@ -111,6 +112,15 @@ ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only
  . I VS'="" S VB=VS
  Q $S(FND:$$BOOLPL(VB),1:0)
  ;
+CAND(ROOT,IEN,RIEN) ; $$ - true if reminder generated a non-fileable candidate Condition
+ N EI,URL,VAL
+ S EI=0
+ F  S EI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI)) Q:+EI=0  D  Q:$D(VAL)
+ . S URL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"url"))
+ . Q:URL'="urn:reminders-on-fhir:writeback-status"
+ . S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"valueString"))
+ Q $S($$UP($G(VAL))="CANDIDATE":1,1:0)
+ ;
 BOOLPL(V) ; $$ - truthy for PL ADD
  I $G(V)=0 Q 0
  I $G(V)=1 Q 1
@@ -195,6 +205,10 @@ LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,MSG,RETURN) ; Record loaded status
  ;
 ERR(ROOT,IEN,RIEN,MSG,RETURN) ; Record error status
  D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Condition","Condition",$G(MSG),.RETURN)
+ Q
+ ;
+SKIP(ROOT,IEN,RIEN,MSG,RETURN) ; Record skipped status
+ D SKIP^C0FWSTAT(ROOT,IEN,RIEN,"Condition","Condition",$G(MSG),.RETURN)
  Q
  ;
 ERRMSG(RET,ZZERR,ZZERDESC) ; $$ - DATA2PCE error text

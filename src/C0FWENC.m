@@ -4,7 +4,7 @@ C0FWENC ; VEHU/Codex - C0FW encounter writeback adapter ;May 09, 2026
  Q
  ;
 LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
- N DFN,ENCDATA,FMDT,ID,KNOWNVISIT,LOC,PKG,RET,SOURCE,STOP,USER,VISIT,ZZERR,ZZERDESC
+ N BASE,BASERET,BASEVISIT,DFN,ENCDATA,FMDT,ID,KNOWNVISIT,LOC,PKG,RET,SOURCE,STOP,USER,VISIT,ZZERR,ZZERDESC
  I $G(ROOT)="" D ERR(ROOT,IEN,RIEN,"Missing graph root",.RETURN) Q
  S DFN=$$DFN(ROOT,IEN,RIEN)
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
@@ -33,12 +33,25 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
  I +$G(DUZ(2))<1 S DUZ(2)=500
  D IO^C0FWCTX
+ I +$G(KNOWNVISIT)<1,$$HASCLIN(.ENCDATA) D  Q:$G(STOP)
+ . K BASE,ZZERR,ZZERDESC
+ . D BASE(.BASE,.ENCDATA)
+ . D LOG(ROOT,IEN,RIEN,"Calling DATA2PCE^PXAI to establish encounter visit")
+ . S BASERET=$$DATA2PCE^PXAI("BASE",PKG,SOURCE,.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
+ . D LOG(ROOT,IEN,RIEN,"Return from encounter-only DATA2PCE was: "_$G(BASERET)_"^"_$G(VISIT))
+ . I +$G(VISIT)<1 S BASEVISIT=$$MATCHVIS(ROOT,IEN,RIEN) I +BASEVISIT>0 S VISIT=BASEVISIT D LOG(ROOT,IEN,RIEN,"Matched visit after encounter-only DATA2PCE: "_VISIT)
+ . I +$G(VISIT)<1 D ERR(ROOT,IEN,RIEN,$$ERRMSG($G(BASERET),.ZZERR,.ZZERDESC),.RETURN) S STOP=1 Q
+ . D LOADED(ROOT,IEN,RIEN,+VISIT,"Encounter visit established through DATA2PCE",.RETURN)
+ . K ZZERR,ZZERDESC
+ I +$G(VISIT)>0,$D(ENCDATA("STD CODES")) D ENSALL(ROOT,IEN,RIEN,+VISIT) K ENCDATA("STD CODES")
  D LOG(ROOT,IEN,RIEN,"Calling DATA2PCE^PXAI to add/update encounter")
  S RET=$$DATA2PCE^PXAI("ENCDATA",PKG,SOURCE,.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
  D LOG(ROOT,IEN,RIEN,"Return from DATA2PCE was: "_$G(RET)_"^"_$G(VISIT))
  D LEGACYRET(ROOT,IEN,RIEN,$G(RET),$G(VISIT),.ENCDATA,.ZZERR,.ZZERDESC)
+ I +$G(VISIT)<1 S VISIT=$$MATCHVIS(ROOT,IEN,RIEN) I +$G(VISIT)>0 D LOG(ROOT,IEN,RIEN,"Matched visit after DATA2PCE: "_VISIT)
  I +$G(RET)'=1,+$G(RET)'=-5 D  Q:$G(STOP)
  . I +$G(VISIT)>0,$$POVONLY(.ZZERR,.ZZERDESC) S RET=-5 Q
+ . I +$G(VISIT)>0 D LOG(ROOT,IEN,RIEN,"DATA2PCE add-on filing returned error after visit was established; continuing with visit "_VISIT) S RET=-5 Q
  . N MSG S MSG=$$ERRMSG($G(RET),.ZZERR,.ZZERDESC)
  . D ERR(ROOT,IEN,RIEN,MSG,.RETURN) S STOP=1
  I +$G(VISIT)<1 D ERR(ROOT,IEN,RIEN,"DATA2PCE did not return a visit IEN",.RETURN) Q
@@ -58,6 +71,18 @@ BUILD(ENCDATA,ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,VISIT) ; Build unified encounter D
  D ADDPOV(.ENCDATA,ROOT,IEN,RIEN,FMDT,USER)
  D ADDHF(.ENCDATA,ROOT,IEN,RIEN,FMDT,+$G(VISIT))
  Q
+ ;
+BASE(BASE,ENCDATA) ; Copy only ENCOUNTER/PROVIDER nodes for visit establishment
+ K BASE
+ M BASE("ENCOUNTER")=ENCDATA("ENCOUNTER")
+ M BASE("PROVIDER")=ENCDATA("PROVIDER")
+ Q
+ ;
+HASCLIN(ENCDATA) ; $$ - true if the encounter payload has visit-linked add-ons
+ I $D(ENCDATA("HEALTH FACTOR")) Q 1
+ I $D(ENCDATA("DX/PL")) Q 1
+ I $D(ENCDATA("STD CODES")) Q 1
+ Q 0
  ;
 ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT,VISIT) ; Add VistA Health Factor Encounter extensions
  N CNT,EI,HF,HFIEN,MAG,NAME,NOTE,SEV,URL
@@ -100,16 +125,22 @@ ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension, reasonCod
  Q
  ;
 ADDRC(ENCDATA,ROOT,IEN,RIEN,RCI,RCCNT,FMDT,USER,HASPOV) ; Add one Encounter.reasonCode entry
- N CI,CODE,CODESYS,DISP,NARR,PRI
+ N CI,CODE,CODESYS,DISP,NARR,PRI,STDNOTE,SUP
  S PRI=$$RCPRIM(ROOT,IEN,RIEN,RCI)
  I 'PRI,+$G(RCCNT)=1 S PRI=1
  S NARR=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"text"))
+ S SUP=$$RCSUP(ROOT,IEN,RIEN,RCI)
  S CI=0 F  S CI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI)) Q:+CI=0  D
  . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"code"))
  . S CODESYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"system"))
  . S DISP=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"display"))
- . D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,$S(NARR'="":NARR,1:DISP),PRI,FMDT,USER,.HASPOV)
+ . S STDNOTE=$S($$SCTSYS(CODESYS):$$STDCMT($S(DISP'="":DISP,NARR'="":NARR,1:CODE),SUP),NARR'="":NARR,1:DISP)
+ . D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,STDNOTE,PRI,FMDT,USER,.HASPOV)
  Q
+ ;
+STDCMT(DISP,SUP) ; Comment text for V STANDARD CODES: display plus support
+ I $G(SUP)="" Q $G(DISP)
+ Q "Display: "_$G(DISP)_" | Support: "_$G(SUP)
  ;
 ADDCODE(ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,NARR,PRI,FMDT,USER,HASPOV) ; Add one coding from a POV source
  N DIAG
@@ -144,6 +175,7 @@ ADDSTD(ENCDATA,ROOT,IEN,RIEN,CODE,NARR,FMDT,USER) ; Queue SNOMED-only standard c
  S ENCDATA("STD CODES",SI,"COMMENT")=$S($G(NARR)'="":NARR,1:"Purpose of Visit - POV.")
  S ENCDATA("STD CODES",SI,"ENC PROVIDER")=USER
  D STDSTAT(ROOT,IEN,RIEN,SI,"queued","SNOMED standard code queued: "_CODE,CODE)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"comment")=$G(ENCDATA("STD CODES",SI,"COMMENT"))
  Q
  ;
 FMDT(ROOT,IEN,RIEN) ; $$ - Encounter start/end as FileMan date/time
@@ -278,6 +310,15 @@ RCPRIM(ROOT,IEN,RIEN,RCI) ; $$ - reasonCode is marked as the V POV candidate
  . S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"extension",EI,"valueBoolean"))
  Q $$BOOL($G(VAL))
  ;
+RCSUP(ROOT,IEN,RIEN,RCI) ; $$ - reasonCode support text extension value
+ N EI,URL,VAL
+ S EI=0
+ F  S EI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"extension",EI)) Q:+EI=0  D  Q:$D(VAL)
+ . S URL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"extension",EI,"url"))
+ . Q:URL'=$$RCSUPURL()
+ . S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"extension",EI,"valueString"))
+ Q $G(VAL)
+ ;
 HFURL() ; $$ - canonical Health Factor extension URL
  Q "http://vistaplex.org/fhir/StructureDefinition/vista-health-factor"
  ;
@@ -286,6 +327,9 @@ POVURL() ; $$ - canonical POV extension URL
  ;
 RCPRURL() ; $$ - canonical reasonCode primary POV extension URL
  Q "http://vistaplex.org/fhir/StructureDefinition/vista-pov-primary"
+ ;
+RCSUPURL() ; $$ - canonical reasonCode support extension URL
+ Q "http://vistaplex.org/fhir/StructureDefinition/vista-reason-support"
  ;
 ICDIEN(CODE,SYS,FMDT) ; $$ - ICD diagnosis ien for Encounter POV
  N CS,RET
@@ -416,12 +460,50 @@ POSTFILE(ROOT,IEN,RIEN,VISIT) ; Confirm queued Encounter-native PCE rows after f
  S SI=0
  F  S SI=$O(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI)) Q:+SI=0  D
  . Q:$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"status"))'="queued"
+ . D ENSSTD(ROOT,IEN,RIEN,VISIT,SI)
  . D STDSTAT(ROOT,IEN,RIEN,SI,"filed",$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"message")),$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"code")))
  S POV=$G(@ROOT@(IEN,"load","Encounter",RIEN,"pov","status"))
  I POV="queued" D
  . I $$HASPOV(VISIT) D POVSTAT(ROOT,IEN,RIEN,"filed",$G(@ROOT@(IEN,"load","Encounter",RIEN,"pov","message"))) Q
  . D POVSTAT(ROOT,IEN,RIEN,"unknown","POV was queued but not found after DATA2PCE")
  Q
+ ;
+ENSALL(ROOT,IEN,RIEN,VISIT) ; Ensure all queued V STANDARD CODES rows are present
+ N SI
+ S SI=0
+ F  S SI=$O(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI)) Q:+SI=0  D ENSSTD(ROOT,IEN,RIEN,VISIT,SI)
+ Q
+ ;
+ENSSTD(ROOT,IEN,RIEN,VISIT,SI) ; Ensure V STANDARD CODES row/comment exists after DATA2PCE
+ N CODE,DFN,FDA,MSG,NOTE,SCIENS,SCIEN,USER
+ S VISIT=+$G(VISIT),CODE=$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"code"))
+ Q:VISIT<1  Q:CODE=""
+ S NOTE=$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"comment"))
+ S USER=$$USER()
+ S DFN=$$DFN(ROOT,IEN,RIEN)
+ S SCIEN=$$STDROW(VISIT,CODE)
+ I SCIEN<1,DFN>0 D
+ . K FDA,MSG
+ . S FDA(9000010.71,"+1,",.01)=CODE
+ . S FDA(9000010.71,"+1,",.02)=DFN
+ . S FDA(9000010.71,"+1,",.03)=VISIT
+ . S FDA(9000010.71,"+1,",.05)="SCT"
+ . S FDA(9000010.71,"+1,",1201)=$$FMDT(ROOT,IEN,RIEN)
+ . I USER>0 S FDA(9000010.71,"+1,",1204)=USER
+ . D UPDATE^DIE("","FDA","SCIENS","MSG")
+ . S SCIEN=+$G(SCIENS(1))
+ I SCIEN>0,NOTE'="" D
+ . K FDA,MSG
+ . S FDA(9000010.71,SCIEN_",",81101)=NOTE
+ . D FILE^DIE("","FDA","MSG")
+ . S @ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"commentFiled")=1
+ Q
+ ;
+STDROW(VISIT,CODE) ; $$ - V STANDARD CODES IEN for visit/code
+ N IEN
+ S IEN=0
+ F  S IEN=$O(^AUPNVSC("AD",+$G(VISIT),IEN)) Q:IEN<1  I $P($G(^AUPNVSC(IEN,0)),U)=$G(CODE) Q
+ Q +IEN
  ;
 HASHF(VISIT,HFIEN) ; $$ - true if visit has V Health Factor row
  N IND
