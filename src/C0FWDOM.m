@@ -20,6 +20,7 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  . Q:DOMAIN'="Encounter"
  . S COUNT=COUNT+1
  . D DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,.ARGS,.RETURN)
+ . D PERSIST(ROOT,IEN,RIEN,"Encounter",.RETURN)
  . D LOADENC^C0FWTIU(ROOT,IEN,RIEN,.RETURN)
  S RIEN=$S(FIRST>0:FIRST-1,1:0)
  F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
@@ -89,6 +90,16 @@ DERR(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Trap one domain adapter failure and con
  I MSG="" S MSG=$ECODE
  I MSG="" S MSG="unknown M error"
  D ERR^C0FWSTAT(ROOT,IEN,RIEN,$G(DOMAIN),$G(TYPE),"C0FW "_$G(DOMAIN)_" adapter error: "_MSG,.RETURN)
+ Q
+ ;
+PERSIST(ROOT,IEN,RIEN,DOMAIN,RETURN) ; Persist response-only domain facts needed by later resources
+ N VISIT
+ Q:$G(ROOT)=""
+ Q:+$G(IEN)<1
+ Q:+$G(RIEN)<1
+ Q:$G(DOMAIN)=""
+ S VISIT=+$G(RETURN("domains",DOMAIN,"visitIen"))
+ I VISIT>0 S @ROOT@(IEN,"load",DOMAIN,RIEN,"visitIen")=VISIT
  Q
  ;
 DOMAIN(ROOT,IEN,RIEN,TYPE) ; $$ - map FHIR resourceType to C0FW domain

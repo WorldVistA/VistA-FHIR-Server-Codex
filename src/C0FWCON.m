@@ -50,7 +50,21 @@ VISIT(ROOT,IEN,RIEN) ; $$ - visit ien from Condition encounter reference
  S REF=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","encounter","reference"))
  I REF="" S REF=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","context","reference"))
  S VISIT=$$VISITREF^C0FWENC(ROOT,IEN,REF)
+ I VISIT<1 S VISIT=$$TXVISIT(ROOT,IEN,REF)
  Q +VISIT
+ ;
+TXVISIT(ROOT,IEN,REF) ; $$ - visit ien from same-transaction Encounter fullUrl
+ N ERIEN,ID,VISIT
+ S REF=$G(REF)
+ I REF="" Q 0
+ S ERIEN=0
+ F  S ERIEN=$O(@ROOT@(IEN,"json","entry",ERIEN)) Q:+ERIEN=0  D  Q:+$G(VISIT)>0
+ . Q:$G(@ROOT@(IEN,"json","entry",ERIEN,"resource","resourceType"))'="Encounter"
+ . S ID=$G(@ROOT@(IEN,"json","entry",ERIEN,"fullUrl"))
+ . I ID="",REF["urn:uuid:" S ID="urn:uuid:"_$G(@ROOT@(IEN,"json","entry",ERIEN,"resource","id"))
+ . I ID'=REF Q
+ . S VISIT=+$G(@ROOT@(IEN,"load","Encounter",ERIEN,"visitIen"))
+ Q +$G(VISIT)
  ;
 CODE(ROOT,IEN,RIEN) ; $$ - first coding code
  Q $G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",1,"code"))
