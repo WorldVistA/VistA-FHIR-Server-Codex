@@ -28,6 +28,10 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(WEB^C0FHIRWS)'="" DO addService^%webutils("GET","fhir","WEB^C0FHIRWS")
  IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")
  IF $T(wsTIUVPatients^C0FTIUST)'="" DO addService^%webutils("GET","tiuvpatients","wsTIUVPatients^C0FTIUST")
+ IF $T(wsLists^C0FPSL)'="" DO
+ . DO addService^%webutils("GET","problemselection/lists","wsLists^C0FPSL")
+ . DO addService^%webutils("GET","problemselection/categories","wsCategories^C0FPSL")
+ . DO addService^%webutils("GET","problemselection/problems","wsProblems^C0FPSL")
  IF $T(WSSAVE^C0FWWBS)'="" DO
  . DO addService^%webutils("POST","writebacksaves","WSSAVE^C0FWWBS")
  . DO addService^%webutils("GET","writebacksaves","WSLIST^C0FWWBS")
