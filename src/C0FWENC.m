@@ -125,17 +125,23 @@ ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension, reasonCod
  Q
  ;
 ADDRC(ENCDATA,ROOT,IEN,RIEN,RCI,RCCNT,FMDT,USER,HASPOV) ; Add one Encounter.reasonCode entry
- N CI,CODE,CODESYS,DISP,NARR,PRI,STDNOTE,SUP
+ N CI,CODE,CODESYS,DISP,ICDCODE,ICDDISP,ICDSYS,NARR,PRI,STDNOTE,SUP
  S PRI=$$RCPRIM(ROOT,IEN,RIEN,RCI)
  I 'PRI,+$G(RCCNT)=1 S PRI=1
  S NARR=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"text"))
  S SUP=$$RCSUP(ROOT,IEN,RIEN,RCI)
+ S (ICDCODE,ICDDISP,ICDSYS)=""
  S CI=0 F  S CI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI)) Q:+CI=0  D
  . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"code"))
  . S CODESYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"system"))
  . S DISP=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"display"))
+ . I '$$SCTSYS(CODESYS),$$ICDCS(CODESYS,FMDT)>0,ICDCODE="" S ICDCODE=CODE,ICDSYS=CODESYS,ICDDISP=DISP
+ . Q:'$$SCTSYS(CODESYS)
  . S STDNOTE=$S($$SCTSYS(CODESYS):$$STDCMT($S(DISP'="":DISP,NARR'="":NARR,1:CODE),SUP),NARR'="":NARR,1:DISP)
- . D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,STDNOTE,PRI,FMDT,USER,.HASPOV)
+ . D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,STDNOTE,0,FMDT,USER,.HASPOV)
+ I $$BOOL(PRI),'$G(HASPOV) D
+ . I ICDCODE'="" D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,ICDCODE,ICDSYS,$S(NARR'="":NARR,ICDDISP'="":ICDDISP,1:ICDCODE),1,FMDT,USER,.HASPOV) Q
+ . D POVSTAT(ROOT,IEN,RIEN,"skipped","Primary reasonCode has no ICD-9/ICD-10 coding; true V POV requires ICD mapping.")
  Q
  ;
 STDCMT(DISP,SUP) ; Comment text for V STANDARD CODES: display plus support
