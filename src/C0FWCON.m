@@ -4,7 +4,7 @@ C0FWCON ; VEHU/Codex - C0FW condition writeback adapter ;May 09, 2026
  Q
  ;
 LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
- N ADDPL,DFN,FMDT,ICD,MSG,PKG,PROBDATA,RET,USER,VISIT,ZZERR,ZZERDESC
+ N ADDPL,DFN,FMDT,ICD,MSG,PKG,PROB,PROBDATA,RET,SCT,SCTDES,USER,VISIT,ZZERR,ZZERDESC
  I $G(ROOT)="" D ERR(ROOT,IEN,RIEN,"Missing graph root",.RETURN) Q
  S DFN=+$O(@ROOT@("SPO",IEN,"DFN",""))
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
@@ -42,6 +42,9 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  D IO^C0FWCTX
  S RET=$$DATA2PCE^PXAI("PROBDATA",PKG,"C0FW WRITEBACK",.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
  I +$G(RET)'=1,+$G(RET)'=-5,'$$HASPOV(VISIT,ICD) D ERR(ROOT,IEN,RIEN,$$ERRMSG(RET,.ZZERR,.ZZERDESC),.RETURN) Q
+ S SCT=$$SCT(ROOT,IEN,RIEN),SCTDES=$$SCTDES(ROOT,IEN,RIEN)
+ S PROB=$$PROB(DFN,ICD,FMDT)
+ I PROB>0,SCT'="" D SETSCT(PROB,SCT,SCTDES,ROOT,IEN,RIEN,.RETURN)
  D LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,$S(+$G(RET)'=1:"Condition filed through DATA2PCE with warnings",1:"Condition filed through DATA2PCE"),.RETURN)
  I +$G(RET)'=1 S @ROOT@(IEN,"load","Condition",RIEN,"warning")=$$WARNMSG(RET,.ZZERR,.ZZERDESC)
  Q
@@ -88,6 +91,28 @@ RESICD(ROOT,IEN,RIEN,FMDT) ; $$ - ICD diagnosis ien from Condition.code codings 
 SCTSYS(SYS) ; $$ - true if coding system is SNOMED CT
  S SYS=$$UP($G(SYS))
  Q $S(SYS["SNOMED":1,SYS["SCT":1,1:0)
+ ;
+SCT(ROOT,IEN,RIEN) ; $$ - first SNOMED CT code on Condition.code
+ N CODE,NI,SYS
+ S NI=0 F  S NI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI)) Q:+NI=0  D  Q:$G(CODE)'=""
+ . S SYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"system"))
+ . Q:'$$SCTSYS(SYS)
+ . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"code"))
+ Q $G(CODE)
+ ;
+SCTDES(ROOT,IEN,RIEN) ; $$ - SNOMED designation code extension on SNOMED coding
+ N EI,NI,SYS,URL,VAL
+ S NI=0 F  S NI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI)) Q:+NI=0  D  Q:$G(VAL)'=""
+ . S SYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"system"))
+ . Q:'$$SCTSYS(SYS)
+ . S EI=0 F  S EI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"extension",EI)) Q:+EI=0  D  Q:$G(VAL)'=""
+ . . S URL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"extension",EI,"url"))
+ . . Q:URL'=$$SCTDESURL()
+ . . S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"extension",EI,"valueString"))
+ Q $G(VAL)
+ ;
+SCTDESURL() ; $$ - coding extension URL for SNOMED designation code
+ Q "http://vistaplex.org/fhir/StructureDefinition/vista-snomed-designation-code"
  ;
 SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien via Lexicon map 5217693
  N ICDTX,LEX,MAPVUID,RET,Y
@@ -184,6 +209,36 @@ HASPOV(VISIT,ICD) ; $$ - true if visit has a V POV row for diagnosis
  S IND=0
  F  S IND=$O(^AUPNVPOV("AD",+$G(VISIT),IND)) Q:+IND=0  I +$P($G(^AUPNVPOV(IND,0)),"^")=+$G(ICD) Q
  Q $S(+IND>0:1,1:0)
+ ;
+PROB(DFN,ICD,FMDT) ; $$ - most recent active problem for patient/diagnosis
+ N BEST,IFN,LM,ODT
+ S (BEST,ODT)=0,IFN=0
+ F  S IFN=$O(^AUPNPROB("AC",+$G(DFN),IFN)) Q:+IFN=0  D
+ . Q:+$P($G(^AUPNPROB(IFN,0)),"^")'=+$G(ICD)
+ . Q:$P($G(^AUPNPROB(IFN,1)),"^",2)="H"
+ . S LM=+$P($G(^AUPNPROB(IFN,0)),"^",3)
+ . I LM<1 S LM=+$P($G(^AUPNPROB(IFN,0)),"^",8)
+ . I +$G(FMDT)>0,LM>0,LM>(FMDT+1) Q
+ . I LM'<ODT S ODT=LM,BEST=IFN
+ Q +BEST
+ ;
+SETSCT(PROB,SCT,SCTDES,ROOT,IEN,RIEN,RETURN) ; Store SNOMED fields on problem entry
+ N DA,DIE,DR,ERR
+ S PROB=+$G(PROB),SCT=$G(SCT),SCTDES=$G(SCTDES)
+ I PROB<1!(SCT="") Q
+ I '$D(DUZ) S DUZ=$$USER^C0FWENC()
+ I $G(DUZ(0))="" S DUZ(0)="@"
+ I +$G(DUZ(2))<1 S DUZ(2)=500
+ S DIE="^AUPNPROB(",DA=PROB,DR="80001////"_SCT
+ I SCTDES'="" S DR=DR_";80002////"_SCTDES
+ D ^DIE
+ S @ROOT@(IEN,"load","Condition",RIEN,"problemIen")=PROB
+ S @ROOT@(IEN,"load","Condition",RIEN,"snomedCode")=SCT
+ I SCTDES'="" S @ROOT@(IEN,"load","Condition",RIEN,"snomedDesignationCode")=SCTDES
+ S RETURN("domains","Condition","problemIen")=PROB
+ S RETURN("domains","Condition","snomedCode")=SCT
+ I SCTDES'="" S RETURN("domains","Condition","snomedDesignationCode")=SCTDES
+ Q
  ;
 ACTIVE(ROOT,IEN,RIEN) ; $$ - VistA problem active flag
  N ABATE,STAT
