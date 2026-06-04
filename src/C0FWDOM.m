@@ -71,6 +71,7 @@ HFEXT(ROOT,IEN,RIEN) ; $$ - true if Encounter has C0FW Health Factor extensions
  ;
 NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Native C0FW adapter dispatch
  I DOMAIN="Observation" D LOAD^C0FWVIT(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="AIConsult" D LOAD^C0FWAIC(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Lab" D LOAD^C0FWLAB(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Condition" D LOAD^C0FWCON(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="DocumentReference" D LOAD^C0FWTIU(ROOT,IEN,RIEN,.RETURN) Q
@@ -106,7 +107,7 @@ PERSIST(ROOT,IEN,RIEN,DOMAIN,RETURN) ; Persist response-only domain facts needed
 DOMAIN(ROOT,IEN,RIEN,TYPE) ; $$ - map FHIR resourceType to C0FW domain
  S TYPE=$G(TYPE)
  I TYPE="Observation" Q $S($$ISVITAL^C0FWVIT(ROOT,IEN,RIEN):"Observation",1:"Lab")
- I TYPE="DiagnosticReport" Q "Lab"
+ I TYPE="DiagnosticReport" Q $S($$ISAIC^C0FWAIC(ROOT,IEN,RIEN):"AIConsult",1:"Lab")
  I TYPE="Encounter" Q "Encounter"
  I TYPE="Condition" Q "Condition"
  I TYPE="DocumentReference" Q "DocumentReference"

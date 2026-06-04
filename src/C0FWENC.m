@@ -4,7 +4,7 @@ C0FWENC ; VEHU/Codex - C0FW encounter writeback adapter ;May 09, 2026
  Q
  ;
 LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
- N BASE,BASERET,BASESENT,BASEVISIT,DFN,ENCDATA,FMDT,ID,KNOWNVISIT,LOC,PKG,RET,SENTDATA,SOURCE,STOP,USER,VISIT,ZZERR,ZZERDESC
+ N DFN,ENCDATA,FMDT,GIEN,GRIEN,ID,KNOWNVISIT,LOC,PKG,RET,SENTDATA,SOURCE,STOP,USER,VISIT,ZZERR,ZZERDESC
  I $G(ROOT)="" D ERR(ROOT,IEN,RIEN,"Missing graph root",.RETURN) Q
  S DFN=$$DFN(ROOT,IEN,RIEN)
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
@@ -33,23 +33,14 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
  I +$G(DUZ(2))<1 S DUZ(2)=500
  D IO^C0FWCTX
- I +$G(KNOWNVISIT)<1,$$HASCLIN(.ENCDATA) D  Q:$G(STOP)
- . K BASE,ZZERR,ZZERDESC
- . D BASE(.BASE,.ENCDATA)
- . K BASESENT M BASESENT=BASE
- . D LOG(ROOT,IEN,RIEN,"Calling DATA2PCE^PXAI to establish encounter visit")
- . S BASERET=$$DATA2PCE^PXAI("BASE",PKG,SOURCE,.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
- . D LOG(ROOT,IEN,RIEN,"Return from encounter-only DATA2PCE was: "_$G(BASERET)_"^"_$G(VISIT))
- . D LEGACYBASE(ROOT,IEN,RIEN,$G(BASERET),$G(VISIT),.BASESENT,.ZZERR,.ZZERDESC)
- . I +$G(VISIT)<1 S BASEVISIT=$$MATCHVIS(ROOT,IEN,RIEN) I +BASEVISIT>0 S VISIT=BASEVISIT D LOG(ROOT,IEN,RIEN,"Matched visit after encounter-only DATA2PCE: "_VISIT)
- . I +$G(VISIT)<1 D ERR(ROOT,IEN,RIEN,$$ERRMSG($G(BASERET),.ZZERR,.ZZERDESC),.RETURN) S STOP=1 Q
- . D LOADED(ROOT,IEN,RIEN,+VISIT,"Encounter visit established through DATA2PCE",.RETURN)
- . K ZZERR,ZZERDESC
- I +$G(VISIT)>0,$D(ENCDATA("STD CODES")) D ENSALL(ROOT,IEN,RIEN,+VISIT) K ENCDATA("STD CODES")
  K SENTDATA M SENTDATA=ENCDATA
  D LOG(ROOT,IEN,RIEN,"Calling DATA2PCE^PXAI to add/update encounter")
+ D LOGARR(ROOT,IEN,RIEN,"ENCDATA",.SENTDATA)
+ S GIEN=IEN,GRIEN=RIEN
  S RET=$$DATA2PCE^PXAI("ENCDATA",PKG,SOURCE,.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
+ S IEN=GIEN,RIEN=GRIEN
  D LOG(ROOT,IEN,RIEN,"Return from DATA2PCE was: "_$G(RET)_"^"_$G(VISIT))
+ D LOGPCE(ROOT,IEN,RIEN,.ZZERR,.ZZERDESC)
  D LEGACYRET(ROOT,IEN,RIEN,$G(RET),$G(VISIT),.SENTDATA,.ZZERR,.ZZERDESC)
  I +$G(VISIT)<1 S VISIT=$$MATCHVIS(ROOT,IEN,RIEN) I +$G(VISIT)>0 D LOG(ROOT,IEN,RIEN,"Matched visit after DATA2PCE: "_VISIT)
  I +$G(RET)'=1,+$G(RET)'=-5 D  Q:$G(STOP)
@@ -128,28 +119,26 @@ ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension, reasonCod
  Q
  ;
 ADDRC(ENCDATA,ROOT,IEN,RIEN,RCI,RCCNT,FMDT,USER,HASPOV) ; Add one Encounter.reasonCode entry
- N CI,CODE,CODESYS,DISP,ICDCODE,ICDDISP,ICDSYS,NARR,PRI,STDNOTE,SUP
+ N CI,CODE,CODESYS,DISP,ICDCODE,ICDDISP,ICDSYS,NARR,PRI,SCTCODE,SCTDISP,SCTICD
  S PRI=$$RCPRIM(ROOT,IEN,RIEN,RCI)
  I 'PRI,+$G(RCCNT)=1 S PRI=1
  S NARR=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"text"))
- S SUP=$$RCSUP(ROOT,IEN,RIEN,RCI)
- S (ICDCODE,ICDDISP,ICDSYS)=""
+ S (ICDCODE,ICDDISP,ICDSYS,SCTCODE,SCTDISP)=""
  S CI=0 F  S CI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI)) Q:+CI=0  D
  . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"code"))
  . S CODESYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"system"))
  . S DISP=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI,"coding",CI,"display"))
  . I '$$SCTSYS(CODESYS),$$ICDCS(CODESYS,FMDT)>0,ICDCODE="" S ICDCODE=CODE,ICDSYS=CODESYS,ICDDISP=DISP
  . Q:'$$SCTSYS(CODESYS)
- . S STDNOTE=$S($$SCTSYS(CODESYS):$$STDCMT($S(DISP'="":DISP,NARR'="":NARR,1:CODE),SUP),NARR'="":NARR,1:DISP)
- . D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,STDNOTE,0,FMDT,USER,.HASPOV)
+ . I SCTCODE="" S SCTCODE=CODE,SCTDISP=DISP
+ . D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,"",0,FMDT,USER,.HASPOV)
  I $$BOOL(PRI),'$G(HASPOV) D
  . I ICDCODE'="" D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,ICDCODE,ICDSYS,$S(NARR'="":NARR,ICDDISP'="":ICDDISP,1:ICDCODE),1,FMDT,USER,.HASPOV) Q
+ . I SCTCODE'="" D  Q:$G(HASPOV)
+ . . S SCTICD=$$SCTICD10(SCTCODE)
+ . . I SCTICD>0 D ADDDX(.ENCDATA,ROOT,IEN,RIEN,SCTICD,SCTCODE,$S(NARR'="":NARR,SCTDISP'="":SCTDISP,1:SCTCODE),FMDT,USER,.HASPOV) D POVSTAT(ROOT,IEN,RIEN,"queued","POV queued from SNOMED-to-ICD-10 Lexicon mapping: "_SCTCODE)
  . D POVSTAT(ROOT,IEN,RIEN,"skipped","Primary reasonCode has no ICD-9/ICD-10 coding; true V POV requires ICD mapping.")
  Q
- ;
-STDCMT(DISP,SUP) ; Comment text for V STANDARD CODES: display plus support
- I $G(SUP)="" Q $G(DISP)
- Q "Display: "_$G(DISP)_" | Support: "_$G(SUP)
  ;
 ADDCODE(ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,NARR,PRI,FMDT,USER,HASPOV) ; Add one coding from a POV source
  N DIAG
@@ -181,10 +170,8 @@ ADDSTD(ENCDATA,ROOT,IEN,RIEN,CODE,NARR,FMDT,USER) ; Queue SNOMED-only standard c
  S ENCDATA("STD CODES",SI,"CODE")=CODE
  S ENCDATA("STD CODES",SI,"CODING SYSTEM")="SCT"
  S ENCDATA("STD CODES",SI,"EVENT D/T")=FMDT
- S ENCDATA("STD CODES",SI,"COMMENT")=$S($G(NARR)'="":NARR,1:"Purpose of Visit - POV.")
  S ENCDATA("STD CODES",SI,"ENC PROVIDER")=USER
  D STDSTAT(ROOT,IEN,RIEN,SI,"queued","SNOMED standard code queued: "_CODE,CODE)
- S @ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"comment")=$G(ENCDATA("STD CODES",SI,"COMMENT"))
  Q
  ;
 FMDT(ROOT,IEN,RIEN) ; $$ - Encounter start/end as FileMan date/time
@@ -350,6 +337,17 @@ ICDIEN(CODE,SYS,FMDT) ; $$ - ICD diagnosis ien for Encounter POV
  I +RET<1,CS=30,CODE'?1.E1".",$L(CODE)=3 S RET=$$ICDDX^ICDEX(CODE_".",CS)
  Q $S(+RET>0:+RET,1:0)
  ;
+SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien via Lexicon map 5217693
+ N ICDTX,LEX,MAPVUID,RET,Y
+ S SCT=$G(SCT) I SCT="" Q 0
+ S MAPVUID=5217693
+ K LEX S Y=$$GETASSN^LEXTRAN1(SCT,MAPVUID)
+ S ICDTX="" S ICDTX=$O(LEX(1,ICDTX))
+ I ICDTX="" Q 0
+ S RET=$$ICDDX^ICDEX(ICDTX,30)
+ I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
+ Q $S(+RET>0:+RET,1:0)
+ ;
 ICDCS(SYS,FMDT) ; $$ - ICDEX coding system id
  S SYS=$$UP($G(SYS))
  I SYS["SNOMED" Q 0
@@ -455,6 +453,23 @@ LOG(ROOT,IEN,RIEN,TXT) ; Append legacy operational log line
  S @ROOT@(IEN,"load","Encounter",RIEN,"log",$O(@ROOT@(IEN,"load","Encounter",RIEN,"log",""),-1)+1)=$G(TXT)
  Q
  ;
+LOGARR(ROOT,IEN,RIEN,LABEL,ARY,INTRO) ; Append a local array snapshot to legacy log
+ N BASE,NODE,SEEN
+ S LABEL=$G(LABEL,"ARRAY")
+ S INTRO=$G(INTRO,"DATA2PCE input")
+ D LOG(ROOT,IEN,RIEN,INTRO_" "_LABEL_":")
+ S BASE=$NA(ARY),NODE=BASE,SEEN=0
+ F  S NODE=$Q(@NODE) Q:NODE=""  Q:$E(NODE,1,$L(BASE))'=BASE  D
+ . S SEEN=1
+ . D LOG(ROOT,IEN,RIEN,LABEL_$E(NODE,$L(BASE)+1,999)_"="_$G(@NODE))
+ I 'SEEN D LOG(ROOT,IEN,RIEN,LABEL_"=<empty>")
+ Q
+ ;
+LOGPCE(ROOT,IEN,RIEN,ZZERR,ZZERDESC) ; Append DATA2PCE errors/warnings to legacy log
+ I $D(ZZERR) D LOGARR(ROOT,IEN,RIEN,"ZZERR",.ZZERR,"DATA2PCE output")
+ I $D(ZZERDESC) D LOGARR(ROOT,IEN,RIEN,"ZZERDESC",.ZZERDESC,"DATA2PCE output")
+ Q
+ ;
 LOADED(ROOT,IEN,RIEN,VISIT,MSG,RETURN) ; Record loaded visit status
  N ID
  S ID=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","id"))
@@ -477,42 +492,25 @@ POSTFILE(ROOT,IEN,RIEN,VISIT) ; Confirm queued Encounter-native PCE rows after f
  F  S SI=$O(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI)) Q:+SI=0  D
  . Q:$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"status"))'="queued"
  . D ENSSTD(ROOT,IEN,RIEN,VISIT,SI)
- . D STDSTAT(ROOT,IEN,RIEN,SI,"filed",$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"message")),$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"code")))
  S POV=$G(@ROOT@(IEN,"load","Encounter",RIEN,"pov","status"))
  I POV="queued" D
  . I $$HASPOV(VISIT) D POVSTAT(ROOT,IEN,RIEN,"filed",$G(@ROOT@(IEN,"load","Encounter",RIEN,"pov","message"))) Q
  . D POVSTAT(ROOT,IEN,RIEN,"unknown","POV was queued but not found after DATA2PCE")
  Q
  ;
-ENSALL(ROOT,IEN,RIEN,VISIT) ; Ensure all queued V STANDARD CODES rows are present
+ENSALL(ROOT,IEN,RIEN,VISIT) ; Verify all queued V STANDARD CODES rows are present
  N SI
  S SI=0
  F  S SI=$O(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI)) Q:+SI=0  D ENSSTD(ROOT,IEN,RIEN,VISIT,SI)
  Q
  ;
-ENSSTD(ROOT,IEN,RIEN,VISIT,SI) ; Ensure V STANDARD CODES row/comment exists after DATA2PCE
- N CODE,DFN,FDA,MSG,NOTE,SCIENS,SCIEN,USER
+ENSSTD(ROOT,IEN,RIEN,VISIT,SI) ; Verify V STANDARD CODES row exists after DATA2PCE
+ N CODE,SCIEN
  S VISIT=+$G(VISIT),CODE=$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"code"))
  Q:VISIT<1  Q:CODE=""
- S NOTE=$G(@ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"comment"))
- S USER=$$USER()
- S DFN=$$DFN(ROOT,IEN,RIEN)
  S SCIEN=$$STDROW(VISIT,CODE)
- I SCIEN<1,DFN>0 D
- . K FDA,MSG
- . S FDA(9000010.71,"+1,",.01)=CODE
- . S FDA(9000010.71,"+1,",.02)=DFN
- . S FDA(9000010.71,"+1,",.03)=VISIT
- . S FDA(9000010.71,"+1,",.05)="SCT"
- . S FDA(9000010.71,"+1,",1201)=$$FMDT(ROOT,IEN,RIEN)
- . I USER>0 S FDA(9000010.71,"+1,",1204)=USER
- . D UPDATE^DIE("","FDA","SCIENS","MSG")
- . S SCIEN=+$G(SCIENS(1))
- I SCIEN>0,NOTE'="" D
- . K FDA,MSG
- . S FDA(9000010.71,SCIEN_",",81101)=NOTE
- . D FILE^DIE("","FDA","MSG")
- . S @ROOT@(IEN,"load","Encounter",RIEN,"standardCode",SI,"commentFiled")=1
+ I SCIEN>0 D STDSTAT(ROOT,IEN,RIEN,SI,"filed","SNOMED standard code filed by DATA2PCE: "_CODE,CODE) Q
+ D STDSTAT(ROOT,IEN,RIEN,SI,"unknown","SNOMED standard code was queued for DATA2PCE but not found after filing: "_CODE,CODE)
  Q
  ;
 STDROW(VISIT,CODE) ; $$ - V STANDARD CODES IEN for visit/code

@@ -43,6 +43,7 @@ Repo-specific overrides:
 - Current test SSH target: `osehra@127.0.0.1:2223`
 - Current test SSH key: `/home/glilly/.ssh/id_ed25519_cursor_agent_test`
 - Agent note: a full SSH session to this target often takes **40+ seconds**; the default agent command wait is **30s**, so SSH can be backgrounded and look “stuck” before it finishes. Use **`block_until_ms` ≥ 60000** (or read the terminal file after backgrounding) and request **`network`** permission when running SSH from the agent.
+- The `127.0.0.1:2223` SSH target is **local test access only**. Do **not** use port `2223` for public hosts. For remote Codex deploys, use the documented remote paths first: `scripts/fhirdev-codex-sync.sh` defaults to `root@devfhir.vistaplex.org` / container `fhirdev22`; production is `root@fhir.vistaplex.org` / container `fhir` unless `docker ps` on that host says otherwise.
 - Current test routine directory: `/home/osehra/p`
 - After **`docker restart`** of the test container: restart the M web listener before HTTP smoke tests — see **`~/ops/agent-context/vista-container-developer-guide.md`** §10 (**`stop^%webreq`** / **`go^%webreq`**, **`^%webhttp`** check).
 

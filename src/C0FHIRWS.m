@@ -45,7 +45,16 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  S SRC=$$UPCASE^C0FHIR($G(FILTER("source")))
  I SRC="SYNTHEA" S SRC="SHOWFHIR"
  I SRC="" S SRC=$S(IEN>0:"SHOWFHIR",1:"FHIR")
- I SRC="SHOWFHIR" D
+ I SRC="AICONSULT" D
+ . S THEME="theme-light"
+ . S BADGE="AI Consult"
+ . S SRCNOTE="AI Consult response via /aiconsult"
+ . S LOADURL="/aiconsult?dfn="_D_"&format=json&file=1"
+ . S RAWLBL="raw ai consult"
+ . S RAWURL=LOADURL
+ . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
+ . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")
+ E  I SRC="SHOWFHIR" D
  . S THEME="theme-light"
  . S BADGE="Synthea source"
  . S SRCNOTE="Stored Synthea FHIR via /showfhir"
@@ -144,8 +153,8 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"<script>")
  D ADDLN(.RTN,"const dfn="_D_";")
  D ADDLN(.RTN,"const graphIen="_IEN_";")
- D ADDLN(.RTN,"const sourceMode='"_$S(SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
- D ADDLN(.RTN,"const sourceLabel=sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR';")
+ D ADDLN(.RTN,"const sourceMode='"_$S(SRC="AICONSULT":"aiconsult",SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
+ D ADDLN(.RTN,"const sourceLabel=sourceMode==='aiconsult'?'AI Consult':(sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR');")
  D ADDLN(.RTN,"const bundleUrl='"_LOADURL_"';")
  D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson.js?v=0.6.0';")
  D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")
@@ -158,7 +167,7 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"const rid=e=>((e||{}).resource||{}).id||'';")
  D ADDLN(.RTN,"const ref=e=>((e||{}).fullUrl)||'';")
  D ADDLN(.RTN,"function isPlainTextMime(ct){const s=String(ct||'').toLowerCase();")
- D ADDLN(.RTN," return s.indexOf('text/plain')===0||s.indexOf('plain/text')===0;}")
+ D ADDLN(.RTN," return s.indexOf('text/plain')===0||s.indexOf('plain/text')===0||s.indexOf('text/markdown')===0;}")
  D ADDLN(.RTN,"function decodeBase64Utf8(b64){")
  D ADDLN(.RTN," try{")
  D ADDLN(.RTN,"  const bin=atob(String(b64||'').replace(/\s+/g,''));")
@@ -170,9 +179,18 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"}")
  D ADDLN(.RTN,"function prepareForTjson(obj){")
  D ADDLN(.RTN," const r=obj||{};")
- D ADDLN(.RTN," if(r.resourceType!=='DocumentReference'||!Array.isArray(r.content)) return r;")
+ D ADDLN(.RTN," if(r.resourceType!=='DocumentReference'&&r.resourceType!=='DiagnosticReport') return r;")
  D ADDLN(.RTN," const out=JSON.parse(JSON.stringify(r));")
  D ADDLN(.RTN," let changed=false;")
+ D ADDLN(.RTN," if(out.resourceType==='DiagnosticReport'&&Array.isArray(out.presentedForm)){")
+ D ADDLN(.RTN,"  out.presentedForm.forEach(a=>{let txt;")
+ D ADDLN(.RTN,"   if(!a||!isPlainTextMime(a.contentType)||!a.data) return;")
+ D ADDLN(.RTN,"   txt=decodeBase64Utf8(a.data);")
+ D ADDLN(.RTN,"   if(txt===null) return;")
+ D ADDLN(.RTN,"   a.data=txt;changed=true;")
+ D ADDLN(.RTN,"  });")
+ D ADDLN(.RTN," }")
+ D ADDLN(.RTN," if(!Array.isArray(out.content)) return changed?out:r;")
  D ADDLN(.RTN," out.content.forEach(x=>{")
  D ADDLN(.RTN,"  const a=(x||{}).attachment||null;let txt;")
  D ADDLN(.RTN,"  if(!a||!isPlainTextMime(a.contentType)||!a.data) return;")

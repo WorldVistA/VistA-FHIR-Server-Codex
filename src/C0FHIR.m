@@ -257,6 +257,8 @@ SETESTD(RTN,IDX,VIEN) ; Add V STANDARD CODES rows as Encounter.reasonCode
 STDDISP(SUP,CODE) ; Best display text for a V STANDARD CODES row
  NEW LINE,TXT
  SET SUP=$GET(SUP),CODE=$GET(CODE),TXT=""
+ SET TXT=$$SCTDISP(CODE)
+ IF TXT'="" QUIT TXT
  IF SUP'="" DO
  . SET LINE=$PIECE(SUP,$CHAR(10),1)
  . IF $EXTRACT(LINE,1,9)="Display: " SET TXT=$PIECE($EXTRACT(LINE,10,$LENGTH(LINE))," | Support: ",1) QUIT
@@ -264,7 +266,6 @@ STDDISP(SUP,CODE) ; Best display text for a V STANDARD CODES row
  . IF LINE["SCT "_CODE SET TXT=$PIECE(LINE,"SCT "_CODE,1)
  . IF TXT'="" SET TXT=$$TRIM($TRANSLATE(TXT,"()-","   "))
  . IF TXT="" SET TXT=LINE
- IF TXT="" SET TXT=$$SCTDISP(CODE)
  QUIT TXT
  ;
 STDSUP(SUP) ; Support text from V STANDARD CODES comment
@@ -352,7 +353,7 @@ SETENOTE(RTN,IDX,ENC,VIEN) ; Add encounter-linked TIU note text when available
  . IF TXT'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,TXT)
  QUIT
  ;
-SETDOCREF(RTN,EIDX,ENC,VIEN,DFN) ; Add visit-linked TIU as DocumentReference resources
+SETDOCREF(RTN,EIDX,ENC,VIEN,DFN) ; Add visit-linked TIU as DocumentReference/DiagnosticReport resources
  NEW CONT,DA,DIDX,DOC,I,TXT,VST
  SET VST=$$VISITIEN^C0FHIR(.ENC,+$GET(VIEN))
  QUIT:VST<1
@@ -364,9 +365,49 @@ SETDOCREF(RTN,EIDX,ENC,VIEN,DFN) ; Add visit-linked TIU as DocumentReference res
  . SET CONT=$GET(ENC("document",I,"content"))
  . IF CONT="" SET CONT=$$TIUNOTETX^C0FHIR(DA)
  . SET TXT=$$DOCTEXT^C0FHIRBU(CONT) QUIT:TXT=""
- . DO ADDDOCREF(.RTN,.DIDX,DA,DOC,TXT,VST,+$GET(DFN))
- . SET RTN("entry",DIDX,"resource","context","encounter",1,"reference")=$GET(RTN("entry",EIDX,"fullUrl"))
- . SET RTN("entry",DIDX,"resource","context","encounter",1,"type")="Encounter"
+ . DO ADDTIUDOC(.RTN,.DIDX,DA,DOC,TXT,VST,+$GET(DFN),$GET(RTN("entry",EIDX,"fullUrl")))
+ QUIT
+ ;
+ADDTIUDOC(RTN,IDX,DA,DOC,TXT,VST,DFN,ENCURL) ; Add TIU as DocumentReference or AI DiagnosticReport
+ IF $$ISAIDOC(DA,DOC) DO  QUIT
+ . DO ADDAIDR(.RTN,.IDX,DA,DOC,TXT,VST,+$GET(DFN))
+ . SET RTN("entry",IDX,"resource","encounter","reference")=$GET(ENCURL)
+ DO ADDDOCREF(.RTN,.IDX,DA,DOC,TXT,VST,+$GET(DFN))
+ SET RTN("entry",IDX,"resource","context","encounter",1,"reference")=$GET(ENCURL)
+ SET RTN("entry",IDX,"resource","context","encounter",1,"type")="Encounter"
+ QUIT
+ ;
+ISAIDOC(DA,DOC) ; $$ - TIU document should export as AI Consult DiagnosticReport
+ NEW TITLE
+ SET TITLE=$P($GET(DOC),U,2) IF TITLE="" SET TITLE=$P($GET(DOC),U,3)
+ IF TITLE="" SET TITLE=$$GET1^DIQ(8925,+$GET(DA)_",",.01,"E")
+ QUIT $S($$UPCASE($GET(TITLE))="AI CONSULT DIAGNOSTIC REPORT":1,1:0)
+ ;
+ADDAIDR(RTN,IDX,DA,DOC,TXT,VST,DFN) ; Add one TIU-backed AI Consult DiagnosticReport
+ NEW AUTH,DT,TITLE
+ SET TITLE="AI Consult Diagnostic Report"
+ DO ADDRES^C0FHIRBU(.RTN,"DiagnosticReport","D"_+$GET(DA),.IDX)
+ SET RTN("entry",IDX,"resource","resourceType")="DiagnosticReport"
+ SET RTN("entry",IDX,"resource","id")="D"_+$GET(DA)
+ SET RTN("entry",IDX,"resource","status")="final"
+ SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://vistaplex.org/fhir/CodeSystem/report-category"
+ SET RTN("entry",IDX,"resource","code","coding",1,"code")="ai-consult"
+ SET RTN("entry",IDX,"resource","code","coding",1,"display")=TITLE
+ SET RTN("entry",IDX,"resource","code","text")=TITLE
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/v2-0074"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="OTH"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Other"
+ SET RTN("entry",IDX,"resource","category",1,"text")="AI Consult"
+ SET DT=+$P($GET(DOC),U,6)
+ IF DT<1 SET DT=+$P($GET(^TIU(8925,+$GET(DA),0)),U,7)
+ IF DT>0 SET RTN("entry",IDX,"resource","issued")=$$FM2FHIR^C0FHIRBU(DT)
+ IF +$GET(DFN)>0 SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET AUTH=$$DOCAUTH(DA)
+ IF AUTH'="" SET RTN("entry",IDX,"resource","performer",1,"display")=AUTH
+ SET RTN("entry",IDX,"resource","presentedForm",1,"contentType")="text/markdown"
+ SET RTN("entry",IDX,"resource","presentedForm",1,"title")=TITLE
+ SET RTN("entry",IDX,"resource","presentedForm",1,"data")=$$B64(TXT)
+ SET RTN("entry",IDX,"resource","presentedForm",1,"data","\s")=""
  QUIT
  ;
 ADDDOCREF(RTN,IDX,DA,DOC,TXT,VST,DFN) ; Add one TIU DocumentReference resource
@@ -617,18 +658,18 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  QUIT
  ;
 FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
- NEW BURL,CNT,DFN,FURL,HASGRAPH,HASVPR,IEN,JURL,KEY,LURL,NAME,NCOLS,RURL,ROOT,ROW,SORT,SUM,TBYDFN,VURL
+ NEW AURL,BURL,CNT,DFN,FURL,HASGRAPH,HASVPR,IEN,JURL,KEY,LURL,NAME,NCOLS,RURL,ROOT,ROW,SORT,SUM,TBYDFN,VURL
  KILL RTN
  SET ROOT=$$GSROOT()
  SET HASGRAPH=0 IF $L($G(ROOT))>0,$DATA(@ROOT@("DFN")) SET HASGRAPH=1
  SET HASVPR=$$VPROK()
- SET NCOLS=5+$SELECT(HASGRAPH:2,1:0)+$SELECT(HASVPR:1,1:0)
+ SET NCOLS=6+$SELECT(HASGRAPH:2,1:0)+$SELECT(HASVPR:1,1:0)
  DO ADDLN(.RTN,"<!DOCTYPE HTML>")
  DO ADDLN(.RTN,"<html><head><title>FHIR Patient Index</title></head><body>")
  DO ADDLN(.RTN,"<h1>FHIR Patient Index</h1>")
  DO ADDLN(.RTN,"<p>Click Name for the VistA FHIR browser. The Synthea FHIR column opens the stored source bundle in a light-theme browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea).</p>")
  DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
- SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>rehmp CPRS</th>"
+ SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>rehmp CPRS</th><th>AI Consult</th>"
  IF HASGRAPH SET ROW=ROW_"<th>Synthea FHIR</th><th>Load Log</th>"
  IF HASVPR SET ROW=ROW_"<th>VPR</th>"
  DO ADDLN(.RTN,ROW_"</tr>")
@@ -665,12 +706,14 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  . SET BURL="/fhir?dfn="_DFN_"&view=browser"
  . SET VURL="/vpr?dfn="_DFN
  . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
+ . SET AURL="/fhir?dfn="_DFN_"&view=browser&source=aiconsult"
  . SET JURL=$SELECT(HASGRAPH&(+IEN>0):"/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN,1:"")
  . SET LURL=$SELECT(HASGRAPH&(+IEN>0):$$LOADLOGURL(ROOT,IEN),1:"")
  . SET ROW="<tr><td><a href="""_BURL_""">"_$$HTMLESC(NAME)_"</a></td>"
  . SET ROW=ROW_"<td><a href="""_FURL_""">fhir</a></td>"
  . SET ROW=ROW_"<td>"_DFN_"</td><td>"_$SELECT(+IEN>0:IEN,1:"-")_"</td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
+ . SET ROW=ROW_"<td><a href="""_AURL_""">AI Consult</a></td>"
  . IF HASGRAPH DO
  . . IF JURL'="" SET ROW=ROW_"<td><a href="""_JURL_""">browser</a></td>"
  . . ELSE  SET ROW=ROW_"<td>n/a</td>"
