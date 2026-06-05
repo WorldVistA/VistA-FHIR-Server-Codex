@@ -26,8 +26,14 @@
         "display": "Essential hypertension"
       },
       "selectedFindings": [
-        { "code": "1332487002", "display": "Finding of elevated blood pressure" },
-        { "code": "279029000", "display": "Occipital headache" }
+        {
+          "code": "24184005",
+          "display": "Blood pressure above reference range"
+        },
+        {
+          "code": "330007",
+          "display": "Occipital headache"
+        }
       ],
       "povCode": "38341003",
       "addToProblemList": true,
@@ -50,9 +56,18 @@
         "display": "Type 2 diabetes mellitus"
       },
       "selectedFindings": [
-        { "code": "56574000", "display": "Polyuria" },
-        { "code": "17173007", "display": "Polydipsia" },
-        { "code": "414916001", "display": "Obesity" }
+        {
+          "code": "56574000",
+          "display": "Polyuria"
+        },
+        {
+          "code": "17173007",
+          "display": "Polydipsia"
+        },
+        {
+          "code": "414916001",
+          "display": "Obesity"
+        }
       ],
       "povCode": "44054006",
       "addToProblemList": true,
@@ -71,15 +86,24 @@
       "diagnosis": {
         "icd10Code": "J18.9",
         "icd10Display": "Pneumonia, unspecified organism",
-        "snomedCode": "1255624009",
+        "snomedCode": "385093006",
         "display": "Community acquired pneumonia"
       },
       "selectedFindings": [
-        { "code": "386661006", "display": "Fever" },
-        { "code": "267036007", "display": "Dyspnea" },
-        { "code": "252125005", "display": "Pulmonary infiltrate" }
+        {
+          "code": "386661006",
+          "display": "Fever"
+        },
+        {
+          "code": "267036007",
+          "display": "Dyspnea"
+        },
+        {
+          "code": "409609008",
+          "display": "Pulmonary infiltrate"
+        }
       ],
-      "povCode": "1255624009",
+      "povCode": "385093006",
       "addToProblemList": false,
       "noteSupport": "Fever, dyspnea, productive cough, leukocytosis, and pulmonary infiltrate support community-acquired pneumonia.",
       "expectedWriteback": {
@@ -100,9 +124,18 @@
         "display": "Hypothyroidism"
       },
       "selectedFindings": [
-        { "code": "1234833005", "display": "Lethargy" },
-        { "code": "262285001", "display": "Weight gain" },
-        { "code": "274640006", "display": "Intolerance to cold" }
+        {
+          "code": "214264003",
+          "display": "Lethargy"
+        },
+        {
+          "code": "8943002",
+          "display": "Weight gain"
+        },
+        {
+          "code": "80585000",
+          "display": "Intolerant of cold"
+        }
       ],
       "povCode": "40930008",
       "addToProblemList": true,
@@ -121,15 +154,24 @@
       "diagnosis": {
         "icd10Code": "N30.00",
         "icd10Display": "Acute cystitis without hematuria",
-        "snomedCode": "197927001",
+        "snomedCode": "68226007",
         "display": "Acute cystitis"
       },
       "selectedFindings": [
-        { "code": "4783008", "display": "Dysuria" },
-        { "code": "162116003", "display": "Urinary frequency" },
-        { "code": "274332007", "display": "Suprapubic pain" }
+        {
+          "code": "49650001",
+          "display": "Dysuria"
+        },
+        {
+          "code": "162116003",
+          "display": "Urinary frequency"
+        },
+        {
+          "code": "162053006",
+          "display": "Suprapubic pain"
+        }
       ],
-      "povCode": "197927001",
+      "povCode": "68226007",
       "addToProblemList": false,
       "noteSupport": "Dysuria, urinary frequency, suprapubic pain, and abnormal urinalysis support acute cystitis.",
       "expectedWriteback": {
@@ -150,8 +192,14 @@
         "display": "Hyperlipidemia"
       },
       "selectedFindings": [
-        { "code": "102613006", "display": "Asymptomatic" },
-        { "code": "166831003", "display": "Serum cholesterol level raised" }
+        {
+          "code": "67335000",
+          "display": "Asymptomatic"
+        },
+        {
+          "code": "166830008",
+          "display": "Serum cholesterol raised"
+        }
       ],
       "povCode": "55822004",
       "addToProblemList": true,
@@ -174,9 +222,18 @@
         "display": "Chronic obstructive lung disease"
       },
       "selectedFindings": [
-        { "code": "68154008", "display": "Chronic cough" },
-        { "code": "271615008", "display": "Chronic sputum production" },
-        { "code": "6142004", "display": "Exertional dyspnea" }
+        {
+          "code": "68154008",
+          "display": "Chronic cough"
+        },
+        {
+          "code": "28743005",
+          "display": "Productive cough"
+        },
+        {
+          "code": "60845006",
+          "display": "Dyspnea on exertion"
+        }
       ],
       "povCode": "13645005",
       "addToProblemList": true,
@@ -199,9 +256,18 @@
         "display": "Iron deficiency anemia"
       },
       "selectedFindings": [
-        { "code": "84229001", "display": "Fatigue" },
-        { "code": "13791008", "display": "Generalized weakness" },
-        { "code": "267029006", "display": "Pallor" }
+        {
+          "code": "84229001",
+          "display": "Fatigue"
+        },
+        {
+          "code": "13791008",
+          "display": "Generalized weakness"
+        },
+        {
+          "code": "267029006",
+          "display": "Pallor"
+        }
       ],
       "povCode": "87522002",
       "addToProblemList": true,
@@ -224,9 +290,18 @@
         "display": "Acute appendicitis"
       },
       "selectedFindings": [
-        { "code": "285370001", "display": "Abdominal pain localized to right iliac fossa" },
-        { "code": "247348006", "display": "Abdominal tenderness" },
-        { "code": "26079001", "display": "Nausea and vomiting" }
+        {
+          "code": "301754002",
+          "display": "Right lower quadrant pain"
+        },
+        {
+          "code": "43478001",
+          "display": "Abdominal tenderness"
+        },
+        {
+          "code": "16932000",
+          "display": "Nausea and vomiting"
+        }
       ],
       "povCode": "85189001",
       "addToProblemList": false,
@@ -245,15 +320,24 @@
       "diagnosis": {
         "icd10Code": "N18.30",
         "icd10Display": "Chronic kidney disease, stage 3 unspecified",
-        "snomedCode": "431162002",
+        "snomedCode": "433144002",
         "display": "Chronic kidney disease stage 3"
       },
       "selectedFindings": [
-        { "code": "84229001", "display": "Fatigue" },
-        { "code": "56515002", "display": "Nocturia" },
-        { "code": "52612005", "display": "Peripheral edema" }
+        {
+          "code": "84229001",
+          "display": "Fatigue"
+        },
+        {
+          "code": "6408001",
+          "display": "Nocturia"
+        },
+        {
+          "code": "271809000",
+          "display": "Peripheral edema"
+        }
       ],
-      "povCode": "431162002",
+      "povCode": "433144002",
       "addToProblemList": true,
       "noteSupport": "Reduced eGFR in the stage 3 range with elevated creatinine, nocturia, fatigue, and mild edema support CKD stage 3.",
       "expectedWriteback": {
@@ -270,15 +354,24 @@
       "diagnosis": {
         "icd10Code": "F33.1",
         "icd10Display": "Major depressive disorder, recurrent, moderate",
-        "snomedCode": "371516004",
-        "display": "Major depressive disorder, recurrent, moderate"
+        "snomedCode": "191611001",
+        "display": "Recurrent major depressive episodes, moderate"
       },
       "selectedFindings": [
-        { "code": "21134002", "display": "Depressed mood" },
-        { "code": "193462001", "display": "Insomnia" },
-        { "code": "79614002", "display": "Anhedonia" }
+        {
+          "code": "366979004",
+          "display": "Depressed mood"
+        },
+        {
+          "code": "193462001",
+          "display": "Insomnia"
+        },
+        {
+          "code": "28669007",
+          "display": "Anhedonia"
+        }
       ],
-      "povCode": "371516004",
+      "povCode": "191611001",
       "addToProblemList": true,
       "noteSupport": "Depressed mood, insomnia, anhedonia, and moderate PHQ-9 score support recurrent moderate major depressive disorder.",
       "expectedWriteback": {
@@ -295,15 +388,24 @@
       "diagnosis": {
         "icd10Code": "M10.9",
         "icd10Display": "Gout, unspecified",
-        "snomedCode": "15637000",
-        "display": "Gout"
+        "snomedCode": "770924008",
+        "display": "Acute gout"
       },
       "selectedFindings": [
-        { "code": "299307005", "display": "Podagra" },
-        { "code": "247441003", "display": "Erythema of joint" },
-        { "code": "299321008", "display": "Joint swelling" }
+        {
+          "code": "67148009",
+          "display": "Podagra"
+        },
+        {
+          "code": "247441003",
+          "display": "Erythema of joint"
+        },
+        {
+          "code": "271771009",
+          "display": "Joint swelling"
+        }
       ],
-      "povCode": "15637000",
+      "povCode": "770924008",
       "addToProblemList": false,
       "noteSupport": "Acute first metatarsophalangeal pain with erythema, joint swelling, and elevated uric acid supports acute gout flare.",
       "expectedWriteback": {
