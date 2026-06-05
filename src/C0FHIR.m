@@ -863,21 +863,20 @@ VPROK() ; True when VPR is available on this system (so /vpr link works)
  IF $T(EN1^VPRDVSIT)="" QUIT 0
  QUIT 1
  ;
-wsShow(OUT,FILTER) ; GET tfhir: delegate to wsShow^SYNFHIR (graph JSON by ref); if FILTER("format")=tjson, tjson^%wd transforms OUT. showfhir stays wsShow^SYNFHIR only.
+wsShow(OUT,FILTER) ; GET showfhir/tfhir graph JSON through the active Codex graph root
  NEW SAVEFMT,FORMAT
  IF '$D(DT) N DIQUIET S DIQUIET=1 D DT^DICRW
  SET SAVEFMT=$GET(FILTER("format"))
  SET FORMAT=$$UPCASE(SAVEFMT)
  KILL FILTER("format")
- IF $T(wsShow^SYNFHIR)'="" DO wsShow^SYNFHIR(.OUT,.FILTER)
- ELSE  DO WSSHOWFB^C0FHIR(.OUT,.FILTER)
+ DO WSSHOWFB^C0FHIR(.OUT,.FILTER)
  IF SAVEFMT'="" SET FILTER("format")=SAVEFMT
  IF FORMAT="TJSON" DO WSSHOWJSON2TJSON^C0FHIR(FORMAT,.OUT)
  SET HTTPRSP("mime")=$$WSSHOWMIME^C0FHIR(FORMAT)
  QUIT
  ;
 WSSHOWFB(OUT,FILTER) ; Fallback when wsShow^SYNFHIR missing: old C0FHIR graph path + encode
- NEW TYPE,ROOT,IEN,JROOT,JTMP,JUSE,TMP,ERR
+ NEW TYPE,ROOT,IEN,JROOT,JTMP,JUSE,TMP,ERR,GLBL
  SET TYPE=$G(FILTER("type"))
  SET ROOT=$$GSROOT^C0FHIR
  QUIT:$L($G(ROOT))=0
@@ -892,7 +891,12 @@ WSSHOWFB(OUT,FILTER) ; Fallback when wsShow^SYNFHIR missing: old C0FHIR graph pa
  SET JROOT=$NA(@ROOT@(IEN,"json"))
  QUIT:'$D(@JROOT)
  SET JUSE=JROOT
- IF TYPE'="",$T(getIntakeFhir^SYNFHIR)'="" DO getIntakeFhir^SYNFHIR("JTMP",$G(FILTER("bundle")),TYPE,IEN,1) SET JUSE="JTMP"
+ IF TYPE'="" DO
+ . SET GLBL="getIntake"_"Fhir^SYNFHIR"
+ . QUIT:$TEXT(@GLBL)=""
+ . SET GLBL=GLBL_"(""JTMP"",$G(FILTER(""bundle"")),TYPE,IEN,1)"
+ . DO @GLBL
+ . SET JUSE="JTMP"
  IF $T(encode^SYNJSON)'="" DO encode^SYNJSON(JUSE,"OUT") QUIT
  MERGE TMP=@JUSE DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
  QUIT
