@@ -77,11 +77,9 @@ DECORATE(PAT,AI,OUT) ; Keep and decorate returned DiagnosticReports
  Q
  ;
 DECONE(PAT,R) ; Decorate one DiagnosticReport for C0FWAIC filing
- N D,ENC,TITLE
+ N D,TITLE
  S D=+$G(PAT("entry",$$PATENT(.PAT),"resource","id"))
- S ENC=$$NEWENC(.PAT)
  I $G(@R@("subject","reference"))="",D>0 S @R@("subject","reference")="Patient/"_D
- I $G(@R@("encounter","reference"))="",ENC>0 S @R@("encounter","reference")="Encounter/"_$G(PAT("entry",ENC,"resource","id"))
  S @R@("category",1,"coding",1,"system")="http://vistaplex.org/fhir/CodeSystem/report-category"
  S @R@("category",1,"coding",1,"code")="ai-consult"
  S @R@("category",1,"coding",1,"display")="AI Consult"
@@ -111,7 +109,6 @@ LOADAI(PAT,REPORTS,DFN,UPD,ERR) ; File decorated reports through C0FW updatepati
  K BODY,BUNDLE,JSON,UPD,ERR
  S BUNDLE("resourceType")="Bundle",BUNDLE("type")="collection"
  M BUNDLE("entry",1)=PAT("entry",$$PATENT(.PAT))
- I $$NEWENC(.PAT)>0 M BUNDLE("entry",2)=PAT("entry",$$NEWENC(.PAT))
  N BASE,I,IDX
  S BASE=$O(BUNDLE("entry",""),-1)
  S I=0,IDX=BASE

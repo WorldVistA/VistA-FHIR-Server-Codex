@@ -4,12 +4,10 @@ C0FWAIC ; VEHU/Codex - C0FW AI Consult DiagnosticReport filing ;Jun 04, 2026
  Q
  ;
 LOAD(ROOT,IEN,RIEN,RETURN) ; File one AI Consult DiagnosticReport as a TIU document
- N DFN,RES,TITLE,TIUTITLE,TXT,VISIT
+ N DFN,RES,TITLE,TIUTITLE,TXT
  I '$$ISAIC(ROOT,IEN,RIEN) D ERR(ROOT,IEN,RIEN,"DiagnosticReport is not marked as AI Consult",.RETURN) Q
  S DFN=$$DFN(ROOT,IEN,RIEN)
  I DFN<1 D ERR(ROOT,IEN,RIEN,"AI Consult DiagnosticReport has no resolved DFN",.RETURN) Q
- S VISIT=$$VISIT(ROOT,IEN,RIEN)
- I VISIT<1 D ERR(ROOT,IEN,RIEN,"AI Consult DiagnosticReport has no resolved Encounter visit pointer",.RETURN) Q
  S TXT=$$TEXT(ROOT,IEN,RIEN)
  I TXT="" D ERR(ROOT,IEN,RIEN,"AI Consult DiagnosticReport has no note text",.RETURN) Q
  S TITLE=$$TITLE(ROOT,IEN,RIEN)
@@ -19,11 +17,10 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one AI Consult DiagnosticReport as a TIU docum
  S @ROOT@(IEN,"load","AIConsult",RIEN,"resourceType")="DiagnosticReport"
  S @ROOT@(IEN,"load","AIConsult",RIEN,"title")=TITLE
  S @ROOT@(IEN,"load","AIConsult",RIEN,"tiuTitle")=TIUTITLE
- S @ROOT@(IEN,"load","AIConsult",RIEN,"visitIen")=+VISIT
- I $$HASFILE^C0FWTIU(VISIT,TXT) D  Q
- . S @ROOT@(IEN,"load","AIConsult",RIEN,"result")="already matched visit-linked TIU"
- . D SET^C0FWSTAT(ROOT,IEN,RIEN,"AIConsult","DiagnosticReport","skipped","AI Consult TIU document already matched visit-linked TIU",.RETURN)
- S RES=$$MAKE^C0FWTIU(DFN,VISIT,TXT,TIUTITLE)
+ I $$HASPTFILE(DFN,TXT) D  Q
+ . S @ROOT@(IEN,"load","AIConsult",RIEN,"result")="already matched patient TIU"
+ . D SET^C0FWSTAT(ROOT,IEN,RIEN,"AIConsult","DiagnosticReport","skipped","AI Consult TIU document already matched patient TIU",.RETURN)
+ S RES=$$MAKENOV^C0FWTIU(DFN,TXT,TIUTITLE)
  S @ROOT@(IEN,"load","AIConsult",RIEN,"result")=RES
  I +RES>0 D  Q
  . S @ROOT@(IEN,"load","AIConsult",RIEN,"tiuIen")=+RES
@@ -74,6 +71,14 @@ VISIT(ROOT,IEN,RIEN) ; $$ - encounter visit pointer
  I REF="" S REF=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","context","encounter","reference"))
  S VISIT=$$VISITREF^C0FWENC(ROOT,IEN,REF)
  Q +VISIT
+ ;
+HASPTFILE(DFN,TXT) ; $$ - AI Consult text already exists for patient
+ N SNIP,TIU
+ S SNIP=$$SNIP^C0FWTIU($G(TXT))
+ I SNIP="" Q 0
+ S TIU=0
+ F  S TIU=$O(^TIU(8925,"C",+$G(DFN),TIU)) Q:+TIU=0  I $$TXTHAS^C0FWTIU(TIU,SNIP) Q
+ Q $S(+TIU>0:1,1:0)
  ;
 TITLE(ROOT,IEN,RIEN) ; $$ - TIU title
  N S,T

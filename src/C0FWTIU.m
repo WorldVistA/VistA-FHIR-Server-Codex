@@ -136,6 +136,29 @@ MAKE(DFN,VISIT,TXT,TITLE) ; $$ - create visit-linked TIU note
  S DUZ=DUZSAVE
  Q $G(RESULT)
  ;
+MAKENOV(DFN,TXT,TITLE) ; $$ - create patient TIU note without a visit pointer
+ N CH,DUZSAVE,LINE,N,POS,RESULT,TIUX
+ I +$G(DFN)<1 Q "0^missing DFN"
+ I $G(TXT)="" Q "0^empty note"
+ S TITLE=$$TITLEIEN($G(TITLE))
+ I TITLE<1 Q "0^no TIU title"
+ D DUZ^C0FWCTX
+ D IO^C0FWCTX
+ S DUZSAVE=$G(DUZ)
+ S DUZ=$$USER^C0FWENC()
+ S TIUX(1202)=DUZ
+ S TXT=$$STRIPDOC($TR($G(TXT),$C(13),""))
+ S (LINE,N)=""
+ F POS=1:1:$L(TXT) S CH=$E(TXT,POS) D
+ . I CH=$C(10) D ADDLINE(.TIUX,.N,LINE) S LINE="" Q
+ . S LINE=LINE_CH
+ D ADDLINE(.TIUX,.N,LINE)
+ I +$G(N)<1 S TIUX("TEXT",1,0)=TXT
+ S RESULT=0
+ D MAKE^TIUSRVP(.RESULT,DFN,TITLE,"","","",.TIUX,"",0,0)
+ S DUZ=DUZSAVE
+ Q $G(RESULT)
+ ;
 TITLE(ROOT,IEN,RIEN,NI,TXT) ; $$ - title from note extension/header/default
  N TITLE
  S TITLE=$$EXTITLE(ROOT,IEN,RIEN,NI)
