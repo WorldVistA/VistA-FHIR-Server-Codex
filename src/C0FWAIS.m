@@ -107,17 +107,22 @@ RESP(PAT,REPORTS,OUT) ; Build response Bundle
  Q
  ;
 LOADAI(PAT,REPORTS,DFN,UPD,ERR) ; File decorated reports through C0FW updatepatient path
- N BODY,BUNDLE,JSON
+ N BODY,BUNDLE,JSON,UPDLBL
  K BODY,BUNDLE,JSON,UPD,ERR
  S BUNDLE("resourceType")="Bundle",BUNDLE("type")="collection"
  M BUNDLE("entry",1)=PAT("entry",$$PATENT(.PAT))
  I $$NEWENC(.PAT)>0 M BUNDLE("entry",2)=PAT("entry",$$NEWENC(.PAT))
- N BASE,I,IDX S BASE=$O(BUNDLE("entry",""),-1),I=0,IDX=BASE
- F  S I=$O(REPORTS("entry",I)) Q:+I=0  S IDX=IDX+1 M BUNDLE("entry",IDX)=REPORTS("entry",I)
+ N BASE,I,IDX
+ S BASE=$O(BUNDLE("entry",""),-1)
+ S I=0,IDX=BASE
+ F  S I=$O(REPORTS("entry",I)) Q:+I=0  D
+ . S IDX=IDX+1
+ . M BUNDLE("entry",IDX)=REPORTS("entry",I)
  D TOJSON^C0FHIRBU(.BUNDLE,.BODY,.ERR)
  I $D(ERR) S ERR="Unable to encode AI Consult filing Bundle" Q
  S JSON("dfn")=+DFN,JSON("load")=1,JSON("returngraph")=1
- D wsUpdatePatient^C0FWUPD(.JSON,.BODY,.UPD)
+ S UPDLBL="wsUpdatePatient^C0FWUPD(.JSON,.BODY,.UPD)"
+ D @UPDLBL
  K JSON D DECODE^XLFJSON("UPD","JSON","ERR")
  I $D(ERR) S ERR="Unable to decode native updatepatient response" Q
  K UPD M UPD=JSON
