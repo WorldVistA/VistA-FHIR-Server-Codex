@@ -18,7 +18,7 @@ WS(OUT,FILTER) ; GET /aiconsult?dfn=&file=0|1
  D RESP(.PAT,.REPORTS,.RESP)
  I FILE D
  . I '$D(REPORTS("entry")) D ADDOO(.RESP,"information","informational","cds1 returned no DiagnosticReport resources for this patient Bundle") Q
- . D FILEAI(.PAT,.REPORTS,DFN,.UPD,.ERR)
+ . D LOADAI(.PAT,.REPORTS,DFN,.UPD,.ERR)
  . I $G(ERR)'="" D ADDOO(.RESP,"warning","exception",ERR) Q
  . D ADDOO(.RESP,"information","informational","AI Consult filing attempted through native /updatepatient; loadStatus="_$G(UPD("loadStatus"),"unknown"))
  E  D ADDOO(.RESP,"information","informational","AI Consult filing skipped because file=0")
@@ -106,7 +106,7 @@ RESP(PAT,REPORTS,OUT) ; Build response Bundle
  S I=0 F  S I=$O(REPORTS("entry",I)) Q:+I=0  S CNT=CNT+1 M OUT("entry",CNT)=REPORTS("entry",I)
  Q
  ;
-FILEAI(PAT,REPORTS,DFN,UPD,ERR) ; File decorated reports through C0FW updatepatient path
+LOADAI(PAT,REPORTS,DFN,UPD,ERR) ; File decorated reports through C0FW updatepatient path
  N BODY,BUNDLE,JSON
  K BODY,BUNDLE,JSON,UPD,ERR
  S BUNDLE("resourceType")="Bundle",BUNDLE("type")="collection"
