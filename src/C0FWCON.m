@@ -200,9 +200,9 @@ PRIMARY(VISIT,ICD) ; $$ - primary diagnosis flag
  N DIAG,FOUND,IND
  S FOUND=0,IND=0
  F  S IND=$O(^AUPNVPOV("AD",+$G(VISIT),IND)) Q:+IND=0  D
+ . I +$P($G(^AUPNVPOV(IND,0)),"^")=+$G(ICD),$P($G(^AUPNVPOV(IND,0)),"^",12)="P" S FOUND=2 Q
  . I $P($G(^AUPNVPOV(IND,0)),"^",12)="P" S FOUND=1
- . I +$P($G(^AUPNVPOV(IND,0)),"^")=+$G(ICD) S FOUND=2
- Q $S(FOUND=0:1,FOUND=1:0,1:0)
+ Q $S(FOUND=0:1,FOUND=2:1,1:0)
  ;
 HASPOV(VISIT,ICD) ; $$ - true if visit has a V POV row for diagnosis
  N IND
