@@ -18,7 +18,7 @@ WS(OUT,FILTER) ; GET /aiconsult?dfn=&file=0|1
  D RESP(.PAT,.REPORTS,.RESP)
  I FILE D
  . I '$D(REPORTS("entry")) D ADDOO(.RESP,"information","informational","cds1 returned no DiagnosticReport resources for this patient Bundle") Q
- . D FILE(.PAT,.REPORTS,DFN,.UPD,.ERR)
+ . D FILEAI(.PAT,.REPORTS,DFN,.UPD,.ERR)
  . I $G(ERR)'="" D ADDOO(.RESP,"warning","exception",ERR) Q
  . D ADDOO(.RESP,"information","informational","AI Consult filing attempted through native /updatepatient; loadStatus="_$G(UPD("loadStatus"),"unknown"))
  E  D ADDOO(.RESP,"information","informational","AI Consult filing skipped because file=0")
@@ -79,7 +79,7 @@ DECORATE(PAT,AI,OUT) ; Keep and decorate returned DiagnosticReports
 DECONE(PAT,R) ; Decorate one DiagnosticReport for C0FWAIC filing
  N D,ENC,TITLE
  S D=+$G(PAT("entry",$$PATENT(.PAT),"resource","id"))
- S ENC=$$NEWESTENC(.PAT)
+ S ENC=$$NEWENC(.PAT)
  I $G(@R@("subject","reference"))="",D>0 S @R@("subject","reference")="Patient/"_D
  I $G(@R@("encounter","reference"))="",ENC>0 S @R@("encounter","reference")="Encounter/"_$G(PAT("entry",ENC,"resource","id"))
  S @R@("category",1,"coding",1,"system")="http://vistaplex.org/fhir/CodeSystem/report-category"
@@ -106,12 +106,12 @@ RESP(PAT,REPORTS,OUT) ; Build response Bundle
  S I=0 F  S I=$O(REPORTS("entry",I)) Q:+I=0  S CNT=CNT+1 M OUT("entry",CNT)=REPORTS("entry",I)
  Q
  ;
-FILE(PAT,REPORTS,DFN,UPD,ERR) ; File decorated reports through C0FW updatepatient path
+FILEAI(PAT,REPORTS,DFN,UPD,ERR) ; File decorated reports through C0FW updatepatient path
  N BODY,BUNDLE,JSON
  K BODY,BUNDLE,JSON,UPD,ERR
  S BUNDLE("resourceType")="Bundle",BUNDLE("type")="collection"
  M BUNDLE("entry",1)=PAT("entry",$$PATENT(.PAT))
- I $$NEWESTENC(.PAT)>0 M BUNDLE("entry",2)=PAT("entry",$$NEWESTENC(.PAT))
+ I $$NEWENC(.PAT)>0 M BUNDLE("entry",2)=PAT("entry",$$NEWENC(.PAT))
  N BASE,I,IDX S BASE=$O(BUNDLE("entry",""),-1),I=0,IDX=BASE
  F  S I=$O(REPORTS("entry",I)) Q:+I=0  S IDX=IDX+1 M BUNDLE("entry",IDX)=REPORTS("entry",I)
  D TOJSON^C0FHIRBU(.BUNDLE,.BODY,.ERR)
@@ -128,7 +128,7 @@ PATENT(PAT) ; Patient entry index
  S I=0 F  S I=$O(PAT("entry",I)) Q:+I=0  I $G(PAT("entry",I,"resource","resourceType"))="Patient" Q
  Q +I
  ;
-NEWESTENC(PAT) ; Newest Encounter entry index
+NEWENC(PAT) ; Newest Encounter entry index
  N BEST,BVAL,I,V
  S (BEST,BVAL)=0,I=0
  F  S I=$O(PAT("entry",I)) Q:+I=0  D
