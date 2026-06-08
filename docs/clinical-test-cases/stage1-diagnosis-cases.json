@@ -329,7 +329,7 @@
           "display": "Fatigue"
         },
         {
-          "code": "6408001",
+          "code": "139394000",
           "display": "Nocturia"
         },
         {
@@ -388,8 +388,8 @@
       "diagnosis": {
         "icd10Code": "M10.9",
         "icd10Display": "Gout, unspecified",
-        "snomedCode": "770924008",
-        "display": "Acute gout"
+        "snomedCode": "90560007",
+        "display": "Gout"
       },
       "selectedFindings": [
         {
@@ -405,7 +405,7 @@
           "display": "Joint swelling"
         }
       ],
-      "povCode": "770924008",
+      "povCode": "90560007",
       "addToProblemList": false,
       "noteSupport": "Acute first metatarsophalangeal pain with erythema, joint swelling, and elevated uric acid supports acute gout flare.",
       "expectedWriteback": {
