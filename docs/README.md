@@ -2,10 +2,8 @@
 
 This directory stores detailed project documentation for implementation tracking.
 
-- `PROJECT_OVERVIEW.md`: What the overall multi-repo system is, why it matters, architecture at a glance, and repository roles (start here).
-- `APPROACH_AND_BENEFITS.md`: The engineering approach (in-process M, FHIR-only contracts, graph-backed intake, synthetic data, evidence-gated validation, multi-repo seams, agent acceleration) and why it works.
+- Workspace-level docs (`PROJECT_OVERVIEW.md`, `APPROACH_AND_BENEFITS.md`, `PATH_FORWARD.md`) and the compiled PDF reports live in the **`Vista-on-FHIR`** repo (`~/work/vista-stack/Vista-on-FHIR`, remote `glilly/Vista-on-FHIR`) — start there for ecosystem context.
 - `DEVELOPMENT_STATUS.md`: Current development state and gap analysis for this repo (every sibling repo has its own `DEVELOPMENT_STATUS.md`).
-- `PATH_FORWARD.md`: Cross-repo roadmap ordered by rework risk (write-contract standardization, terminology consolidation, mechanical validation, capability layer, client convergence).
 - `PROJECT_CONTEXT_PUBLIC.md`: Repository-safe project goals, scope, and constraints.
 - Shared `tjson` tooling and `%wd` / `%wdgraph` maintainer material: sibling checkout **`~/work/vista-stack/tjson-tooling`** (symlink to **`~/tjson-tooling`**, git remote **`glilly/tjson-tools`**). Keep Codex focused on FHIR server behavior; browser TJSON vendoring lives in **`vendor/tjson/`**. Pair **`FHIR_BROWSER_TJSON.md`** (feasibility) and **`FHIR_BROWSER_TJSON_CODEX.md`** (runbook) are mirrored in **tjson-tooling** `docs/`—keep them in sync.
 - `FHIR_SOURCE_FINDINGS.md`: Findings from source corpus analysis and implementation implications.

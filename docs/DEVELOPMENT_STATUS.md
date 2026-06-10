@@ -6,9 +6,9 @@ Branch at time of writing: `feature/fhir-writeback-encounter-notes`
 This document summarizes the current state of development in this repository and
 provides a gap analysis. Companion documents:
 
-- `docs/PROJECT_OVERVIEW.md` — what the overall system is and why it matters.
-- `docs/APPROACH_AND_BENEFITS.md` — why we build the way we build.
-- `docs/PATH_FORWARD.md` — recommended sequencing to minimize rework.
+- `Vista-on-FHIR/docs/PROJECT_OVERVIEW.md` — what the overall system is and why it matters.
+- `Vista-on-FHIR/docs/APPROACH_AND_BENEFITS.md` — why we build the way we build.
+- `Vista-on-FHIR/docs/PATH_FORWARD.md` — recommended sequencing to minimize rework.
 
 ## Role of this repository
 
@@ -89,14 +89,14 @@ evidence acceptance, HTTP hardening) is in progress on this branch.
    is not yet codified in one place.
 6. **No root README.** Onboarding starts at `docs/README.md`; a top-level
    pointer would help newcomers (this gap is partially addressed by
-   `docs/PROJECT_OVERVIEW.md`).
+   `Vista-on-FHIR/docs/PROJECT_OVERVIEW.md`).
 
 ### Documentation state
 
 Documentation is a strength: 50+ docs including validation records, runbooks,
 incident responses, and integration plans, indexed in `docs/README.md`. The
 main weakness is that state is spread across dated documents; this file and
-`docs/PATH_FORWARD.md` are the consolidation points.
+`Vista-on-FHIR/docs/PATH_FORWARD.md` are the consolidation points.
 
 ## Dependencies on sibling repos
 
