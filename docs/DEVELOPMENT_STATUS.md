@@ -50,10 +50,16 @@ evidence acceptance, HTTP hardening) is in progress on this branch.
 
 ### Functional gaps
 
-1. **Writeback domain coverage is partial.** Native C0FW filing is real for
-   encounters, diagnoses (POV), health factors, and TIU notes. Lab, Allergy,
-   Medication, Procedure, CarePlan, and Appointment adapters return
-   `not_implemented` or are placeholders (`C0FWCP.m`). See
+1. **Writeback domain coverage is partial.** C0FW is the planned home of
+   *all* FHIR-based updates to VistA, designed under a constraint of using
+   no SYN or ISI routines; the constraint was temporarily loosened for
+   medications, labs, and procedures when the first pass could not handle
+   them natively. Native C0FW filing is real for encounters, diagnoses
+   (POV), health factors, and TIU notes. Lab, Allergy, Medication,
+   Procedure, CarePlan, and Appointment adapters return `not_implemented`
+   or are placeholders (`C0FWCP.m`). The completion target is native C0FW
+   coverage for every domain — no SYN or ISI routine anywhere in the
+   solution — after which those repos become reference-only. See
    `docs/C0FW_SELECTIVE_SYN_ISI_COMPLETION_PLAN.md` and
    `docs/CAREPLAN_IMPORT_OPTIONS.md`.
 2. **US Core / profile conformance is first-pass** for AllergyIntolerance,
@@ -102,8 +108,8 @@ main weakness is that state is spread across dated documents; this file and
 
 | Repo | Dependency |
 |---|---|
-| `VistA-FHIR-Data-Loader` (SYN) | Ingest fallback engines; replay/gap-repair workflow |
-| `VistA-DataLoader` (ISI) | Import primitives for SYN |
+| `VistA-FHIR-Data-Loader` (SYN) | Ingest fallback engines; replay/gap-repair workflow (transitional — retired to reference once C0FW native coverage completes) |
+| `VistA-DataLoader` (ISI) | Import primitives for SYN (transitional — same retirement path) |
 | `rehmp` | C0RG gateway implementation + CPRS demo client |
 | `CPRS-on-FHIR` | Write-contract specs (encounter-note simulation bundle) |
 | `bsts-vista` / `C0T-terminology-gateway` | Terminology search and SNOMED↔ICD mapping |
