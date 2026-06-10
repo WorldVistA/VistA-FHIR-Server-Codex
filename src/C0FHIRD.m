@@ -119,11 +119,13 @@ SETOBS(RTN,VIT,DFN) ; Map one VPR vital entry to a FHIR Observation resource
  IF VUID'="" DO
  . SET RTN("entry",IDX,"resource","code","coding",1,"system")="urn:va:vuid"
  . SET RTN("entry",IDX,"resource","code","coding",1,"code")=VUID
+ DO VLOINC(.RTN,IDX,NAME)
  IF NAME'="" SET RTN("entry",IDX,"resource","code","text")=NAME
  SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
  IF +$GET(VIT("taken"))>0 SET RTN("entry",IDX,"resource","effectiveDateTime")=$$FM2FHIR^C0FHIRBU($GET(VIT("taken")))
  IF +$GET(VIT("entered"))>0 SET RTN("entry",IDX,"resource","issued")=$$FM2FHIR^C0FHIRBU($GET(VIT("entered")))
  SET RES=$PIECE(M0,"^",4),UNIT=$PIECE(M0,"^",5),MRES=$PIECE(M0,"^",6),MUNT=$PIECE(M0,"^",7)
+ DO BPCOMP(.RTN,IDX,NAME,RES,MRES,UNIT,MUNT)
  IF $$ISNUM(MRES) DO  QUIT
  . SET RTN("entry",IDX,"resource","valueQuantity","value")=+MRES
  . IF MUNT'="" SET RTN("entry",IDX,"resource","valueQuantity","unit")=MUNT
@@ -132,6 +134,57 @@ SETOBS(RTN,VIT,DFN) ; Map one VPR vital entry to a FHIR Observation resource
  . IF UNIT'="" SET RTN("entry",IDX,"resource","valueQuantity","unit")=UNIT
  IF RES'="" SET RTN("entry",IDX,"resource","valueString")=RES
  QUIT
+ ;
+VLOINC(RTN,IDX,NAME) ; Add LOINC coding for known VistA vital types
+ NEW CODE,DISPLAY,N
+ SET CODE=$$VLCODE($GET(NAME))
+ IF CODE="" QUIT
+ SET DISPLAY=$PIECE(CODE,"^",2),CODE=$PIECE(CODE,"^")
+ SET N=$ORDER(RTN("entry",IDX,"resource","code","coding",""),-1)+1
+ SET RTN("entry",IDX,"resource","code","coding",N,"system")="http://loinc.org"
+ SET RTN("entry",IDX,"resource","code","coding",N,"code")=CODE
+ IF DISPLAY'="" SET RTN("entry",IDX,"resource","code","coding",N,"display")=DISPLAY
+ QUIT
+ ;
+VLCODE(NAME) ; $$ - LOINC code^display for known vital display names
+ NEW X
+ SET X=$$UPCASE^C0FHIR($GET(NAME))
+ IF X["BLOOD"&(X["PRESSURE") QUIT "85354-9^Blood pressure panel with all children optional"
+ IF X["TEMP" QUIT "8310-5^Body temperature"
+ IF X["PULSE OX" QUIT "59408-5^Oxygen saturation in Arterial blood by Pulse oximetry"
+ IF X["OXIM" QUIT "59408-5^Oxygen saturation in Arterial blood by Pulse oximetry"
+ IF X["PULSE" QUIT "8867-4^Heart rate"
+ IF X["HEART RATE" QUIT "8867-4^Heart rate"
+ IF X["RESP" QUIT "9279-1^Respiratory rate"
+ IF X["HEIGHT" QUIT "8302-2^Body height"
+ IF X["WEIGHT" QUIT "29463-7^Body weight"
+ IF X["PAIN" QUIT "72514-3^Pain severity - 0-10 verbal numeric rating [Score] - Reported"
+ QUIT ""
+ ;
+BPCOMP(RTN,IDX,NAME,RES,MRES,UNIT,MUNT) ; Add systolic/diastolic components for paired BP values
+ NEW BP,DIA,SYS,U
+ IF '$$ISBP($GET(NAME)) QUIT
+ SET BP=$SELECT($GET(MRES)["/":$GET(MRES),$GET(RES)["/":$GET(RES),1:"")
+ IF BP="" QUIT
+ SET SYS=$PIECE(BP,"/",1),DIA=$PIECE(BP,"/",2)
+ IF '$$ISNUM(SYS)!('$$ISNUM(DIA)) QUIT
+ SET U=$SELECT($GET(MUNT)'="":$GET(MUNT),$GET(UNIT)'="":$GET(UNIT),1:"mm[Hg]")
+ SET RTN("entry",IDX,"resource","component",1,"code","coding",1,"system")="http://loinc.org"
+ SET RTN("entry",IDX,"resource","component",1,"code","coding",1,"code")="8480-6"
+ SET RTN("entry",IDX,"resource","component",1,"code","coding",1,"display")="Systolic blood pressure"
+ SET RTN("entry",IDX,"resource","component",1,"valueQuantity","value")=+SYS
+ SET RTN("entry",IDX,"resource","component",1,"valueQuantity","unit")=U
+ SET RTN("entry",IDX,"resource","component",2,"code","coding",1,"system")="http://loinc.org"
+ SET RTN("entry",IDX,"resource","component",2,"code","coding",1,"code")="8462-4"
+ SET RTN("entry",IDX,"resource","component",2,"code","coding",1,"display")="Diastolic blood pressure"
+ SET RTN("entry",IDX,"resource","component",2,"valueQuantity","value")=+DIA
+ SET RTN("entry",IDX,"resource","component",2,"valueQuantity","unit")=U
+ QUIT
+ ;
+ISBP(NAME) ; $$ - true for blood pressure vital names
+ NEW X
+ SET X=$$UPCASE^C0FHIR($GET(NAME))
+ QUIT $S(X["BLOOD"&(X["PRESSURE"):1,1:0)
  ;
 ISNUM(X) ; True if X is numeric
  NEW Y
