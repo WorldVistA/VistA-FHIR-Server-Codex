@@ -38,7 +38,7 @@ PATBNDL(DFN,OUT,JSON,ERR) ; Build patient Bundle as native array and canonical J
  I $D(ERR) S ERR="Unable to encode patient FHIR Bundle with graph seed evidence"
  Q
  ;
-ADDEVID(DFN,OUT) ; Include graph-only seed evidence resources for AI Consult
+ADDEVID(DFN,OUT) ; Include graph-only Stage 1 seed evidence resources for AI Consult
  N CNT,IEN,RIEN,ROOT
  S DFN=+$G(DFN)
  Q:DFN<1
@@ -53,24 +53,21 @@ ADDEVID(DFN,OUT) ; Include graph-only seed evidence resources for AI Consult
  . M OUT("entry",CNT)=@ROOT@(IEN,"json","entry",RIEN)
  Q
  ;
-ISEVID(ROOT,IEN,RIEN) ; $$ - true if graph entry is Stage 1/2 seed evidence
+ISEVID(ROOT,IEN,RIEN) ; $$ - true if graph entry is Stage 1 seed evidence
  N CI,SYS
+ I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="Basic" Q 0
  S CI=0
  F  S CI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",CI)) Q:+CI=0  D  Q:$G(SYS)=1
  . I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",CI,"system"))="https://github.com/glilly/cds-hooks-on-fhir/seed/stage1/evidence" S SYS=1
- S CI=0
- F  S CI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","meta","tag",CI)) Q:+CI=0  D  Q:$G(SYS)=1
- . I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","meta","tag",CI,"system"))="https://github.com/glilly/cds-hooks-on-fhir/seed/stage2/evidence" S SYS=1
  Q +$G(SYS)
  ;
 CALLCDS(JSON,AI,ERR) ; POST patient bundle JSON to cds1
- N HDR,OPT,PAYLOAD,RET,STATUS
+ N HDR,PAYLOAD,RET,STATUS
  K AI,ERR,PAYLOAD,RET,HDR
  D CHUNK(.JSON,.PAYLOAD)
- S OPT("header",1)="Expect:"
- S STATUS=$$%^%WC(.RET,"POST","https://cds1.vistaplex.org/analyze",.PAYLOAD,"application/fhir+json",60,.HDR,.OPT)
+ S STATUS=$$%^%WC(.RET,"POST","https://cds1.vistaplex.org/analyze",.PAYLOAD,"application/fhir+json",60,.HDR)
  I +$G(STATUS)'=0 S ERR="cds1 curl exit status "_STATUS Q
- I $G(HDR("STATUS"))'="",($G(HDR("STATUS"))<200!($G(HDR("STATUS"))>299)) S ERR="cds1 HTTP status "_$G(HDR("STATUS")) Q
+ I $G(HDR("STATUS"))<200!($G(HDR("STATUS"))>299) S ERR="cds1 HTTP status "_$G(HDR("STATUS")) Q
  D DECODE^XLFJSON("RET","AI","ERR")
  I $D(ERR) S ERR="Unable to decode cds1 response JSON"
  Q
