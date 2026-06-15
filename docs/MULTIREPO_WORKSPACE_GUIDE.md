@@ -2,104 +2,136 @@
 
 ## Purpose
 
-This guide defines how to work across the repositories involved in the VistA FHIR workflow while keeping each repository independent, reproducible, and easy to debug.
+This guide defines how to work across the repositories involved in the
+VistA-on-FHIR program. Each repository is independent and deployable on its
+own; this document describes how they relate and how to work across the seams.
 
-## Repository Names and Roles
+Last updated: 2026-06-14
 
-- `SYNTHEA`: synthetic patient/FHIR generator.
-  - https://github.com/synthetichealth/synthea.git
-- `ISI`: core VistA data import infrastructure (`ISI DATA IMPORT`).
-  - https://github.com/WorldVistA/VistA-DataLoader.git
-- `SYN`: Synthea/FHIR-to-VistA ingest pipeline and load diagnostics.
-  - https://github.com/WorldVistA/VistA-FHIR-Data-Loader.git
-- `FHIR`: VistA-to-FHIR Bundle generation/serving (`C0FHIR*` routines).
-  - local repository: `VistA-FHIR-Server-Codex`
-- `SOURCE`: source bundles, fixtures, and parity artifacts.
-  - local folder/repository: `FHIR-source-files`
+## Repository Roles
 
-## Recommended Local Layout
+All repos live as siblings under `~/work/vista-stack/`.
 
-Keep repos as siblings (not submodules):
+### Core server and writeback
 
-`~/work/vista-stack/`
-- `synthea/`
-- `VistA-DataLoader/`
-- `VistA-FHIR-Data-Loader/`
-- `VistA-FHIR-Server-Codex/`
-- `FHIR-source-files/`
+| Short name | Local directory | Role |
+|---|---|---|
+| `FHIR` | `VistA-FHIR-Server-Codex` | VistA→FHIR read server (`C0FHIR*`) and unified FHIR writeback framework (`C0FW*`). The anchor repo. |
+| `SOURCE` | `FHIR-source-files` | Source bundles, fixtures, and parity artifacts for FHIR read output. |
 
-## Local Machine Companion
+### Client and gateway
 
-Store machine-specific paths, ports, and command shortcuts in the **`~/ops`** tree (outside app repos):
+| Short name | Local directory | Role |
+|---|---|---|
+| `REHMP` | `rehmp` | C0RG JSON envelope gateway (client↔VistA RPC bridge). M routines in `C0RG` namespace. |
+| `CPRS` | `CPRS-on-FHIR` | CPRS-succession web client. CFH-* specs, write harness (`cfh-smoke.sh`), domain analysis. |
+| `BSTS` | `bsts-vista` | Browser-side tooling and SMART app scaffolding. |
+| `CDS` | `cds-hooks-on-fhir` | CDS Hooks service layer. |
 
-- **`~/ops/docs/WORKSPACE_LOCAL.md`** — canonical machine profile (also indexed from **`~/ops/agent-context/README.md`**).
+### Domain services
 
-Keep shared, repository-safe guidance in this document, and keep host-specific details in **`~/ops`**. For **Docker VEHU (`vehu10`) shell access, global naming (`^VA` vs `^va`), and sync commands**, see the section **“Local VEHU container (`vehu10`) — accessing VistA”** in **`~/ops/docs/WORKSPACE_LOCAL.md`**.
+| Short name | Local directory | Role |
+|---|---|---|
+| `C0FO` | `VistA-ordering-service` | Order management M routines (`C0FO*`), ported and extended from CPRS Pascal. KIDS file is source of truth. |
+| `C0T` | `C0T-terminology-gateway` | Terminology gateway and value set services. |
+| `REMIND` | `reminders-on-fhir` | Clinical reminders domain. |
 
-## Workspace Profiles (Cursor)
+### Data pipeline
 
-### 1) Core Development (default)
+| Short name | Local directory | Role |
+|---|---|---|
+| `SYN` | `VistA-FHIR-Data-Loader` | Synthea/FHIR-to-VistA ingest pipeline and load diagnostics. |
+| `ISI` | `VistA-DataLoader` | Core VistA data import infrastructure (`ISI DATA IMPORT`). |
+| `SYNTHEA` | `synthea` | Synthetic patient / FHIR R4 bundle generator. |
 
-Use for most day-to-day mapping and endpoint work:
+### Tooling and documentation
 
-- `VistA-FHIR-Server-Codex`
-- `FHIR-source-files`
+| Short name | Local directory | Role |
+|---|---|---|
+| `TJSON` | `tjson-tooling` | TJSON format tooling; FHIR browser WASM vendored into `FHIR/vendor/tjson/`. |
+| `DOCS` | `Vista-on-FHIR` | Cross-repo documentation, PDF reports, connectathon planning. |
+| `CPRS-SRC` | `CPRS-source` | Scrubbed CPRS Pascal source (read-only reference; not a git repo). |
 
-### 2) Ingest Debug
+## Common multi-repo problem patterns
 
-Use when import behavior is in scope:
+Most work touches one of these seam pairs. State the repos at the start of
+your session so the agent loads the right context.
 
-- `VistA-FHIR-Server-Codex`
-- `FHIR-source-files`
-- `VistA-FHIR-Data-Loader`
-- `VistA-DataLoader`
+| Problem type | Primary repos | Change order |
+|---|---|---|
+| FHIR read mapping bug | `FHIR`, `SOURCE` | Fix in `FHIR`; update parity evidence in `SOURCE` |
+| FHIR writeback / C0FW | `FHIR` | Self-contained; `SYN`/`ISI` only if ingest is also broken |
+| Order management | `C0FO`, `FHIR` | Implement in `C0FO`; wire route in `FHIR` if needed |
+| Client↔server contract | `CPRS`, `REHMP`, `FHIR` | Define CFH-* spec first; then implement server side; then client |
+| Ingest/load failure | `ISI`, `SYN`, `FHIR` | Fix ingest in order: `ISI` → `SYN` → verify with `FHIR` read |
+| Synthea generation change | `SYNTHEA`, `SYN`, `FHIR`, `SOURCE` | Full pipeline; rarely needed |
+| Terminology gap | `C0T`, `FHIR` | Fix in `C0T`; update any `FHIR` mapping that references it |
 
-### 3) Generator Analysis (on demand)
+## Practical guidance for 2–3 repo sessions
 
-Use only when generation assumptions are changing:
+1. **Name the repos in your first message.** The agent loads context
+   per-repo; naming them upfront avoids guesswork.
 
-- everything in Ingest Debug
-- `synthea`
+2. **Workspace profiles matter for Cursor indexing/search, not for agent
+   file access.** The agent can read and edit any sibling repo by absolute
+   path regardless of which roots are active. Open a broader profile only
+   when you need semantic search across a repo's full codebase.
 
-## Why This Structure
+3. **Define the seam contract before touching either side.** For a
+   client↔server change, write the CFH-* spec or document the RPC/HTTP
+   interface first. This is what separates parallel-safe work from
+   integration-order-sensitive work.
 
-- keeps indexing/search fast.
-- reduces accidental edits in upstream repos.
-- matches the real dependency chain:
-  - `SYNTHEA` -> `ISI`/`SYN` ingest -> `FHIR` output.
+4. **Commit each repo independently before crossing the seam.** Do not
+   have unstaged changes in repo A while making changes in repo B that
+   depend on A's new behavior.
 
-## Cross-Repo Change Order
+5. **Deploy with `vehu10-fhir-sync.sh` before cross-repo smoke tests.**
+   If ordering-service routines also changed, copy those first, then sync
+   Codex, then run smokes — the listener must be restarted if it was down.
 
-When changes span repositories, use this order:
+## Validation gate (before merge)
 
-1. `ISI` (import primitives, if needed)
-2. `SYN` (ingest behavior, mappings, load flow)
-3. `FHIR` (Bundle generation and endpoint behavior)
-4. `SOURCE` (baseline/parity evidence updates)
+Required for any change that touches M routines or FHIR output:
 
-If a change is FHIR mapping-only, start in `FHIR` and update `SOURCE` evidence as needed.
+1. Run `XINDEX` on every changed M routine.
+2. Deploy to `vehu10` via `scripts/vehu10-fhir-sync.sh` (or
+   `scripts/local-fhir-container-sync.sh` for the minimal container).
+3. Run the relevant `cfh-smoke.sh` harness checks, or `curl` the
+   target endpoint directly.
+4. For read output changes: compare resource counts/types against `SOURCE`
+   parity evidence for at least one DFN.
+5. Record SHAs and result (see Reproducibility Record below).
 
-## Validation Gate (Before Merge)
+## Reproducibility record
 
-At minimum:
+For any significant validation run, capture this tuple (in a commit
+message, test log, or doc):
 
-1. Confirm import/ingest behavior for target patient(s).
-2. Run `XINDEX` on changed M routines.
-3. Run smoke request(s) for `/fhir?dfn=<DFN>`.
-4. Compare source vs output counts/resources for expected domains.
-5. Record result and repository SHAs.
+```
+FHIR_SHA:    <git sha>
+C0FO_SHA:    <git sha, if ordering was involved>
+REHMP_SHA:   <git sha, if gateway was involved>
+CPRS_SHA:    <git sha, if harness was involved>
+SYN_SHA:     <git sha, if ingest was involved>
+ISI_SHA:     <git sha, if ingest was involved>
+CONTAINER:   vehu10 (or fhir / fhirdev22)
+TEST_DFN:    <patient DFN>
+DATE:        <ISO date>
+RESULT:      pass / partial / fail
+NOTES:       <one line>
+```
 
-## Reproducibility Record (Required)
+Omit rows not involved. The minimum useful record is `FHIR_SHA` + `TEST_DFN`
++ `DATE` + `RESULT`.
 
-For each significant validation run, capture:
+## Local machine companion
 
-- `SYNTHEA_SHA`
-- `ISI_SHA`
-- `SYN_SHA`
-- `FHIR_SHA`
-- `SOURCE_REF` (commit SHA, file set, or dated snapshot)
-- test `DFN`
-- date/time
-- pass/fail notes
+Machine-specific paths, ports, and command shortcuts live in `~/ops`:
 
-This tuple is the canonical reference for debugging regressions.
+- `~/ops/docs/WORKSPACE_LOCAL.md` — canonical machine profile (Docker ports,
+  SSH keys, container names, vehu10 access patterns).
+- `~/ops/agent-context/` — shared agent context (workflow, security, dev
+  guide). Also available at `~/ai-m/agent-context/`.
+
+Keep host-specific details out of this document.
