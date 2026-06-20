@@ -55,6 +55,7 @@ WSPAT(ARGS,BODY,RESULT) ; POST /addpatient
  I 'PATDONE D PATIENT(.RETURN,IEN,.ICN,ROOT)
  S RDFN=+$G(RETURN("dfn"))
  I RDFN>0 D LNKPAT^C0FWLNK(IEN,RDFN,.ICN,ROOT)
+ I RDFN>0 D RPMSPAT(.RETURN,RDFN,ROOT,IEN)
  I ICN'="" S RETURN("icn")=ICN
  I RDFN>0 D
  . I $G(ARGS("load"))="" S ARGS("load")=1
@@ -69,7 +70,8 @@ WSPAT(ARGS,BODY,RESULT) ; POST /addpatient
  Q 1
  ;
 PATIENT(RETURN,IEN,ICN,ROOT) ; File Patient directly through FileMan
- N CITY,DFN,DIC,DOB,ERR,FDA,MAR,NAME,PENT,PHONE,PTYPE,SEX,SSN,SSNIN,STATE,STIEN,STREET,STREET2,VET,X,Y,ZIP
+ N CITY,DEM,DFN,DIC,DOB,ERR,FDA,MAR,NAME,PENT,PHONE,PTYPE,SEX,SSN,SSNIN,STATE,STIEN,STREET,STREET2,VET,X,Y,ZIP
+ S U="^"
  I $G(DT)="" S DT=$$DT^XLFDT
  S PENT=$$PENTRY(ROOT,IEN)
  I PENT<1 D PATSTAT(.RETURN,IEN,ROOT,"error","No Patient resource found in posted Bundle") Q
@@ -93,11 +95,18 @@ PATIENT(RETURN,IEN,ICN,ROOT) ; File Patient directly through FileMan
  S MAR=$$MARITAL($G(@ROOT@(IEN,"json","entry",PENT,"resource","maritalStatus","coding",1,"code")))
  S PTYPE=$$PTYPE()
  S VET=$$VET(ROOT,IEN,PENT)
+ S DEM("SEX")=SEX,DEM("DOB")=DOB,DEM("SSN")=SSN
+ S DEM("STREET")=STREET,DEM("STREET2")=STREET2,DEM("CITY")=CITY,DEM("STATE")=STATE,DEM("ZIP")=ZIP
+ S DEM("PHONE")=PHONE,DEM("MAR")=MAR,DEM("PTYPE")=PTYPE,DEM("VET")=VET
  K DIC,ERR,FDA,Y
  S DIC="^DPT(",DIC(0)="L",X=NAME
  D FILE^DICN
  S DFN=+Y
  I DFN<1 D PATSTAT(.RETURN,IEN,ROOT,"error","FileMan failed to create Patient shell") Q
+ K DIC
+ S SEX=DEM("SEX"),DOB=DEM("DOB"),SSN=DEM("SSN")
+ S STREET=DEM("STREET"),STREET2=DEM("STREET2"),CITY=DEM("CITY"),STATE=DEM("STATE"),ZIP=DEM("ZIP")
+ S PHONE=DEM("PHONE"),MAR=DEM("MAR"),PTYPE=DEM("PTYPE"),VET=DEM("VET")
  I SEX'="" S FDA(2,DFN_",",.02)=SEX
  I DOB>0 S FDA(2,DFN_",",.03)=DOB
  S FDA(2,DFN_",",.09)=SSN
@@ -109,17 +118,21 @@ PATIENT(RETURN,IEN,ICN,ROOT) ; File Patient directly through FileMan
  I PHONE'="" S FDA(2,DFN_",",.131)=PHONE
  I MAR>0 S FDA(2,DFN_",",.05)=MAR
  I PTYPE>0 S FDA(2,DFN_",",391)=PTYPE
- I VET'="" S FDA(2,DFN_",",1901)=VET
- D FILE^DIE("","FDA","ERR")
+ I VET'="",'$$RPMSCAP() S FDA(2,DFN_",",1901)=VET
+ I $$RPMSCAP() D RPMSDEM(.RETURN,DFN,.FDA,.ERR)
+ E  D FILE^DIE("","FDA","ERR")
  I $D(ERR) D  Q
  . D PATSTAT(.RETURN,IEN,ROOT,"error","FileMan failed to file Patient demographics")
  . M RETURN("patient","filemanError")=ERR
+ . D FMERR(.RETURN,.ERR,.FDA)
  S RETURN("dfn")=DFN
  S RETURN("patient","engine")="C0FW/FileMan"
  S RETURN("patient","loadStatus")="loaded"
  S RETURN("patient","message")="Patient filed directly by C0FW"
  S RETURN("patient","fields","name")=NAME
  S RETURN("patient","fields","ssn")=SSN
+ S RETURN("patient","fields","sex")=SEX
+ I DOB>0 S RETURN("patient","fields","dob")=DOB
  S RETURN("patient","raceEthnicityMessage")="Race and ethnicity were not filed; this target Patient DD does not expose the same simple fields used by the ISI template"
  S @ROOT@(IEN,"load","Patient","status","DFN")=DFN
  S @ROOT@(IEN,"load","Patient","status","loadStatus")="loaded"
@@ -133,6 +146,116 @@ PATSTAT(RETURN,IEN,ROOT,STATUS,MSG) ; Record Patient status without throwing
  I $G(ROOT)'="",+$G(IEN)>0 D
  . S @ROOT@(IEN,"load","Patient","status","loadStatus")=$G(STATUS)
  . S @ROOT@(IEN,"load","Patient","status","loadMessage")=$G(MSG)
+ Q
+ ;
+FMERR(RETURN,ERR,FDA) ; Flatten FileMan error details for HTTP JSON callers
+ N FIELD,I,TEXT
+ S I=0
+ F  S I=$O(ERR("DIERR",1,"TEXT",I)) Q:+I=0  D
+ . S TEXT=$G(ERR("DIERR",1,"TEXT",I))
+ . I TEXT'="" S RETURN("patient","filemanErrorText",I)=TEXT
+ S FIELD=""
+ F  S FIELD=$O(FDA(2,$O(FDA(2,"")),FIELD)) Q:FIELD=""  D
+ . S RETURN("patient","filemanFDA",FIELD)=$G(FDA(2,$O(FDA(2,"")),FIELD))
+ Q
+ ;
+RPMSDEM(RETURN,DFN,FDA,ERR) ; File RPMS demographics in safe groups
+ N FIELD,KEY,MSG,ONE
+ K ERR
+ F FIELD=.02,.03,.09,391 D  I $D(ERR) Q
+ . Q:'$D(FDA(2,DFN_",",FIELD))
+ . K ONE
+ . S ONE(2,DFN_",",FIELD)=FDA(2,DFN_",",FIELD)
+ . D FILE^DIE("","ONE","ERR")
+ I $D(ERR) Q
+ F FIELD=.05,.111,.112,.114,.115,.116,.131 D
+ . Q:'$D(FDA(2,DFN_",",FIELD))
+ . K MSG,ONE
+ . S ONE(2,DFN_",",FIELD)=FDA(2,DFN_",",FIELD)
+ . D FILE^DIE("","ONE","MSG")
+ . I $D(MSG) D
+ . . S KEY="field"_FIELD
+ . . S RETURN("patient","rpms","filemanWarningField",KEY)=FDA(2,DFN_",",FIELD)
+ . . S RETURN("patient","rpms","filemanWarningField",KEY,"reason")="RPMS Patient-file cross-reference returned a warning while filing this secondary demographic field"
+ Q
+ ;
+RPMSPAT(RETURN,DFN,ROOT,IEN) ; Create/repair RPMS IHS PATIENT row when present
+ N DET,MSG,STAT,TPL
+ S DFN=+$G(DFN)
+ S DET=$$RPMSCAP()
+ S RETURN("patient","rpms","detected")=DET
+ S RETURN("patient","rpms","templateDfn")=""
+ I 'DET D  Q
+ . D SETRPMS(.RETURN,ROOT,IEN,"not_applicable","RPMS IHS PATIENT file/DD not detected","")
+ I DFN<1 D  Q
+ . D SETRPMS(.RETURN,ROOT,IEN,"error","No DFN supplied for RPMS IHS PATIENT repair","")
+ I '$D(^DPT(DFN,0)) D  Q
+ . D SETRPMS(.RETURN,ROOT,IEN,"error","DFN does not exist in ^DPT; RPMS IHS PATIENT row not created","")
+ I $D(^AUPNPAT(DFN,0)) D  Q
+ . D SETRPMS(.RETURN,ROOT,IEN,"exists","Existing ^AUPNPAT row found; no repair needed","")
+ I $$AUPNDD() D AUPNFM(.STAT,.MSG,DFN)
+ I $G(STAT)="" D AUPNDIR(.STAT,.MSG,.TPL,DFN)
+ D SETRPMS(.RETURN,ROOT,IEN,$G(STAT),$G(MSG),$G(TPL))
+ Q
+ ;
+RPMSCAP() ; $$ - RPMS IHS PATIENT capability present
+ Q $S($D(^AUPNPAT(0))&$D(^DD(9000001,.01,0)):1,1:0)
+ ;
+AUPNDD() ; $$ - FileMan DD for IHS PATIENT .01 is present
+ Q $S($D(^DD(9000001,.01,0)):1,1:0)
+ ;
+AUPNFM(STAT,MSG,DFN) ; Try FileMan create with IEN tied to DFN
+ N ERR,FDA,IENS
+ S DFN=+$G(DFN)
+ K ERR,FDA,IENS
+ S FDA(9000001,"+1,",.01)=DFN
+ S IENS(1)=DFN
+ D UPDATE^DIE("","FDA","IENS","ERR")
+ I '$D(ERR),$D(^AUPNPAT(DFN,0)) D  Q
+ . S STAT="created_fileman"
+ . S MSG="Created ^AUPNPAT row through FileMan"
+ S STAT=""
+ S MSG="FileMan did not create ^AUPNPAT row; direct fallback attempted"
+ Q
+ ;
+AUPNDIR(STAT,MSG,TPL,DFN) ; Minimal direct fallback for RPMS IHS PATIENT row
+ S DFN=+$G(DFN),TPL=""
+ I $D(^AUPNPAT(DFN,0)) D  Q
+ . S STAT="exists"
+ . S MSG="Existing ^AUPNPAT row found during direct repair"
+ I $D(^AUPNPAT(3,0)) D
+ . S ^AUPNPAT(DFN,0)=^AUPNPAT(3,0)
+ . S $P(^AUPNPAT(DFN,0),U,1)=DFN
+ . S TPL=3
+ . S STAT="created_template"
+ . S MSG="Created ^AUPNPAT row from template DFN 3 zero node; .01 rewritten to DFN"
+ E  D
+ . S ^AUPNPAT(DFN,0)=DFN
+ . S STAT="created_direct"
+ . S MSG="Created minimal direct ^AUPNPAT zero node with DFN only"
+ D AUPN0(DFN)
+ Q
+ ;
+AUPN0(DFN) ; Maintain ^AUPNPAT(0) header after direct create
+ N CNT,LAST
+ S DFN=+$G(DFN)
+ Q:DFN<1
+ I $G(^AUPNPAT(0))="" S ^AUPNPAT(0)="IHS PATIENT^9000001IP"
+ S LAST=+$P($G(^AUPNPAT(0)),U,3)
+ S CNT=+$P($G(^AUPNPAT(0)),U,4)
+ I LAST<DFN S $P(^AUPNPAT(0),U,3)=DFN
+ S $P(^AUPNPAT(0),U,4)=CNT+1
+ Q
+ ;
+SETRPMS(RETURN,ROOT,IEN,STAT,MSG,TPL) ; Store RPMS patient status in response/graph
+ S RETURN("patient","rpms","aupnpatStatus")=$G(STAT)
+ S RETURN("patient","rpms","message")=$G(MSG)
+ I $G(TPL)'="" S RETURN("patient","rpms","templateDfn")=$G(TPL)
+ I $G(ROOT)'="",+$G(IEN)>0 D
+ . S @ROOT@(IEN,"load","Patient","status","rpms","detected")=$G(RETURN("patient","rpms","detected"))
+ . S @ROOT@(IEN,"load","Patient","status","rpms","aupnpatStatus")=$G(STAT)
+ . S @ROOT@(IEN,"load","Patient","status","rpms","message")=$G(MSG)
+ . I $G(TPL)'="" S @ROOT@(IEN,"load","Patient","status","rpms","templateDfn")=$G(TPL)
  Q
  ;
 PENTRY(ROOT,IEN) ; $$ - first Patient entry RIEN
@@ -233,7 +356,7 @@ VET(ROOT,IEN,RIEN) ; $$ - veteran flag from explicit extension if present
  Q $S($G(VAL)="true":"Y",$G(VAL)="false":"N",1:"N")
  ;
 FILEICN(DFN,ROOT,IEN,RIEN,SSN,RETURN) ; $$ - optional native ICN filing
- N BASE,CHK,ERR,FDA,FULL
+ N BASE,CHK,ERR,FDA,FULL,H99101,H99102,H9911
  S BASE=$$ICNBASE(ROOT,IEN,RIEN,SSN)
  I BASE="" Q ""
  I $T(CHECKDG^MPIFSPC)="" D  Q ""
@@ -243,19 +366,26 @@ FILEICN(DFN,ROOT,IEN,RIEN,SSN,RETURN) ; $$ - optional native ICN filing
  . S RETURN("patient","icnMessage")="ICN not filed: MPIFSPC did not return a checksum"
  S FULL=BASE_"V"_CHK
  K FDA,ERR
- S FDA(2,DFN_",",991.01)=BASE
- S FDA(2,DFN_",",991.02)=CHK
- S FDA(2,DFN_",",991.1)=FULL
- D UPDATE^DIE("","FDA",,"ERR")
+ S H99101=$$FLD(2,991.01),H99102=$$FLD(2,991.02),H9911=$$FLD(2,991.1)
+ I H99101 S FDA(2,DFN_",",991.01)=BASE
+ I H99102 S FDA(2,DFN_",",991.02)=CHK
+ I H9911 S FDA(2,DFN_",",991.1)=FULL
+ I $D(FDA) D
+ . D UPDATE^DIE("","FDA",,"ERR")
  I $D(ERR) D  Q ""
- . S RETURN("patient","icnMessage")="ICN not filed: FileMan rejected MPI fields"
+ . S RETURN("patient","icnMessage")="ICN not filed: FileMan rejected available MPI fields"
  . M RETURN("patient","icnFilemanError")=ERR
+ I 'H9911 S RETURN("patient","icn9911Status")="skipped: field 991.1 not present in Patient DD"
+ I 'H99101!'H99102 S RETURN("patient","icnMessage")="ICN MPI fields are incomplete on this target; maintained ^DPT ICN indexes"
  S ^DPT("AFICN",FULL,DFN)=""
  S ^DPT("ARFICN",DFN,FULL)=""
  D SETIDXGN^C0FWFUTL(ROOT,IEN,"ICN",FULL)
  S RETURN("icn")=FULL
  S @ROOT@(IEN,"load","Patient","status","ICN")=FULL
  Q FULL
+ ;
+FLD(FILE,FIELD) ; $$ - FileMan field exists
+ Q $S($D(^DD(+$G(FILE),+$G(FIELD),0)):1,1:0)
  ;
 ICNBASE(ROOT,IEN,RIEN,SSN) ; $$ - 10 digit ICN base from FHIR identifiers or SSN
  N BASE,IDX,SYS,VAL

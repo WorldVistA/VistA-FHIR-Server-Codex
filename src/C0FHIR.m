@@ -633,6 +633,7 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  DO ENVINIT
  KILL RTN
  DO MAPFILT(.FILTER,.REQ)
+ DO RPMSDFLT(.REQ)
  SET ARRAYONLY=+$$TRUTHVAL($SELECT($GET(FILTER("arrayOnly"))'="":$GET(FILTER("arrayOnly")),1:$GET(FILTER("ARRAYONLY"))))
  SET VIEW=$$UPCASE($SELECT($GET(FILTER("view"))'="":$GET(FILTER("view")),1:$GET(FILTER("VIEW"))))
  IF VIEW="BROWSER",+$GET(REQ("DFN"))>0 DO  QUIT
@@ -649,9 +650,10 @@ GETFHIR(RTN,FILTER) ; Web service entry point
  . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
  IF ARRAYONLY DO  QUIT
  . DO GETBNDLA(.REQ,.RTN)
- SET FILTER("type")="application/json"
- SET HTTPRSP("mime")="application/json"
+ SET FILTER("type")="application/fhir+json"
+ SET HTTPRSP("mime")="application/fhir+json"
  DO GETBNDLJ(.REQ,.RTN,.ERR)
+ SET RTN("mime")="application/fhir+json"
  IF $DATA(ERR) DO
  . DO ERR^C0FHIRBU("JSON encoding failed in ENCODE^XLFJSON",.TMP)
  . DO TOJSON^C0FHIRBU(.TMP,.RTN,.ERR)
@@ -862,6 +864,21 @@ VPROK() ; True when VPR is available on this system (so /vpr link works)
  IF '$D(^VA(200)) QUIT 0
  IF $T(EN1^VPRDVSIT)="" QUIT 0
  QUIT 1
+ ;
+RPMSOK() ; True when this target looks like RPMS/IHS
+ IF '$DATA(^AUPNPAT(0)) QUIT 0
+ IF '$DATA(^DD(9000001,0)) QUIT 0
+ IF $DATA(^AUPNVSIT(0)),$DATA(^DD(9000010,0)) QUIT 1
+ QUIT 0
+ ;
+RPMSDFLT(REQ) ; RPMS without VPR defaults to demographics-only reads
+ IF '$$RPMSOK() QUIT
+ IF $$VPROK() QUIT
+ IF $DATA(REQ("DOMAIN")) QUIT
+ SET REQ("DOMAIN","_FILTERED")=1
+ SET REQ("DOMAIN","PATIENT")=1
+ SET REQ("readProfile")="rpms-patient-only"
+ QUIT
  ;
 wsShow(OUT,FILTER) ; GET showfhir/tfhir graph JSON through the active Codex graph root
  NEW SAVEFMT,FORMAT

@@ -38,6 +38,58 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  D GETFHIR^C0FHIR(.RTN,.FILTER)
  Q
  ;
+WSASSET(RTN,FILTER) ; Serve allowlisted browser assets when static /filesystem is unavailable
+ N DIR,FILE,OK,TMP
+ K RTN
+ S FILE=$G(FILTER("file"))
+ I '$$ASSETOK(FILE) D  Q
+ . S HTTPERR=404
+ . S RTN(1)="Not found"
+ S TMP=$NA(^TMP("C0FHIRAS",$J))
+ K @TMP
+ S DIR=$$ASSETDIR(FILE,TMP)
+ I DIR="" D  Q
+ . S HTTPERR=404
+ . S RTN(1)="Not found"
+ M RTN=@TMP
+ K @TMP
+ S HTTPRSP("mime")=$$ASSETMIME(FILE)
+ Q
+ ;
+ASSETOK(FILE) ; $$ - true for browser asset names this route may serve
+ Q $S($G(FILE)="tjson.js":1,$G(FILE)="tjson_bg.js":1,$G(FILE)="tjson_bg.wasm.b64":1,$G(FILE)="tjson_bg.wasm":1,1:0)
+ ;
+ASSETDIR(FILE,TMP) ; $$ - first readable browser asset directory
+ N DIR,HOME,OK
+ S HOME=$ZTRNLNM("HOME")
+ I HOME'="" D  I OK Q DIR
+ . S DIR=HOME_"/www/filesystem/"
+ . K @TMP S OK=$$FTGOK(DIR,FILE,TMP)
+ I HOME'="" D  I OK Q DIR
+ . S DIR=HOME_"/www/"
+ . K @TMP S OK=$$FTGOK(DIR,FILE,TMP)
+ S DIR="/home/rpms/www/filesystem/"
+ K @TMP S OK=$$FTGOK(DIR,FILE,TMP) I OK Q DIR
+ S DIR="/home/vehu/www/filesystem/"
+ K @TMP S OK=$$FTGOK(DIR,FILE,TMP) I OK Q DIR
+ S DIR="/home/osehra/www/"
+ K @TMP S OK=$$FTGOK(DIR,FILE,TMP) I OK Q DIR
+ Q ""
+ ;
+FTGOK(DIR,FILE,TMP) ; $$ - read file with missing-dir errors contained
+ N $ETRAP,$ESTACK,OK,TGT
+ S OK=0
+ S $ETRAP="S $ECODE="""",OK=0 Q"
+ S TGT=$E(TMP,1,$L(TMP)-1)_",1)"
+ S OK=$$FTG^%ZISH(DIR,FILE,TGT,3)
+ Q +OK
+ ;
+ASSETMIME(FILE) ; $$ - HTTP MIME for browser asset
+ I $G(FILE)="tjson.js" Q "application/javascript"
+ I $G(FILE)="tjson_bg.js" Q "application/javascript"
+ I $G(FILE)="tjson_bg.wasm" Q "application/wasm"
+ Q "text/plain"
+ ;
 BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhir bundles
  N ALTLBL,ALTRAW,BADGE,D,IEN,LOADURL,RAWLBL,RAWURL,SRC,SRCNOTE,THEME,TOPLINKS
  S D=+$G(FILTER("dfn"))

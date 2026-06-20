@@ -26,6 +26,7 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . DO addService^%webutils("POST","rehmp","WSREHMP^C0RGWEB","","","",.PARAMS)
  IF $T(REGTFHIR^C0FHIR)'="" DO REGTFHIR^C0FHIR
  IF $T(WEB^C0FHIRWS)'="" DO addService^%webutils("GET","fhir","WEB^C0FHIRWS")
+ IF $T(WSASSET^C0FHIRWS)'="" DO addService^%webutils("GET","filesystem/{file}","WSASSET^C0FHIRWS")
  IF $T(WS^C0FWAIS)'="" DO addService^%webutils("GET","aiconsult","WS^C0FWAIS")
  IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")
  IF $T(wsTIUVPatients^C0FTIUST)'="" DO addService^%webutils("GET","tiuvpatients","wsTIUVPatients^C0FTIUST")

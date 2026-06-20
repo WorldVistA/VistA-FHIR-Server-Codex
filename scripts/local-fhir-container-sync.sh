@@ -131,6 +131,9 @@ copy_vendor_tjson_via_docker() {
   for f in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
     docker cp "$v/$f" "$FHIR_CONTAINER:$FHIR_REMOTE_WWW/$f"
   done
+  # %ZISH-backed fallback static routes read text line-by-line; keep the large
+  # base64 sidecar wrapped so M web handlers do not truncate a single long line.
+  docker exec "$FHIR_CONTAINER" sh -lc "if command -v fold >/dev/null 2>&1 && [ -f '$FHIR_REMOTE_WWW/tjson_bg.wasm.b64' ]; then tmp='$FHIR_REMOTE_WWW/tjson_bg.wasm.b64.wrap'; tr -d '\\r\\n' < '$FHIR_REMOTE_WWW/tjson_bg.wasm.b64' | fold -w 76 > \"\$tmp\" && mv \"\$tmp\" '$FHIR_REMOTE_WWW/tjson_bg.wasm.b64'; fi"
   for f in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
     docker exec "$FHIR_CONTAINER" chown "${FHIR_M_USER}:${FHIR_M_USER}" "$FHIR_REMOTE_WWW/$f"
   done

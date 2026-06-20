@@ -12,6 +12,7 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  S LAST=+$G(ARGS("lastEntry"))
  S COUNT=0
  ; Encounters are filed first so later domains can resolve a visit pointer.
+ ; Notes/TIU filing is visit-linked; C0FWTIU will skip/error until the visit resolves.
  S RIEN=$S(FIRST>0:FIRST-1,1:0)
  F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
  . I '$$INBUND(ROOT,IEN,RIEN,BUNDLE) Q
@@ -33,13 +34,14 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  . D DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,.ARGS,.RETURN)
  S RETURN("loadStatus")=$$SUMMARY(.RETURN,COUNT)
  S RETURN("load","engine")="C0FW"
+ S RETURN("load","profile")=$$PROFILE^C0FWPOL(.ARGS)
  S RETURN("load","clinicalFiling")=$S($G(RETURN("loadStatus"))="loaded":"partial",1:$G(RETURN("loadStatus")))
  Q
  ;
 DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,ARGS,RETURN) ; Policy-aware domain dispatch
  N ENG
  S ENG=$$ENGINE^C0FWPOL(DOMAIN,.ARGS)
- I ENG="off" D SKIP^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"C0FW policy skipped domain",.RETURN) Q
+ I ENG="off" D SKIP^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,$$REASON^C0FWPOL(DOMAIN,ENG,.ARGS),.RETURN) Q
  I ENG="syn" D  Q
  . I DOMAIN="HealthFactor" D LOAD^C0FWHSYN(ROOT,IEN,RIEN,.RETURN) Q
  . D NI^C0FWSTAT(ROOT,IEN,RIEN,DOMAIN,TYPE,"C0FW policy requested SYN but no SYN wrapper is implemented for "_DOMAIN,.RETURN)
@@ -121,16 +123,17 @@ DOMAIN(ROOT,IEN,RIEN,TYPE) ; $$ - map FHIR resourceType to C0FW domain
  Q ""
  ;
 SUMMARY(RETURN,COUNT) ; $$ - overall load summary
- N DOM,LOADED,NOTIMP,ERROR
+ N DOM,LOADED,NOTIMP,ERROR,SKIPPED
  I +$G(COUNT)<1 Q "no_applicable_resources"
- S (LOADED,NOTIMP,ERROR)=0
+ S (LOADED,NOTIMP,ERROR,SKIPPED)=0
  S DOM=""
  F  S DOM=$O(RETURN("domains",DOM)) Q:DOM=""  D
  . I $G(RETURN("domains",DOM,"status"))="loaded" S LOADED=1
  . I $G(RETURN("domains",DOM,"status"))="not_implemented" S NOTIMP=1
  . I $G(RETURN("domains",DOM,"status"))="error" S ERROR=1
+ . I $G(RETURN("domains",DOM,"status"))="skipped" S SKIPPED=1
  I ERROR Q "error"
- I LOADED,NOTIMP Q "partial"
+ I LOADED,(NOTIMP!SKIPPED) Q "partial"
  I LOADED Q "loaded"
  I NOTIMP Q "not_implemented"
  Q "skipped"
