@@ -10,7 +10,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Observation vital sign
  I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="Observation" D STATUS(ROOT,IEN,RIEN,"skipped","Resource is not Observation",.RETURN) Q
  I '$$ISVITAL(ROOT,IEN,RIEN) D STATUS(ROOT,IEN,RIEN,"skipped","Observation is not a vital-signs resource",.RETURN) Q
  S TYPE=$$TYPE(ROOT,IEN,RIEN,.WHY)
- I TYPE<1 D STATUS(ROOT,IEN,RIEN,"error",$G(WHY,"Unable to map vital type"),.RETURN) Q
+ I TYPE<1 D STATUS(ROOT,IEN,RIEN,"skipped",$G(WHY,"Unable to map vital type"),.RETURN) Q
  S VAL=$$VALUE(ROOT,IEN,RIEN,TYPE,.WHY)
  I VAL="" D STATUS(ROOT,IEN,RIEN,"error",$G(WHY,"Missing vital value"),.RETURN) Q
  S FMDT=$$FMDT(ROOT,IEN,RIEN)
