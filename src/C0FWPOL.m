@@ -53,7 +53,6 @@ ISRPMS() ; $$ - detect RPMS by package capabilities, not host/container name
  ;
 RPMSDEF(DOMAIN) ; $$ - RPMS first-pass deferred domains
  S DOMAIN=$G(DOMAIN)
- I DOMAIN="Encounter" Q 1
  I DOMAIN="Condition" Q 1
  I DOMAIN="DocumentReference" Q 1
  I DOMAIN="Lab" Q 1

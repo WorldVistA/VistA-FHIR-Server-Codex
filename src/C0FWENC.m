@@ -27,12 +27,13 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  I +$G(KNOWNVISIT)>0,'$D(ENCDATA("HEALTH FACTOR")),'$D(ENCDATA("DX/PL")),'$D(ENCDATA("STD CODES")) D  Q
  . D LOG(ROOT,IEN,RIEN,"Encounter already has visitIen "_KNOWNVISIT_"; filing Encounter.note only")
  . D LOADED(ROOT,IEN,RIEN,KNOWNVISIT,"Encounter already linked to visit",.RETURN)
- I +$G(KNOWNVISIT)>0 S VISIT=KNOWNVISIT
- E  K VISIT
  S DUZ=USER
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
  I +$G(DUZ(2))<1 S DUZ(2)=500
  D IO^C0FWCTX
+ I $$RPMS() D RPMSLOAD(ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,+$G(KNOWNVISIT),.RETURN) Q
+ I +$G(KNOWNVISIT)>0 S VISIT=KNOWNVISIT
+ E  K VISIT
  K SENTDATA M SENTDATA=ENCDATA
  D LOG(ROOT,IEN,RIEN,"Calling DATA2PCE^PXAI to add/update encounter")
  D LOGARR(ROOT,IEN,RIEN,"ENCDATA",.SENTDATA)
@@ -77,6 +78,119 @@ HASCLIN(ENCDATA) ; $$ - true if the encounter payload has visit-linked add-ons
  I $D(ENCDATA("DX/PL")) Q 1
  I $D(ENCDATA("STD CODES")) Q 1
  Q 0
+ ;
+RPMS() ; $$ - true when RPMS PCC visit filing is available
+ I '$D(^AUPNVSIT(0)) Q 0
+ I '$D(^DD(9000010,0)) Q 0
+ I $T(+0^VSIT)="" Q 0
+ Q 1
+ ;
+RPMSLOAD(ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,KNOWNVISIT,RETURN) ; File RPMS outpatient visit via ^VSIT
+ N APDT,ERR,OE,VISIT
+ I +$G(KNOWNVISIT)>0 D LOADED(ROOT,IEN,RIEN,+KNOWNVISIT,"Encounter already linked to RPMS visit",.RETURN) Q
+ S APDT=$$APPTDT(FMDT)
+ S VISIT=$$RPMSEXI(DFN,LOC,APDT)
+ I VISIT<1 D RPMSAPPT(.ERR,DFN,LOC,APDT,USER) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
+ I VISIT<1 S VISIT=$$RPMSVIS(.ERR,DFN,LOC,APDT) I VISIT<1 D ERR(ROOT,IEN,RIEN,$S($G(ERR)'="":ERR,1:"^VSIT did not create an RPMS visit"),.RETURN) Q
+ D RPMSSCE(.ERR,DFN,LOC,APDT,USER,VISIT,.OE) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
+ D RPMSPAPT(.ERR,DFN,APDT,USER,+$G(OE)) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
+ D LOG(ROOT,IEN,RIEN,"RPMS visit filed through ^VSIT: "_VISIT)
+ D LOADED(ROOT,IEN,RIEN,VISIT,"Encounter filed as RPMS outpatient visit",.RETURN)
+ D RPMSSTAT(ROOT,IEN,RIEN,VISIT,+$G(OE),APDT,LOC)
+ Q
+ ;
+APPTDT(FMDT) ; $$ - RPMS appointment date/time, seconds stripped like ISIIMP05
+ N TM
+ S FMDT=$G(FMDT)
+ S TM=$P(FMDT,".",2)
+ I TM'="" S $P(FMDT,".",2)=$E(TM_"0000",1,4)
+ Q FMDT
+ ;
+RPMSEXI(DFN,LOC,APDT) ; $$ - existing visit for patient/date/location
+ N IDT,VISIT
+ S IDT=9999999-$P(APDT,".")_"."_$P(APDT,".",2)
+ S VISIT=0
+ F  S VISIT=$O(^AUPNVSIT("AA",+$G(DFN),IDT,VISIT)) Q:VISIT<1  I +$P($G(^AUPNVSIT(VISIT,0)),"^",22)=+$G(LOC) Q
+ Q +VISIT
+ ;
+RPMSAPPT(ERR,DFN,LOC,APDT,USER) ; Create patient/clinic appointment shell
+ N COV,DA,DIK,SDSRTY,SDXSCAT,SDY
+ S ERR=""
+ I $D(^DPT(DFN,"S",APDT,0)),$P($G(^DPT(DFN,"S",APDT,0)),"^",2)'="C" Q
+ S ^DPT(DFN,"S",APDT,0)=LOC
+ S ^SC(LOC,"S",APDT,0)=APDT
+ S:'$D(^DPT(DFN,"S",0)) ^DPT(DFN,"S",0)="^2.98P^^"
+ S:'$D(^SC(LOC,"S",0)) ^SC(LOC,"S",0)="^44.001DA^^"
+ S SDY=+$O(^SC(LOC,"S",APDT,1,""),-1)+1
+ S:'$D(^SC(LOC,"S",APDT,1,0)) ^SC(LOC,"S",APDT,1,0)="^44.003PA^^"
+ S ^SC(LOC,"S",APDT,1,SDY,0)=DFN_"^15"
+ S COV=3
+ I APDT<$$DT^XLFDT S SDSRTY="W"
+ S ^DPT(DFN,"S",APDT,0)=LOC_"^^^^^^"_COV_"^^^^^^^^^"_DT_"^^^^^^"_$G(SDXSCAT)_"^^"_$$NAVA^SDMANA(LOC,APDT,"")
+ S ^DPT(DFN,"S",APDT,1)=APDT
+ S DA=APDT,DA(1)=DFN,DIK="^DPT(DA(1),""S"",",DIK(1)=20 D EN1^DIK
+ Q
+ ;
+RPMSVIS(ERR,DFN,LOC,APDT) ; $$ - create ^AUPNVSIT through Visit Tracking
+ N VSIT,ZINST
+ S ERR=""
+ K VSIT
+ S VSIT("IO")="OUTPATIENT"
+ S VSIT("PAT")=DFN
+ S VSIT("LOC")=LOC
+ S VSIT("VDT")=APDT
+ S VSIT("PKG")="PX"
+ S VSIT("TYP")="O"
+ S VSIT(0)="F"
+ S ZINST=$$GET1^DIQ(44,LOC_",",3,"I")
+ S VSIT("INS")=$S(ZINST>0:ZINST,+$G(DUZ(2))>0:+$G(DUZ(2)),1:"")
+ D ^VSIT
+ I +$G(VSIT("IEN"))<1 S ERR="^VSIT failed to create RPMS visit"_$S($G(VSIT("ERROR"))'="":": "_$G(VSIT("ERROR")),1:"")
+ Q +$G(VSIT("IEN"))
+ ;
+RPMSSCE(ERR,DFN,LOC,APDT,USER,VISIT,OE) ; Create outpatient encounter linked to visit
+ N FDA,MSG,OLD
+ S (ERR,OE)=""
+ I '$D(^SCE(0)) S ERR="OUTPATIENT ENCOUNTER file top node ^SCE(0) is missing" Q
+ S OLD=+$P($G(^SCE(0)),"^",3)
+ K FDA,MSG
+ S FDA(409.68,"+1,",.01)=APDT
+ S FDA(409.68,"+1,",.02)=DFN
+ S FDA(409.68,"+1,",.03)=$P($G(^SC(LOC,0)),"^",7)
+ S FDA(409.68,"+1,",.04)=LOC
+ S FDA(409.68,"+1,",.05)=VISIT
+ S FDA(409.68,"+1,",.07)=$$NOW^XLFDT
+ S FDA(409.68,"+1,",.08)=1
+ S FDA(409.68,"+1,",.1)=9
+ S FDA(409.68,"+1,",.11)=$S($P($G(^SC(LOC,0)),"^",15):$P(^(0),"^",15),1:+$O(^DG(40.8,0)))
+ D UPDATE^DIE("","FDA","","MSG")
+ I $D(MSG) S ERR="Problem saving OUTPATIENT ENCOUNTER #409.68: "_$G(MSG("DIERR",1,"TEXT",1)) Q
+ S OE=+$P($G(^SCE(0)),"^",3)
+ I OE'>OLD S ERR="Unable to resolve created OUTPATIENT ENCOUNTER pointer"
+ Q
+ ;
+RPMSPAPT(ERR,DFN,APDT,USER,OE) ; Update PATIENT appointment subfile after encounter creation
+ N FDA,IENS,MSG
+ S ERR=""
+ K FDA,MSG
+ S IENS=APDT_","_DFN_","
+ S FDA(2.98,IENS,3)="O"
+ S FDA(2.98,IENS,9)=3
+ S FDA(2.98,IENS,19)=USER
+ I +$G(OE)>0 S FDA(2.98,IENS,21)=OE
+ S FDA(2.98,IENS,22)=1
+ S FDA(2.98,IENS,25)="O"
+ S FDA(2.98,IENS,26)=0
+ D FILE^DIE("","FDA","MSG")
+ I $D(MSG) S ERR="Problem saving PATIENT appointment #2.98: "_$G(MSG("DIERR",1,"TEXT",1))
+ Q
+ ;
+RPMSSTAT(ROOT,IEN,RIEN,VISIT,OE,APDT,LOC) ; Persist RPMS filing detail
+ S @ROOT@(IEN,"load","Encounter",RIEN,"rpms","visitIen")=+VISIT
+ S @ROOT@(IEN,"load","Encounter",RIEN,"rpms","outpatientEncounterIen")=+$G(OE)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"rpms","appointmentDate")=$G(APDT)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"rpms","location")=+$G(LOC)
+ Q
  ;
 ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT,VISIT) ; Add VistA Health Factor Encounter extensions
  N CNT,EI,HF,HFIEN,MAG,NAME,NOTE,SEV,URL
