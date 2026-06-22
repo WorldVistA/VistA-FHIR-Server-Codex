@@ -45,6 +45,7 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  SET ENCIEN=+ENCIEN
  IF ENCIEN<1 QUIT
  SET VPRTEXT=1
+ DO FIXVST(ENCIEN)
  DO EN1^VPRDVSIT(ENCIEN,.ENC)
  DO ADDRES^C0FHIRBU(.RTN,"Encounter","E"_ENCIEN,.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="Encounter"
@@ -74,6 +75,14 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  DO SETEHF(.RTN,IDX,ENCIEN)
  DO SETENOTE(.RTN,IDX,.ENC,ENCIEN)
  DO SETDOCREF(.RTN,IDX,.ENC,ENCIEN,DFN)
+ QUIT
+ ;
+FIXVST(VIEN) ; Fill sparse RPMS visit parent nodes before PXKENC copies them
+ NEW NODE
+ SET VIEN=+$GET(VIEN)
+ IF VIEN<1 QUIT
+ SET NODE=""
+ FOR  SET NODE=$ORDER(^AUPNVSIT(VIEN,NODE)) QUIT:NODE=""  IF $DATA(^AUPNVSIT(VIEN,NODE))#10=0 SET ^AUPNVSIT(VIEN,NODE)=""
  QUIT
  ;
 SETETYP(RTN,IDX,ENC) ; Populate Encounter.type from encounter CPT/OS5 when available

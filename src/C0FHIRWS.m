@@ -53,7 +53,15 @@ WSASSET(RTN,FILTER) ; Serve allowlisted browser assets when static /filesystem i
  . S RTN(1)="Not found"
  M RTN=@TMP
  K @TMP
+ D FIXJS(.RTN,FILE)
  S HTTPRSP("mime")=$$ASSETMIME(FILE)
+ Q
+ ;
+FIXJS(RTN,FILE) ; Preserve JavaScript line boundaries after %ZISH reads text nodes
+ N I
+ I $G(FILE)'="tjson.js",$G(FILE)'="tjson_bg.js" Q
+ S I=0
+ F  S I=$O(RTN(I)) Q:I<1  S RTN(I)=$G(RTN(I))_$C(10)
  Q
  ;
 ASSETOK(FILE) ; $$ - true for browser asset names this route may serve
