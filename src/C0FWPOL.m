@@ -59,7 +59,6 @@ RPMSDEF(DOMAIN) ; $$ - RPMS first-pass deferred domains
  I DOMAIN="Appointment" Q 1
  I DOMAIN="CarePlan" Q 1
  I DOMAIN="Allergy" Q 1
- I DOMAIN="Immunization" Q 1
  Q 0
  ;
 ARGENG(DOMAIN,ARGS) ; $$ - request override for controlled tests
