@@ -87,6 +87,7 @@ GETOBS(RTN,DFN,BEG,END,MAX) ; Add Observation resources (vitals) for patient/dat
  IF END'["." SET END=END_".24"
  SET MAX=+$GET(MAX)
  IF MAX<1 SET MAX=200
+ IF $$RPMS^C0FWVIT() DO GETRMSR^C0FWVIT(.RTN,DFN,BEG,END,MAX) QUIT
  SET GMRVSTR="BP;T;R;P;HT;WT;CVP;CG;PO2;PN",GMRVSTR(0)=BEG_"^"_END_"^"_MAX_"^1"
  KILL ^UTILITY($J,"GMRVD")
  DO EN1^GMRVUT0
@@ -151,6 +152,7 @@ VLCODE(NAME) ; $$ - LOINC code^display for known vital display names
  SET X=$$UPCASE^C0FHIR($GET(NAME))
  IF X["BLOOD"&(X["PRESSURE") QUIT "85354-9^Blood pressure panel with all children optional"
  IF X["TEMP" QUIT "8310-5^Body temperature"
+ IF X["O2 SAT" QUIT "59408-5^Oxygen saturation in Arterial blood by Pulse oximetry"
  IF X["PULSE OX" QUIT "59408-5^Oxygen saturation in Arterial blood by Pulse oximetry"
  IF X["OXIM" QUIT "59408-5^Oxygen saturation in Arterial blood by Pulse oximetry"
  IF X["PULSE" QUIT "8867-4^Heart rate"

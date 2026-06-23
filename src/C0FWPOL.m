@@ -53,7 +53,6 @@ ISRPMS() ; $$ - detect RPMS by package capabilities, not host/container name
  ;
 RPMSDEF(DOMAIN) ; $$ - RPMS first-pass deferred domains
  S DOMAIN=$G(DOMAIN)
- I DOMAIN="Condition" Q 1
  I DOMAIN="Lab" Q 1
  I DOMAIN="Medication" Q 1
  I DOMAIN="Procedure" Q 1
@@ -92,11 +91,12 @@ NORM(ENG) ; $$ - normalize policy value
  Q "native"
  ;
 CAP(DOMAIN,ENG) ; $$ - true if requested engine is available
+ N X
  S DOMAIN=$G(DOMAIN),ENG=$$NORM($G(ENG))
  I ENG="native" Q 1
  I ENG="off" Q 1
  I ENG="auto" Q 1
- I ENG="syn",DOMAIN="HealthFactor" Q $S($T(GETHF^SYNFHF)'="":1,1:0)
+ I ENG="syn",DOMAIN="HealthFactor" S X="GETHF^SYNFHF" Q $S($T(@X)'="":1,1:0)
  Q 0
  ;
 UP(X) ; $$ - uppercase
