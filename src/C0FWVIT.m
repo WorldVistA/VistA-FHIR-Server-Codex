@@ -97,6 +97,13 @@ RPMSLOAD(ROOT,IEN,RIEN,DFN,ABBR,RETURN) ; File one RPMS V MEASUREMENT
  I FMDT<1 D STATUS(ROOT,IEN,RIEN,"error","Missing or invalid effectiveDateTime",.RETURN) Q
  S VISIT=$$VISIT(ROOT,IEN,RIEN)
  I VISIT<1 D STATUS(ROOT,IEN,RIEN,"error","Observation has no resolved RPMS visit pointer",.RETURN) Q
+ I $$HASMSR(DFN,VISIT,MSR,FMDT,VAL) D  Q
+ . D STATUS(ROOT,IEN,RIEN,"skipped","Vital sign already filed as RPMS V MEASUREMENT",.RETURN)
+ . S @ROOT@(IEN,"load","Observation",RIEN,"file")=9000010.01
+ . S @ROOT@(IEN,"load","Observation",RIEN,"vitalType")=MSR
+ . S @ROOT@(IEN,"load","Observation",RIEN,"value")=VAL
+ . S @ROOT@(IEN,"load","Observation",RIEN,"dateTime")=FMDT
+ . S @ROOT@(IEN,"load","Observation",RIEN,"visitIen")=VISIT
  S LOC=$$LOC(ROOT,IEN,RIEN)
  I LOC<1 D STATUS(ROOT,IEN,RIEN,"error","Unable to resolve hospital location",.RETURN) Q
  S CLIN=$$CLINIC(LOC)
@@ -191,6 +198,18 @@ MSRIEN(ABBR) ; $$ - RPMS V MEASUREMENT type ien from abbreviation
  N RABBR
  S RABBR=$S($G(ABBR)="P":"PU",$G(ABBR)="T":"TMP",$G(ABBR)="R":"RS",$G(ABBR)="PO2":"O2",$G(ABBR)="PN":"PA",1:$G(ABBR))
  Q +$O(^AUTTMSR("B",RABBR,0))
+ ;
+HASMSR(DFN,VISIT,MSR,FMDT,VAL) ; $$ - true if matching RPMS V MEASUREMENT exists
+ N FOUND,IEN,NODE0,WHEN
+ S IEN=0
+ F  S IEN=$O(^AUPNVMSR("AD",+$G(VISIT),IEN)) Q:IEN<1  D  Q:$G(FOUND)
+ . S NODE0=$G(^AUPNVMSR(IEN,0))
+ . Q:+$P(NODE0,U)'=+$G(MSR)
+ . Q:+$P(NODE0,U,2)'=+$G(DFN)
+ . Q:$P(NODE0,U,4)'=$G(VAL)
+ . S WHEN=$$MSRDT(IEN)
+ . I +WHEN=+$G(FMDT) S FOUND=1
+ Q +$G(FOUND)
  ;
 CODE(ROOT,IEN,RIEN) ; $$ - first Observation code
  Q $G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",1,"code"))

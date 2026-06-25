@@ -10,17 +10,32 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
  I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="Condition" D ERR(ROOT,IEN,RIEN,"Resource is not Condition",.RETURN) Q
  I $$CAND(ROOT,IEN,RIEN) D SKIP(ROOT,IEN,RIEN,"Candidate reminder Condition is note evidence only; no V POV/problem filing attempted.",.RETURN) Q
- S VISIT=$$VISIT(ROOT,IEN,RIEN)
- I VISIT<1 D ERR(ROOT,IEN,RIEN,"Condition has no resolved encounter visit pointer",.RETURN) Q
  S FMDT=$$FMDT(ROOT,IEN,RIEN)
  S ICD=$$RESICD(ROOT,IEN,RIEN,FMDT)
  I ICD<1 D  Q
  . S MSG="Condition has no ICD-10/ICD-9 diagnosis resolvable from codings (ICD or SNOMED CT to ICD-10 map)."
  . D ERR(ROOT,IEN,RIEN,MSG,.RETURN)
  S ADDPL=$$ADDPL(ROOT,IEN,RIEN)
+ S USER=$$USER^C0FWENC()
+ S VISIT=$$VISIT(ROOT,IEN,RIEN)
+ I VISIT<1 D  Q
+ . I 'ADDPL D ERR(ROOT,IEN,RIEN,"Condition has no resolved encounter visit pointer",.RETURN) Q
+ . I FMDT<1 S FMDT=$$NOW^XLFDT
+ . D PROBONLY(ROOT,IEN,RIEN,DFN,ICD,FMDT,USER,.RETURN)
  I FMDT<1 S FMDT=+$P($G(^AUPNVSIT(VISIT,0)),"^")
  I FMDT<1 D ERR(ROOT,IEN,RIEN,"Missing Condition onset and visit date",.RETURN) Q
- S USER=$$USER^C0FWENC()
+ S PROB=$$PROB(DFN,ICD,FMDT)
+ I PROB>0 D  Q
+ . S ADDPL=0
+ . S @ROOT@(IEN,"load","Condition",RIEN,"problemListStatus")="skipped"
+ . S @ROOT@(IEN,"load","Condition",RIEN,"problemListMessage")="Problem already exists on patient problem list"
+ . S @ROOT@(IEN,"load","Condition",RIEN,"problemIen")=PROB
+ . S SCT=$$SCT(ROOT,IEN,RIEN),SCTDES=$$SCTDES(ROOT,IEN,RIEN)
+ . I SCT'="" D SETSCT(PROB,SCT,SCTDES,ROOT,IEN,RIEN,.RETURN)
+ . I $$HASPOV(VISIT,ICD) D LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,"Condition skipped; existing Problem List and V POV rows reused",.RETURN) Q
+ . S RET=$$ADDPOV(.MSG,DFN,VISIT,ICD,$$NARR(ICD,ROOT,IEN,RIEN),FMDT,USER)
+ . I RET<1 D ERR(ROOT,IEN,RIEN,MSG,.RETURN) Q
+ . D LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,"Condition filed as V POV; existing Problem List row reused",.RETURN)
  S PKG=$$FIND1^DIC(9.4,,"","PCE")
  I PKG<1 S PKG=$$FIND1^DIC(9.4,,"","?")
  K PROBDATA,ZZERR,ZZERDESC
@@ -43,7 +58,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  S RET=$$DATA2PCE^PXAI("PROBDATA",PKG,"C0FW WRITEBACK",.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
  I +$G(RET)'=1,+$G(RET)'=-5,'$$HASPOV(VISIT,ICD) D ERR(ROOT,IEN,RIEN,$$ERRMSG(RET,.ZZERR,.ZZERDESC),.RETURN) Q
  S SCT=$$SCT(ROOT,IEN,RIEN),SCTDES=$$SCTDES(ROOT,IEN,RIEN)
- S PROB=$$PROB(DFN,ICD,FMDT)
+ I PROB<1 S PROB=$$PROB(DFN,ICD,FMDT)
  I PROB>0,SCT'="" D SETSCT(PROB,SCT,SCTDES,ROOT,IEN,RIEN,.RETURN)
  D LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,$S(+$G(RET)'=1:"Condition filed through DATA2PCE with warnings",1:"Condition filed through DATA2PCE"),.RETURN)
  I +$G(RET)'=1 S @ROOT@(IEN,"load","Condition",RIEN,"warning")=$$WARNMSG(RET,.ZZERR,.ZZERDESC)
@@ -210,6 +225,79 @@ HASPOV(VISIT,ICD) ; $$ - true if visit has a V POV row for diagnosis
  F  S IND=$O(^AUPNVPOV("AD",+$G(VISIT),IND)) Q:+IND=0  I +$P($G(^AUPNVPOV(IND,0)),"^")=+$G(ICD) Q
  Q $S(+IND>0:1,1:0)
  ;
+PROBONLY(ROOT,IEN,RIEN,DFN,ICD,FMDT,USER,RETURN) ; File a Problem List row without an Encounter/V POV
+ N MSG,PROB,SCT,SCTDES
+ S PROB=$$PROB(DFN,ICD,FMDT)
+ S SCT=$$SCT(ROOT,IEN,RIEN),SCTDES=$$SCTDES(ROOT,IEN,RIEN)
+ I PROB>0 D  Q
+ . I SCT'="" D SETSCT(PROB,SCT,SCTDES,ROOT,IEN,RIEN,.RETURN)
+ . D LOADED(ROOT,IEN,RIEN,0,ICD,0,"Problem-only Condition skipped; existing Problem List row reused",.RETURN)
+ S PROB=$$ADDPROB(.MSG,DFN,ICD,$$NARR(ICD,ROOT,IEN,RIEN),FMDT,USER,SCT,SCTDES)
+ I PROB<1 D ERR(ROOT,IEN,RIEN,MSG,.RETURN) Q
+ S @ROOT@(IEN,"load","Condition",RIEN,"problemIen")=PROB
+ D LOADED(ROOT,IEN,RIEN,0,ICD,1,"Problem-only Condition filed to Problem List",.RETURN)
+ Q
+ ;
+ADDPROB(ERR,DFN,ICD,NARR,FMDT,USER,SCT,SCTDES) ; $$ - file ^AUPNPROB directly for problem-only writeback
+ N FAC,FDA,IEN,MSG,NARRIEN,NOW
+ S ERR="",NOW=$$NOW^XLFDT
+ S NARRIEN=$$PNARR(NARR)
+ I NARRIEN<1 S ERR="Unable to resolve provider narrative for Problem List" Q 0
+ S FAC=$S(+$G(DUZ(2))>0:+$G(DUZ(2)),1:+$O(^AUTTLOC(0)))
+ K FDA,IEN,MSG
+ S FDA(9000011,"+1,",.01)=ICD
+ S FDA(9000011,"+1,",.02)=DFN
+ S FDA(9000011,"+1,",.03)=NOW\1
+ S FDA(9000011,"+1,",.05)=NARRIEN
+ I FAC>0 S FDA(9000011,"+1,",.06)=FAC
+ S FDA(9000011,"+1,",.08)=NOW\1
+ S FDA(9000011,"+1,",.12)="A"
+ I +$G(FMDT)>0 S FDA(9000011,"+1,",.13)=FMDT\1
+ S FDA(9000011,"+1,",1.02)="T"
+ S FDA(9000011,"+1,",1.03)=USER
+ S FDA(9000011,"+1,",1.04)=USER
+ S FDA(9000011,"+1,",1.05)=USER
+ I $G(SCT)'="" S FDA(9000011,"+1,",80001)=SCT
+ I $G(SCTDES)'="" S FDA(9000011,"+1,",80002)=SCTDES
+ D UPDATE^DIE("","FDA","IEN","MSG")
+ I $D(MSG) S ERR="Problem saving Problem List row: "_$G(MSG("DIERR",1,"TEXT",1)) Q 0
+ Q +$G(IEN(1))
+ ;
+ADDPOV(ERR,DFN,VISIT,ICD,NARR,FMDT,USER) ; $$ - file V POV only, without adding a Problem List row
+ N CLIN,FDA,IENS,LOC,MSG,NARRIEN
+ S ERR=""
+ I $$HASPOV(VISIT,ICD) Q 1
+ S NARRIEN=$$PNARR(NARR)
+ I NARRIEN<1 S ERR="Unable to resolve provider narrative for V POV" Q 0
+ S LOC=+$P($G(^AUPNVSIT(+$G(VISIT),0)),U,22)
+ S CLIN=+$P($G(^SC(LOC,0)),U,7)
+ K FDA,MSG
+ S IENS="+1,"
+ S FDA(9000010.07,IENS,.01)=ICD
+ S FDA(9000010.07,IENS,.02)=DFN
+ S FDA(9000010.07,IENS,.03)=VISIT
+ S FDA(9000010.07,IENS,.04)=NARRIEN
+ S FDA(9000010.07,IENS,.12)=$S($$PRIMARY(VISIT,ICD):"P",1:"S")
+ S FDA(9000010.07,IENS,1201)=FMDT
+ I CLIN>0 S FDA(9000010.07,IENS,1203)=CLIN
+ S FDA(9000010.07,IENS,1204)=USER
+ S FDA(9000010.07,IENS,1216)=$$NOW^XLFDT
+ S FDA(9000010.07,IENS,1217)=USER
+ D UPDATE^DIE("","FDA","","MSG")
+ I $D(MSG) S ERR="Problem saving RPMS V POV: "_$G(MSG("DIERR",1,"TEXT",1)) Q 0
+ Q 1
+ ;
+PNARR(TXT) ; $$ - provider narrative ien
+ N FDA,IEN,MSG,RET
+ S TXT=$E($G(TXT),1,160)
+ I $L(TXT)<2 S TXT="FHIR CONDITION"
+ S RET=+$O(^AUTNPOV("B",TXT,0))
+ I RET>0 Q RET
+ K FDA,IEN,MSG
+ S FDA(9999999.27,"+1,",.01)=TXT
+ D UPDATE^DIE("","FDA","IEN","MSG")
+ Q +$G(IEN(1))
+ ;
 PROB(DFN,ICD,FMDT) ; $$ - most recent active problem for patient/diagnosis
  N BEST,IFN,LM,ODT
  S (BEST,ODT)=0,IFN=0
@@ -218,7 +306,6 @@ PROB(DFN,ICD,FMDT) ; $$ - most recent active problem for patient/diagnosis
  . Q:$P($G(^AUPNPROB(IFN,1)),"^",2)="H"
  . S LM=+$P($G(^AUPNPROB(IFN,0)),"^",3)
  . I LM<1 S LM=+$P($G(^AUPNPROB(IFN,0)),"^",8)
- . I +$G(FMDT)>0,LM>0,LM>(FMDT+1) Q
  . I LM'<ODT S ODT=LM,BEST=IFN
  Q +BEST
  ;

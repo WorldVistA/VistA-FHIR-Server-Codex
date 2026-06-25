@@ -45,9 +45,12 @@ ARGPROF(ARGS) ; $$ - request override for focused policy tests
  Q ""
  ;
 ISRPMS() ; $$ - detect RPMS by package capabilities, not host/container name
+ N X
  I '$D(^AUPNPAT(0)) Q 0
  I '$D(^DD(9000001,0)) Q 0
- I $T(+0^APCDALV)'="" Q 1
+ I '$D(^AUPNVMSR(0)) Q 0
+ I '$D(^AUTTMSR(0)) Q 0
+ S X="+0^APCDALV" I $T(@X)'="" Q 1
  I $D(^AUPNVSIT(0)),$D(^DD(9000010,0)),$D(^AUTTLOC(0)) Q 1
  Q 0
  ;

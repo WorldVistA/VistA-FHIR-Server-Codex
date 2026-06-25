@@ -82,18 +82,25 @@ HASCLIN(ENCDATA) ; $$ - true if the encounter payload has visit-linked add-ons
 RPMS() ; $$ - true when RPMS PCC visit filing is available
  I '$D(^AUPNVSIT(0)) Q 0
  I '$D(^DD(9000010,0)) Q 0
+ I '$D(^AUPNVMSR(0)) Q 0
+ I '$D(^AUTTMSR(0)) Q 0
  I $T(+0^VSIT)="" Q 0
  Q 1
  ;
 RPMSLOAD(ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,KNOWNVISIT,RETURN) ; File RPMS outpatient visit via ^VSIT
  N APDT,ERR,OE,VISIT
- I +$G(KNOWNVISIT)>0 D LOADED(ROOT,IEN,RIEN,+KNOWNVISIT,"Encounter already linked to RPMS visit",.RETURN) Q
  S APDT=$$APPTDT(FMDT)
+ I +$G(KNOWNVISIT)>0 D  Q
+ . D FIXVIS(+KNOWNVISIT)
+ . D RPMSHF(.ERR,DFN,+KNOWNVISIT,APDT,LOC,USER,.ENCDATA,ROOT,IEN,RIEN) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
+ . D LOADED(ROOT,IEN,RIEN,+KNOWNVISIT,"Encounter already linked to RPMS visit",.RETURN)
  S VISIT=$$RPMSEXI(DFN,LOC,APDT)
  I VISIT<1 D RPMSAPPT(.ERR,DFN,LOC,APDT,USER) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
  I VISIT<1 S VISIT=$$RPMSVIS(.ERR,DFN,LOC,APDT) I VISIT<1 D ERR(ROOT,IEN,RIEN,$S($G(ERR)'="":ERR,1:"^VSIT did not create an RPMS visit"),.RETURN) Q
+ D FIXVIS(VISIT)
  D RPMSSCE(.ERR,DFN,LOC,APDT,USER,VISIT,.OE) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
  D RPMSPAPT(.ERR,DFN,APDT,USER,+$G(OE)) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
+ D RPMSHF(.ERR,DFN,VISIT,APDT,LOC,USER,.ENCDATA,ROOT,IEN,RIEN) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
  D LOG(ROOT,IEN,RIEN,"RPMS visit filed through ^VSIT: "_VISIT)
  D LOADED(ROOT,IEN,RIEN,VISIT,"Encounter filed as RPMS outpatient visit",.RETURN)
  D RPMSSTAT(ROOT,IEN,RIEN,VISIT,+$G(OE),APDT,LOC)
@@ -148,6 +155,14 @@ RPMSVIS(ERR,DFN,LOC,APDT) ; $$ - create ^AUPNVSIT through Visit Tracking
  I +$G(VSIT("IEN"))<1 S ERR="^VSIT failed to create RPMS visit"_$S($G(VSIT("ERROR"))'="":": "_$G(VSIT("ERROR")),1:"")
  Q +$G(VSIT("IEN"))
  ;
+FIXVIS(VISIT) ; Ensure RPMS visit structural parent nodes exist
+ S VISIT=+$G(VISIT)
+ Q:VISIT<1
+ Q:'$D(^AUPNVSIT(VISIT,0))
+ I $D(^AUPNVSIT(VISIT,26))#2=0 S ^AUPNVSIT(VISIT,26)=""
+ I $D(^AUPNVSIT(VISIT,28))#2=0 S ^AUPNVSIT(VISIT,28)=""
+ Q
+ ;
 RPMSSCE(ERR,DFN,LOC,APDT,USER,VISIT,OE) ; Create outpatient encounter linked to visit
  N FDA,MSG,OLD
  S (ERR,OE)=""
@@ -190,6 +205,49 @@ RPMSSTAT(ROOT,IEN,RIEN,VISIT,OE,APDT,LOC) ; Persist RPMS filing detail
  S @ROOT@(IEN,"load","Encounter",RIEN,"rpms","outpatientEncounterIen")=+$G(OE)
  S @ROOT@(IEN,"load","Encounter",RIEN,"rpms","appointmentDate")=$G(APDT)
  S @ROOT@(IEN,"load","Encounter",RIEN,"rpms","location")=+$G(LOC)
+ Q
+ ;
+RPMSHF(ERR,DFN,VISIT,FMDT,LOC,USER,ENCDATA,ROOT,IEN,RIEN) ; File queued RPMS V HEALTH FACTOR rows
+ N CLIN,CMT,FDA,HF,HFIEN,MSG,SEV
+ S ERR=""
+ S HF=0 F  S HF=$O(ENCDATA("HEALTH FACTOR",HF)) Q:HF<1  D  Q:$G(ERR)'=""
+ . S HFIEN=+$G(ENCDATA("HEALTH FACTOR",HF,"HEALTH FACTOR"))
+ . Q:HFIEN<1
+ . I $$HASHF(VISIT,HFIEN) D RPHFST(ROOT,IEN,RIEN,HFIEN,"skipped","Health Factor already filed on visit: "_$P($G(^AUTTHF(HFIEN,0)),U)) Q
+ . S CMT=$G(ENCDATA("HEALTH FACTOR",HF,"COMMENT"))
+ . S SEV=$G(ENCDATA("HEALTH FACTOR",HF,"LEVEL/SEVERITY"))
+ . S CLIN=$$RPMSCLIN(LOC)
+ . K FDA,MSG
+ . S FDA(9000010.23,"+1,",.01)=HFIEN
+ . S FDA(9000010.23,"+1,",.02)=DFN
+ . S FDA(9000010.23,"+1,",.03)=VISIT
+ . I SEV'="" S FDA(9000010.23,"+1,",.04)=SEV
+ . S FDA(9000010.23,"+1,",.05)=USER
+ . S FDA(9000010.23,"+1,",1201)=FMDT
+ . I CLIN>0 S FDA(9000010.23,"+1,",1203)=CLIN
+ . S FDA(9000010.23,"+1,",1204)=USER
+ . S FDA(9000010.23,"+1,",1216)=$$NOW^XLFDT
+ . S FDA(9000010.23,"+1,",1217)=USER
+ . I CMT'="" S FDA(9000010.23,"+1,",81101)=$E(CMT,1,245)
+ . D UPDATE^DIE("","FDA","","MSG")
+ . I $D(MSG) S ERR="Problem saving RPMS V HEALTH FACTOR: "_$G(MSG("DIERR",1,"TEXT",1)) Q
+ . D RPHFST(ROOT,IEN,RIEN,HFIEN,"filed","Health Factor filed as RPMS V HEALTH FACTOR: "_$P($G(^AUTTHF(HFIEN,0)),U))
+ Q
+ ;
+RPMSCLIN(LOC) ; $$ - RPMS clinic stop-code pointer
+ N CLIN
+ S CLIN=+$P($G(^SC(+$G(LOC),0)),U,7)
+ I CLIN>0,$D(^DIC(40.7,CLIN,0)) Q CLIN
+ S CLIN=$O(^DIC(40.7,"C",28,0))
+ I CLIN>0 Q CLIN
+ Q +$O(^DIC(40.7,0))
+ ;
+RPHFST(ROOT,IEN,RIEN,HFIEN,STATUS,MSG) ; Update matching queued Health Factor status
+ N EI,NAME
+ S EI=0 F  S EI=$O(@ROOT@(IEN,"load","Encounter",RIEN,"parms","HEALTH FACTOR",EI)) Q:EI<1  D
+ . S NAME=$G(@ROOT@(IEN,"load","Encounter",RIEN,"parms","HEALTH FACTOR",EI,"name"))
+ . I +$O(^AUTTHF("B",NAME,0))'=+$G(HFIEN) Q
+ . D HFSTAT(ROOT,IEN,RIEN,EI,STATUS,MSG)
  Q
  ;
 ADDHF(ENCDATA,ROOT,IEN,RIEN,FMDT,VISIT) ; Add VistA Health Factor Encounter extensions

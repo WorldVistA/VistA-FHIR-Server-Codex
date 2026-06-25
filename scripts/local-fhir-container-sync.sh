@@ -37,6 +37,7 @@ SRC="$ROOT/src"
 REHMP_ROOT="${REHMP_ROOT:-$ROOT/../rehmp}"
 REMINDERS_FHIR_WRITE_DEMO="${REMINDERS_FHIR_WRITE_DEMO:-$ROOT/../reminders-on-fhir/ui/fhir-write-demo}"
 RG_SRC="${REHMP_C0RG_DIR:-$REHMP_ROOT/C0RG}"
+C0T_SRC="${C0T_ROUTINES_DIR:-$ROOT/../C0T-terminology-gateway/routines}"
 EXTRA_M=()
 if [[ -f "$ROOT/SYNWEBUT.m" ]]; then
   EXTRA_M+=( "$ROOT/SYNWEBUT.m" )
@@ -73,6 +74,10 @@ copy_via_docker() {
     docker cp "$f" "$FHIR_CONTAINER:$FHIR_REMOTE_P/"
   done
   for f in "$RG_SRC"/*.m; do
+    [[ -f "$f" ]] || continue
+    docker cp "$f" "$FHIR_CONTAINER:$FHIR_REMOTE_P/"
+  done
+  for f in "$C0T_SRC"/C0TAPI.m "$C0T_SRC"/C0TLEX.m "$C0T_SRC"/C0TBSTS.m; do
     [[ -f "$f" ]] || continue
     docker cp "$f" "$FHIR_CONTAINER:$FHIR_REMOTE_P/"
   done
@@ -223,6 +228,14 @@ copy_via_ssh() {
     echo "==> Copying C0RG routines from $RG_SRC to ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
     "${SCP_BASE[@]}" "$RG_SRC"/*.m "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
   fi
+  local c0t_files=()
+  for f in "$C0T_SRC"/C0TAPI.m "$C0T_SRC"/C0TLEX.m "$C0T_SRC"/C0TBSTS.m; do
+    [[ -f "$f" ]] && c0t_files+=( "$f" )
+  done
+  if ((${#c0t_files[@]})); then
+    echo "==> Copying C0T routines from $C0T_SRC to ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
+    "${SCP_BASE[@]}" "${c0t_files[@]}" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_P}/"
+  fi
 }
 
 restart_web_and_register() {
@@ -243,6 +256,10 @@ restart_web_and_register() {
       printf 'zlink "%s"\n' "$(basename "$f" .m)"
     done
     for f in "$RG_SRC"/*.m; do
+      [[ -f "$f" ]] || continue
+      printf 'zlink "%s"\n' "$(basename "$f" .m)"
+    done
+    for f in "$C0T_SRC"/C0TAPI.m "$C0T_SRC"/C0TLEX.m "$C0T_SRC"/C0TBSTS.m; do
       [[ -f "$f" ]] || continue
       printf 'zlink "%s"\n' "$(basename "$f" .m)"
     done
