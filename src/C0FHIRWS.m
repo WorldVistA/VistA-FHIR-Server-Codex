@@ -108,10 +108,10 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  I SRC="AICONSULT" D
  . S THEME="theme-light"
  . S BADGE="AI Consult"
- . S SRCNOTE="AI Consult response via /aiconsult"
- . S LOADURL="/aiconsult?dfn="_D_"&format=json&file=1"
+ . S SRCNOTE="AI Consult Stage 2 response via /aiconsult"
+ . S LOADURL="/aiconsult?dfn="_D_"&format=json&file=1&stage=2"
  . S RAWLBL="raw ai consult"
- . S RAWURL=LOADURL
+ . S RAWURL="/aiconsult?dfn="_D_"&format=json&file=1"
  . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
  . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")
  E  I SRC="SHOWFHIR" D
