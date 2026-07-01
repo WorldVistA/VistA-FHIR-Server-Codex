@@ -55,6 +55,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
  I +$G(DUZ(2))<1 S DUZ(2)=500
  D IO^C0FWCTX
+ I $$RPMS^C0FWENC() D RPMSLOAD(ROOT,IEN,RIEN,DFN,VISIT,ICD,FMDT,USER,ADDPL,.RETURN) Q
  S RET=$$DATA2PCE^PXAI("PROBDATA",PKG,"C0FW WRITEBACK",.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
  I +$G(RET)'=1,+$G(RET)'=-5,'$$HASPOV(VISIT,ICD) D ERR(ROOT,IEN,RIEN,$$ERRMSG(RET,.ZZERR,.ZZERDESC),.RETURN) Q
  S SCT=$$SCT(ROOT,IEN,RIEN),SCTDES=$$SCTDES(ROOT,IEN,RIEN)
@@ -62,6 +63,19 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  I PROB>0,SCT'="" D SETSCT(PROB,SCT,SCTDES,ROOT,IEN,RIEN,.RETURN)
  D LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,$S(+$G(RET)'=1:"Condition filed through DATA2PCE with warnings",1:"Condition filed through DATA2PCE"),.RETURN)
  I +$G(RET)'=1 S @ROOT@(IEN,"load","Condition",RIEN,"warning")=$$WARNMSG(RET,.ZZERR,.ZZERDESC)
+ Q
+ ;
+RPMSLOAD(ROOT,IEN,RIEN,DFN,VISIT,ICD,FMDT,USER,ADDPL,RETURN) ; File RPMS Condition through authorized PCC APIs
+ N MSG,PROB,RET,SCT,SCTDES
+ S SCT=$$SCT(ROOT,IEN,RIEN),SCTDES=$$SCTDES(ROOT,IEN,RIEN)
+ I ADDPL D  Q:$G(MSG)'=""
+ . S PROB=$$ADDPROB(.MSG,DFN,ICD,$$NARR(ICD,ROOT,IEN,RIEN),FMDT,USER,SCT,SCTDES)
+ . I PROB<1 D ERR(ROOT,IEN,RIEN,MSG,.RETURN) Q
+ . S @ROOT@(IEN,"load","Condition",RIEN,"problemIen")=PROB
+ . I SCT'="" D SETSCT(PROB,SCT,SCTDES,ROOT,IEN,RIEN,.RETURN)
+ S RET=$$ADDPOV(.MSG,DFN,VISIT,ICD,$$NARR(ICD,ROOT,IEN,RIEN),FMDT,USER,SCT)
+ I RET<1 D ERR(ROOT,IEN,RIEN,MSG,.RETURN) Q
+ D LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,$S(ADDPL:"Condition filed to RPMS Problem List and V POV through APCD APIs",1:"Condition filed to RPMS V POV through APCDALVR"),.RETURN)
  Q
  ;
 VISIT(ROOT,IEN,RIEN) ; $$ - visit ien from Condition encounter reference
@@ -100,7 +114,7 @@ RESICD(ROOT,IEN,RIEN,FMDT) ; $$ - ICD diagnosis ien from Condition.code codings 
  . Q:CODE=""
  . S CS=$$ICDCS(SYS,FMDT)
  . I CS>0 S ICD=$$ICDIEN(CODE,SYS,FMDT) Q:ICD>0
- . I $$SCTSYS(SYS) S ICD=$$SCTICD10(CODE) Q:ICD>0
+ . I $$SCTSYS(SYS) S ICD=$$SCTICD(CODE,FMDT) Q:ICD>0
  Q +ICD
  ;
 SCTSYS(SYS) ; $$ - true if coding system is SNOMED CT
@@ -129,6 +143,26 @@ SCTDES(ROOT,IEN,RIEN) ; $$ - SNOMED designation code extension on SNOMED coding
 SCTDESURL() ; $$ - coding extension URL for SNOMED designation code
  Q "http://vistaplex.org/fhir/StructureDefinition/vista-snomed-designation-code"
  ;
+SCTICD(SCT,FMDT) ; $$ - SNOMED CT code to diagnosis ien, preferring RPMS BSTS then Lexicon
+ N ICD
+ I $$RPMS^C0FWENC() S ICD=$$BSTSICD(SCT,FMDT) I ICD>0 Q ICD
+ Q $$SCTICD10(SCT)
+ ;
+BSTSICD(SCT,FMDT) ; $$ - SNOMED CT code to ICD diagnosis ien via local RPMS BSTS maps
+ N CIEN,CODE,ICD,NODE
+ I $G(SCT)="" Q 0
+ I '$D(^BSTS(9002318.4,0)) Q 0
+ S CIEN=0
+ F  S CIEN=$O(^BSTS(9002318.4,CIEN)) Q:CIEN<1  D  Q:+$G(ICD)>0
+ . Q:$P($G(^BSTS(9002318.4,CIEN,0)),U,2)'=$G(SCT)
+ . S NODE=0 F  S NODE=$O(^BSTS(9002318.4,CIEN,2,NODE)) Q:NODE<1  D  Q:+$G(ICD)>0
+ . . S CODE=$P($G(^BSTS(9002318.4,CIEN,2,NODE,0)),U,8)
+ . . S ICD=$$ICDIEN(CODE,"ICD-10-CM",FMDT)
+ . S NODE=0 F  S NODE=$O(^BSTS(9002318.4,CIEN,3,NODE)) Q:NODE<1  D  Q:+$G(ICD)>0
+ . . S CODE=$P($G(^BSTS(9002318.4,CIEN,3,NODE,0)),U,2)
+ . . S ICD=$$ICDIEN(CODE,"ICD-9-CM",FMDT)
+ Q +$G(ICD)
+ ;
 SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien via Lexicon map 5217693
  N ICDTX,LEX,MAPVUID,RET,Y
  I $G(U)="" S U="^"
@@ -150,7 +184,7 @@ ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only
  . S VB=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"valueBoolean"))
  . S VS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"valueString"))
  . I VS'="" S VB=VS
- Q $S(FND:$$BOOLPL(VB),1:0)
+ Q $S(FND:$$BOOLPL(VB),1:1)
  ;
 CAND(ROOT,IEN,RIEN) ; $$ - true if reminder generated a non-fileable candidate Condition
  N EI,URL,VAL
@@ -235,15 +269,24 @@ PROBONLY(ROOT,IEN,RIEN,DFN,ICD,FMDT,USER,RETURN) ; File a Problem List row witho
  S PROB=$$ADDPROB(.MSG,DFN,ICD,$$NARR(ICD,ROOT,IEN,RIEN),FMDT,USER,SCT,SCTDES)
  I PROB<1 D ERR(ROOT,IEN,RIEN,MSG,.RETURN) Q
  S @ROOT@(IEN,"load","Condition",RIEN,"problemIen")=PROB
+ I SCT'="" D SETSCT(PROB,SCT,SCTDES,ROOT,IEN,RIEN,.RETURN)
  D LOADED(ROOT,IEN,RIEN,0,ICD,1,"Problem-only Condition filed to Problem List",.RETURN)
  Q
  ;
-ADDPROB(ERR,DFN,ICD,NARR,FMDT,USER,SCT,SCTDES) ; $$ - file ^AUPNPROB directly for problem-only writeback
- N FAC,FDA,IEN,MSG,NARRIEN,NOW
+ADDPROB(ERR,DFN,ICD,NARR,FMDT,USER,SCT,SCTDES) ; $$ - file Problem List row
+ N APIERR,FAC,FDA,IEN,MSG,NARRIEN,NOW
  S ERR="",NOW=$$NOW^XLFDT
+ I +$G(DUZ)<1 S DUZ=USER
+ I $G(DUZ(0))="" S DUZ(0)="@"
+ I +$G(DUZ(2))<1 S DUZ(2)=500
+ S FAC=+$G(DUZ(2))
+ I FAC<1!'$D(^AUTTLOC(FAC,0)) S FAC=+$O(^AUTTLOC(0))
+ I $T(ADDPROB^APCDALV2)'="" D  Q $S(+$G(APIERR):0,1:$$PROB(DFN,ICD,FMDT))
+ . S APIERR=$$ADDPROB^APCDALV2("`"_ICD,DFN,$$FMTE^XLFDT(NOW\1,"1D"),,$$NARRTXT(NARR),FAC,$$FMTE^XLFDT(NOW\1,"1D"),"A",$$FMTE^XLFDT(FMDT\1,"1D"),"P",USER)
+ . I APIERR S ERR="APCDALV2 failed to save Problem List row, error code "_APIERR
+ . I 'APIERR,$$PROB(DFN,ICD,FMDT)<1 S ERR="APCDALV2 saved Problem List row but C0FW could not resolve the created problem",APIERR=4
  S NARRIEN=$$PNARR(NARR)
  I NARRIEN<1 S ERR="Unable to resolve provider narrative for Problem List" Q 0
- S FAC=$S(+$G(DUZ(2))>0:+$G(DUZ(2)),1:+$O(^AUTTLOC(0)))
  K FDA,IEN,MSG
  S FDA(9000011,"+1,",.01)=ICD
  S FDA(9000011,"+1,",.02)=DFN
@@ -263,13 +306,15 @@ ADDPROB(ERR,DFN,ICD,NARR,FMDT,USER,SCT,SCTDES) ; $$ - file ^AUPNPROB directly fo
  I $D(MSG) S ERR="Problem saving Problem List row: "_$G(MSG("DIERR",1,"TEXT",1)) Q 0
  Q +$G(IEN(1))
  ;
-ADDPOV(ERR,DFN,VISIT,ICD,NARR,FMDT,USER) ; $$ - file V POV only, without adding a Problem List row
- N CLIN,FDA,IENS,LOC,MSG,NARRIEN
+ADDPOV(ERR,DFN,VISIT,ICD,NARR,FMDT,USER,SCT) ; $$ - file V POV only, without adding a Problem List row
+ N CLIN,FDA,IENS,LOC,MSG,NARRIEN,NEWIEN
  S ERR=""
  I $$HASPOV(VISIT,ICD) Q 1
+ S LOC=+$P($G(^AUPNVSIT(+$G(VISIT),0)),U,22)
+ I $$RPMS^C0FWENC() D  Q $S($G(ERR)'="":0,1:1)
+ . S NEWIEN=$$RPMSPOV^C0FWENC(.ERR,DFN,VISIT,ICD,$$NARRTXT(NARR),FMDT,LOC,USER,$$PRIMARY(VISIT,ICD),$G(SCT))
  S NARRIEN=$$PNARR(NARR)
  I NARRIEN<1 S ERR="Unable to resolve provider narrative for V POV" Q 0
- S LOC=+$P($G(^AUPNVSIT(+$G(VISIT),0)),U,22)
  S CLIN=+$P($G(^SC(LOC,0)),U,7)
  K FDA,MSG
  S IENS="+1,"
@@ -297,6 +342,11 @@ PNARR(TXT) ; $$ - provider narrative ien
  S FDA(9999999.27,"+1,",.01)=TXT
  D UPDATE^DIE("","FDA","IEN","MSG")
  Q +$G(IEN(1))
+ ;
+NARRTXT(TXT) ; $$ - provider narrative text accepted by RPMS APCD APIs
+ S TXT=$E($G(TXT),1,160)
+ I $L(TXT)<2 Q "FHIR CONDITION"
+ Q TXT
  ;
 PROB(DFN,ICD,FMDT) ; $$ - most recent active problem for patient/diagnosis
  N BEST,IFN,LM,ODT
@@ -338,6 +388,7 @@ ACTIVE(ROOT,IEN,RIEN) ; $$ - VistA problem active flag
  ;
 LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,MSG,RETURN) ; Record loaded status
  D SET^C0FWSTAT(ROOT,IEN,RIEN,"Condition","Condition","loaded",$G(MSG),.RETURN)
+ D CINFO(ROOT,IEN,RIEN,.RETURN)
  S @ROOT@(IEN,"load","Condition",RIEN,"visitIen")=+VISIT
  S @ROOT@(IEN,"load","Condition",RIEN,"diagnosisIen")=+ICD
  S @ROOT@(IEN,"load","Condition",RIEN,"addToProblemList")=+$G(ADDPL)
@@ -347,10 +398,28 @@ LOADED(ROOT,IEN,RIEN,VISIT,ICD,ADDPL,MSG,RETURN) ; Record loaded status
  ;
 ERR(ROOT,IEN,RIEN,MSG,RETURN) ; Record error status
  D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Condition","Condition",$G(MSG),.RETURN)
+ D CINFO(ROOT,IEN,RIEN,.RETURN)
  Q
  ;
 SKIP(ROOT,IEN,RIEN,MSG,RETURN) ; Record skipped status
  D SKIP^C0FWSTAT(ROOT,IEN,RIEN,"Condition","Condition",$G(MSG),.RETURN)
+ D CINFO(ROOT,IEN,RIEN,.RETURN)
+ Q
+ ;
+CINFO(ROOT,IEN,RIEN,RETURN) ; Add source Condition code/text to load log
+ N CODE,DISP,NI,SYS,TXT
+ Q:$G(ROOT)=""
+ S IEN=+$G(IEN),RIEN=+$G(RIEN) Q:IEN<1!(RIEN<1)
+ S TXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","text"))
+ S NI=0 F  S NI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI)) Q:+NI=0  D  Q:CODE'=""
+ . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"code"))
+ . S SYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"system"))
+ . S DISP=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"display"))
+ I CODE'="" S @ROOT@(IEN,"load","Condition",RIEN,"conditionCode")=CODE,RETURN("domains","Condition","conditionCode")=CODE
+ I SYS'="" S @ROOT@(IEN,"load","Condition",RIEN,"conditionSystem")=SYS,RETURN("domains","Condition","conditionSystem")=SYS
+ I DISP'="" S @ROOT@(IEN,"load","Condition",RIEN,"conditionDisplay")=DISP,RETURN("domains","Condition","conditionDisplay")=DISP
+ I TXT="" S TXT=DISP
+ I TXT'="" S @ROOT@(IEN,"load","Condition",RIEN,"conditionText")=TXT,RETURN("domains","Condition","conditionText")=TXT
  Q
  ;
 ERRMSG(RET,ZZERR,ZZERDESC) ; $$ - DATA2PCE error text
