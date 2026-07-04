@@ -38,6 +38,13 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  D GETFHIR^C0FHIR(.RTN,.FILTER)
  Q
  ;
+DASH(RTN,FILTER) ; Human FHIR patient dashboard
+ K RTN
+ S FILTER("type")="text/html"
+ D FHIRIDX^C0FHIR(.RTN)
+ S HTTPRSP("mime")="text/html"
+ Q
+ ;
 WSASSET(RTN,FILTER) ; Serve allowlisted browser assets when static /filesystem is unavailable
  N DIR,FILE,OK,TMP
  K RTN
@@ -191,7 +198,7 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"</head>")
  D ADDLN(.RTN,"<body class='"_THEME_"'>")
  D ADDLN(.RTN,"<div class='top'><div class='topline'><strong>C0FHIR Browser</strong><span class='badge'>"_BADGE_"</span></div>")
- S TOPLINKS="<div class='sub'><a href='/fhir'>index</a><a href="""_RAWURL_""">"_RAWLBL_"</a>"
+ S TOPLINKS="<div class='sub'><a href='/fhir-dashboard'>dashboard</a><a href="""_RAWURL_""">"_RAWLBL_"</a>"
  I ALTRAW'="" S TOPLINKS=TOPLINKS_"<a href="""_ALTRAW_""">"_ALTLBL_"</a>"
  I D>0 S TOPLINKS=TOPLINKS_"<a href=""/vpr?dfn="_D_""">vpr</a>"
  S TOPLINKS=TOPLINKS_"<span class='srcnote'>"_SRCNOTE_"</span>"

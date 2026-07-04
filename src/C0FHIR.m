@@ -11,7 +11,7 @@ C0FHIR ; VAMC/JS - VistA FHIR Server entry points
  ;
 GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  ; RTN is the in-flight Bundle structure
- ; This first version maps core demographic fields from file #2.
+ ; Demographics follow the same VADPT/VPR sources used by the C0CDA header.
  NEW DOB,FAM,GIV,IDX,NAME,SEX,SSN,X0
  SET DFN=+$GET(DFN)
  IF DFN<1 QUIT
@@ -20,7 +20,10 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  SET NAME=$PIECE(X0,"^")
  SET RTN("entry",IDX,"resource","resourceType")="Patient"
  SET RTN("entry",IDX,"resource","id")=DFN
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient"
+ SET RTN("entry",IDX,"resource","active")="true"
  IF NAME'="" DO
+ . SET RTN("entry",IDX,"resource","name",1,"use")="official"
  . SET RTN("entry",IDX,"resource","name",1,"text")=NAME
  . SET FAM=$$TRIM($PIECE(NAME,",",1))
  . SET GIV=$$TRIM($PIECE(NAME,",",2,99))
@@ -29,14 +32,202 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  SET SEX=$PIECE(X0,"^",2)
  IF SEX'="" SET RTN("entry",IDX,"resource","gender")=$$GENDER(SEX)
  SET DOB=+$PIECE(X0,"^",3)
- IF DOB>0 SET RTN("entry",IDX,"resource","birthDate")=$PIECE($$FM2FHIR^C0FHIRBU(DOB),"T",1)
+ IF DOB>0 DO
+ . SET RTN("entry",IDX,"resource","birthDate")=$PIECE($$FM2FHIR^C0FHIRBU(DOB),"T",1)
+ . SET RTN("entry",IDX,"resource","name",1,"period","start")=$PIECE($$FM2FHIR^C0FHIRBU(DOB),"T",1)
  SET SSN=$PIECE(X0,"^",9)
  IF SSN?9N DO
  . SET RTN("entry",IDX,"resource","identifier",1,"system")="http://hl7.org/fhir/sid/us-ssn"
  . SET RTN("entry",IDX,"resource","identifier",1,"value")=SSN
  . ; Force JSON string type for SSN (FHIR identifier.value is string)
  . SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
+ DO PATID(.RTN,IDX,DFN)
+ DO PATADDR(.RTN,IDX,DFN)
+ DO PATTEL(.RTN,IDX,DFN)
+ DO PATDEAD(.RTN,IDX,DFN)
+ DO PATCOMM(.RTN,IDX,DFN)
+ DO PATEXT(.RTN,IDX,DFN,SEX)
+ DO PATTEXT(.RTN,IDX,NAME,DFN)
  QUIT
+ ;
+PATID(RTN,IDX,DFN) ; Add local medical record number identifier
+ SET RTN("entry",IDX,"resource","identifier",2,"system")=$$SYSURI()
+ SET RTN("entry",IDX,"resource","identifier",2,"value")=DFN
+ SET RTN("entry",IDX,"resource","identifier",2,"value","\s")=""
+ SET RTN("entry",IDX,"resource","identifier",2,"type","coding",1,"system")="http://terminology.hl7.org/CodeSystem/v2-0203"
+ SET RTN("entry",IDX,"resource","identifier",2,"type","coding",1,"code")="MR"
+ SET RTN("entry",IDX,"resource","identifier",2,"type","text")="Medical record number"
+ QUIT
+ ;
+PATADDR(RTN,IDX,DFN) ; Add permanent address from VADPT
+ NEW I,STATE,VAPA,X
+ SET VAPA("P")="" DO ADD^VADPT
+ SET X=0
+ FOR I=1:1:3 IF $GET(VAPA(I))'="" SET X=X+1,RTN("entry",IDX,"resource","address",1,"line",X)=VAPA(I)
+ IF $GET(VAPA(4))'="" SET RTN("entry",IDX,"resource","address",1,"city")=VAPA(4)
+ SET STATE=$$STATE($PIECE($GET(VAPA(5)),U))
+ IF STATE="" SET STATE=$PIECE($GET(VAPA(5)),U,2)
+ IF STATE'="" SET RTN("entry",IDX,"resource","address",1,"state")=STATE
+ IF $PIECE($GET(VAPA(11)),U,2)'="" SET RTN("entry",IDX,"resource","address",1,"postalCode")=$PIECE(VAPA(11),U,2)
+ IF $DATA(RTN("entry",IDX,"resource","address",1)) SET RTN("entry",IDX,"resource","address",1,"use")="home"
+ QUIT
+ ;
+PATTEL(RTN,IDX,DFN) ; Add telecom from the VPR/C0CDA phone sources
+ NEW CNT,HOME,MOB,VAPA,WORK
+ SET CNT=0
+ SET VAPA("P")="" DO ADD^VADPT
+ SET HOME=$$PHONE($GET(VAPA(8)))
+ SET MOB=$$PHONE($$GET1^DIQ(2,DFN_",",.134))
+ SET WORK=$$PHONE($$GET1^DIQ(2,DFN_",",.132))
+ IF HOME'="" SET CNT=CNT+1 DO TEL1(.RTN,IDX,CNT,"home",HOME)
+ IF MOB'="" SET CNT=CNT+1 DO TEL1(.RTN,IDX,CNT,"mobile",MOB)
+ IF WORK'="" SET CNT=CNT+1 DO TEL1(.RTN,IDX,CNT,"work",WORK)
+ QUIT
+ ;
+TEL1(RTN,IDX,CNT,USE,VAL) ; Add one phone telecom
+ SET RTN("entry",IDX,"resource","telecom",CNT,"system")="phone"
+ SET RTN("entry",IDX,"resource","telecom",CNT,"value")=VAL
+ SET RTN("entry",IDX,"resource","telecom",CNT,"use")=USE
+ QUIT
+ ;
+PATDEAD(RTN,IDX,DFN) ; Add deceased[x] from VADPT
+ NEW VADM,VA,VAERR,X
+ DO DEM^VADPT
+ SET X=+$PIECE($PIECE($GET(VADM(6)),U),".")
+ IF X>0 SET RTN("entry",IDX,"resource","deceasedDateTime")=$$FM2FHIR^C0FHIRBU(X) QUIT
+ SET RTN("entry",IDX,"resource","deceasedBoolean")="false"
+ QUIT
+ ;
+PATCOMM(RTN,IDX,DFN) ; Add language communication from VADPT, defaulting to English
+ NEW CODE,I,NAME,VADM,VA,VAERR,X
+ DO DEM^VADPT
+ SET CODE="",NAME=""
+ IF $GET(VADM(13)) DO
+ . SET I=+$ORDER(VADM(13,0)),NAME=$PIECE($GET(VADM(13,I)),U,2)
+ . IF NAME'="" SET I=$$FIND1^DIC(.85,,"X",NAME),CODE=$$GET1^DIQ(.85,I_",",.02)
+ IF CODE="" SET CODE="en",NAME="English"
+ IF NAME'="" SET RTN("entry",IDX,"resource","communication",1,"language","text")=NAME
+ QUIT
+ ;
+PATEXT(RTN,IDX,DFN,SEX) ; Add US Core demographic extensions
+ DO BIRTHSEX(.RTN,IDX,$GET(SEX))
+ DO RACEEXT(.RTN,IDX,DFN)
+ DO ETHNEXT(.RTN,IDX,DFN)
+ DO TRIBEXT(.RTN,IDX,DFN)
+ QUIT
+ ;
+BIRTHSEX(RTN,IDX,SEX) ; Add US Core birth sex from VistA administrative sex
+ NEW N
+ SET SEX=$SELECT(SEX="M":"M",SEX="F":"F",1:"UNK")
+ SET N=$$EXTN(.RTN,IDX)+1
+ SET RTN("entry",IDX,"resource","extension",N,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
+ SET RTN("entry",IDX,"resource","extension",N,"valueCode")=SEX
+ QUIT
+ ;
+RACEEXT(RTN,IDX,DFN) ; Add US Core race extension from VADPT race data
+ NEW CODE,DISP,N,VADM,VA,VAERR
+ DO DEM^VADPT
+ DO RCVAL(DFN,.VADM,.CODE,.DISP)
+ IF CODE="" SET CODE="UNK",DISP="Unknown"
+ SET N=$$EXTN(.RTN,IDX)+1
+ SET RTN("entry",IDX,"resource","extension",N,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-race"
+ DO DEMOEXT(.RTN,IDX,N,"ombCategory",CODE,DISP)
+ SET RTN("entry",IDX,"resource","extension",N,"extension",2,"url")="text"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",2,"valueString")=DISP
+ QUIT
+ ;
+ETHNEXT(RTN,IDX,DFN) ; Add US Core ethnicity extension from VADPT ethnicity data
+ NEW CODE,DISP,N,VADM,VA,VAERR
+ DO DEM^VADPT
+ DO ETHVAL(DFN,.VADM,.CODE,.DISP)
+ IF CODE="" SET CODE="UNK",DISP="Unknown"
+ SET N=$$EXTN(.RTN,IDX)+1
+ SET RTN("entry",IDX,"resource","extension",N,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-ethnicity"
+ DO DEMOEXT(.RTN,IDX,N,"ombCategory",CODE,DISP)
+ SET RTN("entry",IDX,"resource","extension",N,"extension",2,"url")="text"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",2,"valueString")=DISP
+ QUIT
+ ;
+DEMOEXT(RTN,IDX,N,SLICE,CODE,DISP) ; Add one OMB/nullFlavor coding to race/ethnicity
+ NEW SYS
+ SET SYS=$SELECT(CODE="UNK":"http://terminology.hl7.org/CodeSystem/v3-NullFlavor",CODE="ASKU":"http://terminology.hl7.org/CodeSystem/v3-NullFlavor",1:"urn:oid:2.16.840.1.113883.6.238")
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"url")=SLICE
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCoding","system")=SYS
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCoding","code")=CODE
+ IF DISP'="" SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCoding","display")=DISP
+ QUIT
+ ;
+TRIBEXT(RTN,IDX,DFN) ; Add US Core tribal affiliation from RPMS IHS Patient fields
+ NEW CODE,DISP,N
+ DO TRIBVAL(DFN,.CODE,.DISP)
+ IF CODE="" QUIT
+ IF DISP="" SET DISP=CODE
+ SET N=$$EXTN(.RTN,IDX)+1
+ SET RTN("entry",IDX,"resource","extension",N,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"url")="tribalAffiliation"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"system")="urn:oid:2.16.840.1.113883.5.140"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"code")=CODE
+ IF DISP'="" SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"display")=DISP
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCodeableConcept","text")=DISP
+ QUIT
+ ;
+RCVAL(DFN,VADM,CODE,DISP) ; Return first race code/display
+ NEW I,MAP,VAL
+ SET (CODE,DISP)=""
+ SET I=+$ORDER(VADM(12,0)) QUIT:I<1
+ SET VAL=$GET(VADM(12,I)),DISP=$PIECE(VAL,U,2)
+ SET MAP=$$SAFEGET(2.02,+VAL_","_DFN_",",".01:3")
+ IF MAP["^" SET CODE=$PIECE(MAP,U),DISP=$SELECT(DISP'="":DISP,1:$PIECE(MAP,U,2))
+ QUIT
+ ;
+ETHVAL(DFN,VADM,CODE,DISP) ; Return first ethnicity code/display
+ NEW I,MAP,VAL
+ SET (CODE,DISP)=""
+ SET I=+$ORDER(VADM(11,0)) QUIT:I<1
+ SET VAL=$GET(VADM(11,I)),DISP=$PIECE(VAL,U,2)
+ SET MAP=$$SAFEGET(2.06,+VAL_","_DFN_",",".01:3")
+ IF MAP["^" SET CODE=$PIECE(MAP,U),DISP=$SELECT(DISP'="":DISP,1:$PIECE(MAP,U,2))
+ QUIT
+ ;
+TRIBVAL(DFN,CODE,DISP) ; Return RPMS tribal affiliation when filed
+ SET (CODE,DISP)=""
+ IF '$DATA(^AUPNPAT(+$GET(DFN),0)) QUIT
+ SET DISP=$$SAFEGET(9000001,DFN_",",1108),CODE=$$SAFEGET(9000001,DFN_",",1108,"I") QUIT:DISP'=""
+ SET DISP=$$SAFEGET(9000001,DFN_",",.09),CODE=$$SAFEGET(9000001,DFN_",",.09,"I")
+ QUIT
+ ;
+SAFEGET(FILE,IENS,FIELD,FLAGS) ; GET1^DIQ with errors contained for optional fields
+ NEW $ETRAP,$ESTACK,VAL
+ SET VAL="",FLAGS=$GET(FLAGS)
+ SET $ETRAP="SET $ECODE="""",VAL="""" QUIT"
+ SET VAL=$$GET1^DIQ(FILE,IENS,FIELD,FLAGS)
+ QUIT VAL
+ ;
+EXTN(RTN,IDX) ; Last Patient.extension index
+ QUIT +$ORDER(RTN("entry",IDX,"resource","extension",""),-1)
+ ;
+PHONE(X) ; Normalize phone text enough for FHIR telecom.value
+ SET X=$$TRIM($GET(X))
+ QUIT X
+ ;
+STATE(IEN) ; USPS state abbreviation from STATE file
+ NEW VAL
+ SET VAL=""
+ IF +$GET(IEN)>0 SET VAL=$$SAFEGET(5,+IEN_",",1)
+ QUIT VAL
+ ;
+PATTEXT(RTN,IDX,NAME,DFN) ; Add generated narrative for validators and readers
+ NEW TXT
+ SET TXT=$GET(NAME) IF TXT="" SET TXT="Patient "_+$GET(DFN)
+ SET RTN("entry",IDX,"resource","text","status")="generated"
+ SET RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">"_$$HTMLESC(TXT)_"</div>"
+ QUIT
+ ;
+SYSURI() ; Identifier system for local patient ids
+ NEW SITE
+ SET SITE=$PIECE($$SITE^VASITE,U,3)
+ IF SITE="" SET SITE="local"
+ QUIT "http://vistafhir.org/fhir/sid/"_SITE_"/mrn"
  ;
 GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  ; ENCIEN is expected to be a visit ien from ^AUPNVSIT
@@ -676,9 +867,9 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  SET HASVPR=$$VPROK()
  SET NCOLS=6+$SELECT(HASGRAPH:2,1:0)+$SELECT(HASVPR:1,1:0)
  DO ADDLN(.RTN,"<!DOCTYPE HTML>")
- DO ADDLN(.RTN,"<html><head><title>FHIR Patient Index</title></head><body>")
- DO ADDLN(.RTN,"<h1>FHIR Patient Index</h1>")
- DO ADDLN(.RTN,"<p>Click Name for the VistA FHIR browser. The Synthea FHIR column opens the stored source bundle in a light-theme browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea).</p>")
+ DO ADDLN(.RTN,"<html><head><title>FHIR Dashboard</title></head><body>")
+ DO ADDLN(.RTN,"<h1>FHIR Dashboard</h1>")
+ DO ADDLN(.RTN,"<p>This dashboard is available at /fhir-dashboard. Click Name for the VistA FHIR browser. The Synthea FHIR column opens the stored source bundle in a light-theme browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea).</p>")
  DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
  SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>rehmp CPRS</th><th>AI Consult</th>"
  IF HASGRAPH SET ROW=ROW_"<th>Synthea FHIR</th><th>Load Log</th>"
@@ -1164,6 +1355,7 @@ ENVINIT ; Ensure legacy VPR/runtime variables are available
  ; Use =0 not <1 so DUZ=.5 postmaster survives (+.5 is 0.5, which is <1).
  IF +$GET(DUZ)=0 SET DUZ=1
  IF $GET(DUZ(0))="" SET DUZ(0)="@"
+ IF '$DATA(DUZ("AG")) SET DUZ("AG")=""
  IF +$GET(DUZ(2))<1 DO
  . SET DIV=+$PIECE($GET(^VA(200,+DUZ,2,1,0)),"^")
  . IF DIV<1 SET DIV=+$ORDER(^DIC(4,0))
