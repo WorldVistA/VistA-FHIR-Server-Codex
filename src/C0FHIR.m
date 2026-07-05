@@ -60,7 +60,7 @@ PATID(RTN,IDX,DFN) ; Add local medical record number identifier
  QUIT
  ;
 PATADDR(RTN,IDX,DFN) ; Add permanent address from VADPT
- NEW I,STATE,VAPA,X
+ NEW DOB,I,STATE,VAPA,X
  SET VAPA("P")="" DO ADD^VADPT
  SET X=0
  FOR I=1:1:3 IF $GET(VAPA(I))'="" SET X=X+1,RTN("entry",IDX,"resource","address",1,"line",X)=VAPA(I)
@@ -69,7 +69,10 @@ PATADDR(RTN,IDX,DFN) ; Add permanent address from VADPT
  IF STATE="" SET STATE=$PIECE($GET(VAPA(5)),U,2)
  IF STATE'="" SET RTN("entry",IDX,"resource","address",1,"state")=STATE
  IF $PIECE($GET(VAPA(11)),U,2)'="" SET RTN("entry",IDX,"resource","address",1,"postalCode")=$PIECE(VAPA(11),U,2)
- IF $DATA(RTN("entry",IDX,"resource","address",1)) SET RTN("entry",IDX,"resource","address",1,"use")="home"
+ IF $DATA(RTN("entry",IDX,"resource","address",1)) DO
+ . SET RTN("entry",IDX,"resource","address",1,"use")="home"
+ . SET DOB=+$PIECE($GET(^DPT(DFN,0)),U,3)
+ . IF DOB>0 SET RTN("entry",IDX,"resource","address",1,"period","start")=$PIECE($$FM2FHIR^C0FHIRBU(DOB),"T",1)
  QUIT
  ;
 PATTEL(RTN,IDX,DFN) ; Add telecom from the VPR/C0CDA phone sources
@@ -111,6 +114,7 @@ PATCOMM(RTN,IDX,DFN) ; Add language communication from VADPT, defaulting to Engl
  ;
 PATEXT(RTN,IDX,DFN,SEX) ; Add US Core demographic extensions
  DO BIRTHSEX(.RTN,IDX,$GET(SEX))
+ DO SEXEXT(.RTN,IDX,$GET(SEX))
  DO RACEEXT(.RTN,IDX,DFN)
  DO ETHNEXT(.RTN,IDX,DFN)
  DO TRIBEXT(.RTN,IDX,DFN)
@@ -122,6 +126,15 @@ BIRTHSEX(RTN,IDX,SEX) ; Add US Core birth sex from VistA administrative sex
  SET N=$$EXTN(.RTN,IDX)+1
  SET RTN("entry",IDX,"resource","extension",N,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-birthsex"
  SET RTN("entry",IDX,"resource","extension",N,"valueCode")=SEX
+ QUIT
+ ;
+SEXEXT(RTN,IDX,SEX) ; Add US Core sex extension from VistA administrative sex
+ NEW N
+ SET SEX=$SELECT(SEX="M":"248153007",SEX="F":"248152002",1:"UNK")
+ SET N=$$EXTN(.RTN,IDX)+1
+ SET RTN("entry",IDX,"resource","extension",N,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-sex"
+ SET RTN("entry",IDX,"resource","extension",N,"valueCode")=SEX
+ SET RTN("entry",IDX,"resource","extension",N,"valueCode","\s")=""
  QUIT
  ;
 RACEEXT(RTN,IDX,DFN) ; Add US Core race extension from VADPT race data
