@@ -68,7 +68,9 @@ PATADDR(RTN,IDX,DFN) ; Add permanent address from VADPT
  SET STATE=$$STATE($PIECE($GET(VAPA(5)),U))
  IF STATE="" SET STATE=$PIECE($GET(VAPA(5)),U,2)
  IF STATE'="" SET RTN("entry",IDX,"resource","address",1,"state")=STATE
- IF $PIECE($GET(VAPA(11)),U,2)'="" SET RTN("entry",IDX,"resource","address",1,"postalCode")=$PIECE(VAPA(11),U,2)
+ IF $PIECE($GET(VAPA(11)),U,2)'="" DO
+ . SET RTN("entry",IDX,"resource","address",1,"postalCode")=$PIECE(VAPA(11),U,2)
+ . SET RTN("entry",IDX,"resource","address",1,"postalCode","\s")=""
  IF $DATA(RTN("entry",IDX,"resource","address",1)) DO
  . SET RTN("entry",IDX,"resource","address",1,"use")="home"
  . SET DOB=+$PIECE($GET(^DPT(DFN,0)),U,3)
