@@ -1236,11 +1236,12 @@ GETBNDLJ(REQ,OUT,ERR) ; Return one Bundle response encoded as JSON
  ; OUT returns JSON output nodes from ENCODE^XLFJSON
  ; ERR returns encoder errors, if any
  NEW BUNDLE
- DO GETBNDL(.REQ,.BUNDLE)
+ DO GETBNDLA(.REQ,.BUNDLE)
  DO TOJSON^C0FHIRBU(.BUNDLE,.OUT,.ERR)
  QUIT
  ;
 GETBNDLA(REQ,OUT) ; Return one Bundle response as a finalized native array
+ IF $T(GET^C0FWCAC)'="",$$GET^C0FWCAC(.REQ,.OUT) QUIT
  DO GETBNDL(.REQ,.OUT)
  DO FINAL^C0FHIRBU(.OUT)
  QUIT
@@ -1262,6 +1263,8 @@ MAPFILT(FILTER,REQ) ; Map URL parameters into request structure
  IF REQ("LOCATION")<1 SET REQ("LOCATION")=+$GET(FILTER("LOC"))
  IF REQ("LOCATION")<1 SET REQ("LOCATION")=+$GET(FILTER("location"))
  IF REQ("LOCATION")<1 SET REQ("LOCATION")=+$GET(FILTER("LOCATION"))
+ IF +$GET(FILTER("refresh")) SET REQ("REFRESH")=1
+ IF +$GET(FILTER("REFRESH")) SET REQ("REFRESH")=1
  DO MAPDOM(.FILTER,.REQ)
  QUIT
  ;

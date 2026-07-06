@@ -36,6 +36,7 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  S RETURN("load","engine")="C0FW"
  S RETURN("load","profile")=$$PROFILE^C0FWPOL(.ARGS)
  S RETURN("load","clinicalFiling")=$S($G(RETURN("loadStatus"))="loaded":"partial",1:$G(RETURN("loadStatus")))
+ I $T(INV^C0FWCAC)'="" D INV^C0FWCAC(IEN,ROOT)
  Q
  ;
 DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,ARGS,RETURN) ; Policy-aware domain dispatch

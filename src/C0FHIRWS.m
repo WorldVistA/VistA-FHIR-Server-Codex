@@ -7,9 +7,14 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  ; RTN:    Output array (passed by reference)
  ; FILTER: Input/Output array (passed by reference)
  ;
- N DFN,IEN,NAME,VIEW
+ N DFN,IEN,NAME,PATH,VIEW
  K RTN
  S FILTER("type")="application/json" ; default mime type
+ S PATH=$G(HTTPREQ("path"))
+ I $P(PATH,"/",2)="fhir",$P(PATH,"/",3)'="" D  Q
+ . S FILTER("resource")=$P(PATH,"/",3)
+ . I $P(PATH,"/",4)'="",$P(PATH,"/",4)'="_search" S FILTER("id")=$P(PATH,"/",4)
+ . D WS^C0FWCAC(.RTN,.FILTER)
  ;
  S DFN=$G(FILTER("dfn"))
  S IEN=+$G(FILTER("ien"))

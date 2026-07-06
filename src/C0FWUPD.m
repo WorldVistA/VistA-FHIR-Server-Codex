@@ -75,6 +75,7 @@ wsUpdatePatient(ARGS,BODY,RESULT) ; POST /updatepatient
  . S RETURN("loadStatus")="skipped"
  . S RETURN("load","message")="No DFN resolved for updatepatient graph row"
  I $G(ARGS("returngraph"))=1 D TXLOAD^C0FWIDX(.RETURN,IEN,LASTRIEN+1,LASTRIEN+CNT)
+ I $T(INV^C0FWCAC)'="" D INV^C0FWCAC(IEN,ROOT)
  K C0FWBUNDLE
  D ENCODE^XLFJSON("RETURN","RESULT")
  Q 1
