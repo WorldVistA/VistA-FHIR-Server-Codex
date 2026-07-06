@@ -144,6 +144,8 @@ IDENT(CROOT,SUB,RES) ; identifier token values
  ;
 CODEABLE(CROOT,SUB,PRED,NODE) ; CodeableConcept token extraction
  N CODE,I,SYS,TXT
+ I '$D(@NODE@("coding")),$D(@NODE) DO  Q
+ . S I=0 F  S I=$O(@NODE@(I)) Q:+I<1  D CODEABLE(CROOT,SUB,PRED,$NA(@NODE@(I)))
  S TXT=$G(@NODE@("text")) I TXT'="" D STR(CROOT,SUB,PRED,TXT)
  S I=0 F  S I=$O(@NODE@("coding",I)) Q:+I<1  D
  . S SYS=$G(@NODE@("coding",I,"system")),CODE=$G(@NODE@("coding",I,"code"))
@@ -176,16 +178,47 @@ SET(CROOT,SUB,PRED,OBJ) ; Set one cached search triple
  Q
  ;
 WS(OUT,FILTER) ; REST-style /fhir/{resource}[/{id}] search/read endpoint
- N ERR,IDARG,JERR,RESARG,TMP
+ N ERR,IDARG,JERR,PATH,RESARG,TMP
  S RESARG=$S($D(FILTER("resource")):$G(FILTER("resource")),$D(FILTER)#2:$G(FILTER),1:"")
  S IDARG=$G(FILTER("id"))
  I $D(HTTPARGS) M FILTER=HTTPARGS
+ S PATH=$G(HTTPREQ("path"))
+ I RESARG="",$P(PATH,"/",2)="fhir",$P(PATH,"/",3)'="" S RESARG=$P(PATH,"/",3)
+ I IDARG="",$P(PATH,"/",2)="fhir",$P(PATH,"/",4)'="" S IDARG=$P(PATH,"/",4)
  I RESARG'="" S FILTER("resource")=RESARG
  I IDARG'="" S FILTER("id")=IDARG
- D SEARCH(.FILTER,.TMP,.ERR)
+ I IDARG'="" D READ(.FILTER,.TMP,.ERR)
+ E  D SEARCH(.FILTER,.TMP,.ERR)
  I $G(ERR)'="" D OO(ERR,.TMP)
  D TOJSON^C0FHIRBU(.TMP,.OUT,.JERR)
  S HTTPRSP("mime")="application/fhir+json"
+ Q
+ ;
+WSREAD(OUT,FILTER,ID) ; GET /fhir/{resource}/{id} wrapper
+ N ERR,JERR,PATH,TMP
+ I $D(HTTPARGS) M FILTER=HTTPARGS
+ S PATH=$G(HTTPREQ("path"))
+ S FILTER("resource")=$P(PATH,"/",3)
+ S FILTER("id")=$P(PATH,"/",4)
+ D READ(.FILTER,.TMP,.ERR)
+ I $G(ERR)'="" D OO(ERR,.TMP)
+ D TOJSON^C0FHIRBU(.TMP,.OUT,.JERR)
+ S HTTPRSP("mime")="application/fhir+json"
+ Q
+ ;
+READ(FILTER,OUT,ERR) ; Read one cached resource by resource type/id
+ N C,ENTRY,IEN,RES,ROOT,SUB
+ K OUT,ERR
+ S RES=$$RESTYPE($G(FILTER("resource")))
+ I RES="" S ERR="Missing or unsupported FHIR resource type" Q
+ S SUB=RES_"/"_$G(FILTER("id"))
+ S ROOT=$$ROOT^C0FWGRT("fhir-intake")
+ I ROOT="" S ERR="FHIR graph root is unavailable" Q
+ S IEN=0 F  S IEN=$O(@ROOT@(IEN)) Q:+IEN<1  D  Q:$D(OUT)
+ . S C="" F  S C=$O(@ROOT@(IEN,"cache",C)) Q:C=""  D  Q:$D(OUT)
+ . . S ENTRY=+$O(@ROOT@(IEN,"cache",C,"SPO",SUB,"entry","")) Q:ENTRY<1
+ . . M OUT=@ROOT@(IEN,"cache",C,"bundle","entry",ENTRY,"resource")
+ I '$D(OUT) S ERR=RES_"/"_$G(FILTER("id"))_" not found in cache"
  Q
  ;
 SEARCH(FILTER,OUT,ERR) ; Build searchset Bundle from cache indexes
@@ -265,13 +298,16 @@ TOKSET(CROOT,PRED,VAL,KEEP) ; Exact token/reference match, comma means OR
  F  Q:VAL=""  D
  . S TOK=$P(VAL,",",1),VAL=$P(VAL,",",2,999)
  . D ADDKEEP(CROOT,PRED,TOK,.KEEP)
+ . I TOK'["/" D ADDKEEP(CROOT,PRED,"Patient/"_TOK,.KEEP)
+ . I TOK'["/" D ADDKEEP(CROOT,PRED,"Encounter/"_TOK,.KEEP)
  . I TOK["Patient/" D ADDKEEP(CROOT,PRED,$P(TOK,"Patient/",2),.KEEP)
  . I TOK["Encounter/" D ADDKEEP(CROOT,PRED,$P(TOK,"Encounter/",2),.KEEP)
  Q
  ;
 DATESET(CROOT,PRED,VAL,KEEP) ; Date exact/range match
  N OP,SUB,V
- S OP=$E(VAL,1,2) I "eqnelegtlesagtap"'[OP S OP="eq"
+ S OP=$E(VAL,1,2)
+ I OP'="eq",OP'="ne",OP'="lt",OP'="le",OP'="gt",OP'="ge",OP'="sa",OP'="eb",OP'="ap" S OP="eq"
  I OP'="eq" S VAL=$E(VAL,3,$L(VAL))
  S V="" F  S V=$O(@CROOT@("POS",PRED,V)) Q:V=""  I $$DATEOK(V,OP,VAL) D
  . S SUB="" F  S SUB=$O(@CROOT@("POS",PRED,V,SUB)) Q:SUB=""  S KEEP(SUB)=""
@@ -291,13 +327,22 @@ ADDKEEP(CROOT,PRED,OBJ,KEEP) ; Add exact POS hits
  Q
  ;
 DATEOK(HAVE,OP,WANT) ; $$ - compare ISO-ish date strings lexically
- S HAVE=$P($G(HAVE),"T",1),WANT=$P($G(WANT),"T",1)
+ S HAVE=$$DNUM($P($G(HAVE),"T",1)),WANT=$$DNUM($P($G(WANT),"T",1))
+ I HAVE=""!(WANT="") Q 0
  I OP="eq" Q HAVE=WANT
- I OP="ge" Q HAVE]]WANT!(HAVE=WANT)
- I OP="gt" Q HAVE]]WANT
- I OP="le" Q WANT]]HAVE!(HAVE=WANT)
- I OP="lt" Q WANT]]HAVE
+ I OP="ge" Q HAVE'<WANT
+ I OP="gt" Q HAVE>WANT
+ I OP="le" Q HAVE'>WANT
+ I OP="lt" Q HAVE<WANT
  Q HAVE=WANT
+ ;
+DNUM(X) ; $$ - ISO date/dateTime prefix as sortable YYYYMMDD number
+ N D
+ S D=$P($G(X),"T",1)
+ I D?4N1"-"2N1"-"2N Q $TR(D,"-")
+ I D?4N1"-"2N Q $TR(D,"-")_"01"
+ I D?4N Q D_"0101"
+ Q ""
  ;
 REQDFN(FILTER,RES) ; $$ - patient id for patient-scoped cache
  N X
@@ -312,6 +357,8 @@ RESTYPE(X) ; $$ - normalize supported resource type
  I X="PATIENT" Q "Patient"
  I X="OBSERVATION" Q "Observation"
  I X="CONDITION" Q "Condition"
+ I X="DIAGNOSTICREPORT" Q "DiagnosticReport"
+ I X="ORGANIZATION" Q "Organization"
  I X="ENCOUNTER" Q "Encounter"
  I X="ALLERGYINTOLERANCE" Q "AllergyIntolerance"
  I X="IMMUNIZATION" Q "Immunization"

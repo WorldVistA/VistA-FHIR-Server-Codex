@@ -33,12 +33,14 @@ GETREM(RTN,DFN,LOC,MAX) ; Add Reminders Due DiagnosticReport
 REPORT(RTN,IDX,DFN,LOC) ; Initialize DiagnosticReport resource
  SET RTN("entry",IDX,"resource","resourceType")="DiagnosticReport"
  SET RTN("entry",IDX,"resource","id")="REMINDERS-DUE-"_DFN
+ SET RTN("entry",IDX,"resource","text","status")="generated"
+ SET RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Clinical reminders due for patient "_+$GET(DFN)_"</div>"
  SET RTN("entry",IDX,"resource","status")="final"
  SET RTN("entry",IDX,"resource","code","coding",1,"system")="urn:va:report"
  SET RTN("entry",IDX,"resource","code","coding",1,"code")="reminders-due"
  SET RTN("entry",IDX,"resource","code","coding",1,"display")="Reminders Due"
  SET RTN("entry",IDX,"resource","code","text")="Reminders Due"
- SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET RTN("entry",IDX,"resource","effectiveDateTime")=$$NOWFHIR()
  SET RTN("entry",IDX,"resource","issued")=$$NOWFHIR()
  SET RTN("entry",IDX,"resource","performer",1,"display")="VistA Clinical Reminders"

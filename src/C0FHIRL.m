@@ -116,7 +116,8 @@ SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
  IF VUID'="" DO
  . SET RTN("entry",IDX,"resource","code","coding",2,"system")="urn:va:vuid"
  . SET RTN("entry",IDX,"resource","code","coding",2,"code")=VUID
- SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET RTN("entry",IDX,"resource","effectiveDateTime")=$$LABDT($PIECE(ID,";",2))
  SET RES=$PIECE($GET(LINE),"^",3),UNIT=$PIECE($GET(LINE),"^",5)
  IF $$ISNUM^C0FHIRD(RES) DO  QUIT RID
@@ -130,7 +131,7 @@ SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
  QUIT RID
  ;
 TRACKPAN(PAN,LINE,OBSRID) ; Collect lab observations by accession for panel reports
- NEW ACC,CNT,ID,PKEY,VPRIDT
+ NEW ACC,CNT,ID,LOINC,NAME,PKEY,VPRIDT
  SET ID=$PIECE($GET(LINE),"^",1)
  SET VPRIDT=$PIECE(ID,";",2)
  SET ACC=$$TRIM^C0FHIR($PIECE($GET(LINE),"^",13))
@@ -140,13 +141,16 @@ TRACKPAN(PAN,LINE,OBSRID) ; Collect lab observations by accession for panel repo
  SET PKEY=VPRIDT_"|"_ACC
  SET PAN(PKEY,"idt")=VPRIDT
  SET PAN(PKEY,"accession")=ACC
+ SET LOINC=$PIECE($GET(LINE),"^",9),NAME=$PIECE($GET(LINE),"^",2)
+ IF LOINC'="",$GET(PAN(PKEY,"loinc"))="" SET PAN(PKEY,"loinc")=LOINC
+ IF NAME'="",$GET(PAN(PKEY,"name"))="" SET PAN(PKEY,"name")=NAME
  SET CNT=+$GET(PAN(PKEY,"count"))+1
  SET PAN(PKEY,"count")=CNT
  SET PAN(PKEY,"obs",CNT)=OBSRID
  QUIT
  ;
 ADDPANELS(RTN,DFN,PAN) ; Emit DiagnosticReport resources for multi-test panels
- NEW ACC,CNT,DRID,IDT,IDX,OBS,PKEY,SEQ
+ NEW ACC,CNT,DRID,IDT,IDX,LOINC,OBS,PKEY,SEQ
  SET PKEY=""
  FOR  SET PKEY=$ORDER(PAN(PKEY)) Q:PKEY=""  DO
  . SET CNT=+$GET(PAN(PKEY,"count"))
@@ -158,20 +162,53 @@ ADDPANELS(RTN,DFN,PAN) ; Emit DiagnosticReport resources for multi-test panels
  . DO ADDRES^C0FHIRBU(.RTN,"DiagnosticReport",DRID,.IDX)
  . SET RTN("entry",IDX,"resource","resourceType")="DiagnosticReport"
  . SET RTN("entry",IDX,"resource","id")=DRID
+ . SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-diagnosticreport-lab"
+ . SET RTN("entry",IDX,"resource","text","status")="generated"
+ . SET RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Laboratory report "_ACC_"</div>"
  . SET RTN("entry",IDX,"resource","status")="final"
  . SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/v2-0074"
  . SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="LAB"
+ . SET RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Laboratory"
+ . SET RTN("entry",IDX,"resource","category",1,"text")="Laboratory"
+ . SET LOINC=$$PANELCODE(ACC,.PAN,PKEY)
+ . IF LOINC'="" DO
+ . . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
+ . . SET RTN("entry",IDX,"resource","code","coding",1,"code")=LOINC
+ . . SET RTN("entry",IDX,"resource","code","coding",1,"display")=$$PANELNAME(ACC,LOINC)
  . SET RTN("entry",IDX,"resource","code","text")=ACC_" panel"
- . SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ . SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  . SET RTN("entry",IDX,"resource","effectiveDateTime")=$$LABDT(IDT)
+ . SET RTN("entry",IDX,"resource","issued")=$$LABDT(IDT)
+ . SET RTN("entry",IDX,"resource","performer",1,"reference")="Organization/VISTA-LAB"
+ . SET RTN("entry",IDX,"resource","performer",1,"display")="VistA Laboratory"
  . SET RTN("entry",IDX,"resource","identifier",1,"system")="urn:va:accession"
  . SET RTN("entry",IDX,"resource","identifier",1,"value")=ACC
  . SET SEQ=0
  . FOR  SET SEQ=$ORDER(PAN(PKEY,"obs",SEQ)) Q:SEQ<1  DO
  . . SET OBS=$GET(PAN(PKEY,"obs",SEQ))
  . . IF OBS="" QUIT
- . . SET RTN("entry",IDX,"resource","result",SEQ,"reference")=$$REFURL^C0FHIRBU("Observation",OBS)
+ . . SET RTN("entry",IDX,"resource","result",SEQ,"reference")="Observation/"_OBS
+ . DO LABORG(.RTN)
  QUIT
+ ;
+LABORG(RTN) ; Supporting Organization for lab DiagnosticReport performers
+ NEW IDX
+ DO ADDRES^C0FHIRBU(.RTN,"Organization","VISTA-LAB",.IDX)
+ SET RTN("entry",IDX,"resource","resourceType")="Organization"
+ SET RTN("entry",IDX,"resource","id")="VISTA-LAB"
+ SET RTN("entry",IDX,"resource","name")="VistA Laboratory"
+ QUIT
+ ;
+PANELCODE(ACC,PAN,PKEY) ; LOINC panel code when known
+ NEW CODE
+ SET CODE=$GET(PAN(PKEY,"loinc"))
+ IF CODE'="" QUIT CODE
+ IF $EXTRACT($GET(ACC),1,2)="HE" QUIT "58410-2"
+ QUIT ""
+ ;
+PANELNAME(ACC,CODE) ; Display for known LOINC panel codes
+ IF $GET(CODE)="58410-2" QUIT "CBC panel - Blood by Automated count"
+ QUIT $GET(ACC)_" panel"
  ;
 PANELID(IDT,ACC) ; Build stable FHIR id for one lab panel DiagnosticReport
  NEW ID
