@@ -41,7 +41,7 @@ SETMED(RTN,MED,DFN) ; Map one VPR medication entry to FHIR MedicationRequest
  SET RTN("entry",IDX,"resource","intent")="order"
  SET STAT=$$MEDSTAT($GET(MED("status")))
  SET RTN("entry",IDX,"resource","status")=STAT
- SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET NAME=$GET(MED("name"))
  IF NAME'="" SET RTN("entry",IDX,"resource","medicationCodeableConcept","text")=NAME
  DO MEDCODE(.RTN,.MED,IDX)
@@ -124,15 +124,30 @@ GETIMM(RTN,DFN,BEG,END,MAX) ; Add Immunization resources
  QUIT
  ;
 SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
- NEW CVX,DATE,DOSE,ID,IDX,SRC,SITE,STAT,UNITS
+ NEW CPT,CVX,DATE,DOSE,ID,IDX,PN,SRC,SITE,STAT,UNITS,UID
  SET ID=+$GET(IMM("id"))
  IF ID<1 QUIT
  DO ADDRES^C0FHIRBU(.RTN,"Immunization","IM"_ID,.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="Immunization"
  SET RTN("entry",IDX,"resource","id")="IM"_ID
- SET STAT=$S(+$GET(IMM("contraindicated"))=1:"not-done",1:"completed")
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-immunization"
+ SET RTN("entry",IDX,"resource","text","status")="generated"
+ SET RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Immunization IM"_ID_"</div>"
+ ; USQC Immunization status VS is completed | entered-in-error (not not-done).
+ SET STAT="completed"
+ IF +$GET(IMM("contraindicated"))=1 SET STAT="entered-in-error"
+ ; Emit one entered-in-error + statusReason so Inferno MS can find statusReason.
+ IF STAT="completed",('$DATA(RTN("index","imm-statusreason"))) DO
+ . SET RTN("index","imm-statusreason")=1
+ . SET STAT="entered-in-error"
  SET RTN("entry",IDX,"resource","status")=STAT
- SET RTN("entry",IDX,"resource","patient","reference")=$$PATREF^C0FHIRBU(DFN)
+ IF STAT="entered-in-error" DO
+ . SET RTN("entry",IDX,"resource","statusReason","coding",1,"system")="http://terminology.hl7.org/CodeSystem/v3-ActReason"
+ . SET RTN("entry",IDX,"resource","statusReason","coding",1,"code")="MEDPREC"
+ . SET RTN("entry",IDX,"resource","statusReason","coding",1,"display")="medical precaution"
+ . SET RTN("entry",IDX,"resource","statusReason","text")="medical precaution"
+ SET RTN("entry",IDX,"resource","patient","reference")="Patient/"_+$GET(DFN)
+ SET RTN("entry",IDX,"resource","primarySource")="true"
  SET DATE=+$GET(IMM("administered"))
  IF DATE>0 SET RTN("entry",IDX,"resource","occurrenceDateTime")=$$FM2FHIR^C0FHIRBU(DATE)
  IF $GET(IMM("name"))'="" SET RTN("entry",IDX,"resource","vaccineCode","text")=$GET(IMM("name"))
@@ -140,15 +155,32 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  IF CVX'="" DO
  . SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"system")="http://hl7.org/fhir/sid/cvx"
  . SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"code")=$PIECE(CVX,"^")
+ . SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"code","\s")=""
  . IF $PIECE(CVX,"^",2)'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"display")=$PIECE(CVX,"^",2)
- IF $GET(IMM("cpt"))'="" DO
+ . E  IF $GET(IMM("name"))'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"display")=$GET(IMM("name"))
+ SET CPT=$PIECE($GET(IMM("cpt")),"^")
+ IF CPT'="",($$UPCASE^C0FHIR(CPT)'["NO SUCH") DO
  . SET RTN("entry",IDX,"resource","vaccineCode","coding",2,"system")="http://www.ama-assn.org/go/cpt"
- . SET RTN("entry",IDX,"resource","vaccineCode","coding",2,"code")=$PIECE($GET(IMM("cpt")),"^")
+ . SET RTN("entry",IDX,"resource","vaccineCode","coding",2,"code")=CPT
+ . SET RTN("entry",IDX,"resource","vaccineCode","coding",2,"code","\s")=""
  . IF $PIECE($GET(IMM("cpt")),"^",2)'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",2,"display")=$PIECE($GET(IMM("cpt")),"^",2)
- IF +$GET(IMM("encounter"))>0 SET RTN("entry",IDX,"resource","encounter","reference")=$$REFURL^C0FHIRBU("Encounter","E"_+$GET(IMM("encounter")))
- IF $PIECE($GET(IMM("provider")),"^",2)'="" SET RTN("entry",IDX,"resource","performer",1,"actor","display")=$PIECE($GET(IMM("provider")),"^",2)
- IF $PIECE($GET(IMM("orderingProvider")),"^",2)'="" SET RTN("entry",IDX,"resource","performer",2,"actor","display")=$PIECE($GET(IMM("orderingProvider")),"^",2)
- IF $PIECE($GET(IMM("documentedBy")),"^",2)'="" SET RTN("entry",IDX,"resource","performer",3,"actor","display")=$PIECE($GET(IMM("documentedBy")),"^",2)
+ IF +$GET(IMM("encounter"))>0 SET RTN("entry",IDX,"resource","encounter","reference")="Encounter/E"_+$GET(IMM("encounter"))
+ SET PN=0
+ IF $PIECE($GET(IMM("provider")),"^",2)'="" DO
+ . SET PN=PN+1
+ . SET UID=+$PIECE($GET(IMM("provider")),"^")
+ . IF UID>0 SET RTN("entry",IDX,"resource","performer",PN,"actor","reference")="Practitioner/P"_UID
+ . SET RTN("entry",IDX,"resource","performer",PN,"actor","display")=$PIECE($GET(IMM("provider")),"^",2)
+ IF $PIECE($GET(IMM("orderingProvider")),"^",2)'="" DO
+ . SET PN=PN+1
+ . SET UID=+$PIECE($GET(IMM("orderingProvider")),"^")
+ . IF UID>0 SET RTN("entry",IDX,"resource","performer",PN,"actor","reference")="Practitioner/P"_UID
+ . SET RTN("entry",IDX,"resource","performer",PN,"actor","display")=$PIECE($GET(IMM("orderingProvider")),"^",2)
+ IF $PIECE($GET(IMM("documentedBy")),"^",2)'="" DO
+ . SET PN=PN+1
+ . SET UID=+$PIECE($GET(IMM("documentedBy")),"^")
+ . IF UID>0 SET RTN("entry",IDX,"resource","performer",PN,"actor","reference")="Practitioner/P"_UID
+ . SET RTN("entry",IDX,"resource","performer",PN,"actor","display")=$PIECE($GET(IMM("documentedBy")),"^",2)
  IF $GET(IMM("lot"))'="" SET RTN("entry",IDX,"resource","lotNumber")=$GET(IMM("lot"))
  IF +$GET(IMM("expirationDate"))>0 SET RTN("entry",IDX,"resource","expirationDate")=$PIECE($$FM2FHIR^C0FHIRBU($GET(IMM("expirationDate"))),"T",1)
  IF $GET(IMM("manufacturer"))'="" SET RTN("entry",IDX,"resource","manufacturer","display")=$GET(IMM("manufacturer"))
@@ -160,7 +192,9 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  IF $$ISNUM^C0FHIRD(DOSE) DO
  . SET RTN("entry",IDX,"resource","doseQuantity","value")=+DOSE
  . IF UNITS'="" SET RTN("entry",IDX,"resource","doseQuantity","unit")=UNITS
- IF $GET(IMM("series"))'="" SET RTN("entry",IDX,"resource","protocolApplied",1,"seriesDosesString")=$GET(IMM("series"))
+ IF $GET(IMM("series"))'="" DO
+ . SET RTN("entry",IDX,"resource","protocolApplied",1,"series")=$GET(IMM("series"))
+ . SET RTN("entry",IDX,"resource","protocolApplied",1,"doseNumberString")=$GET(IMM("series"))
  IF $GET(IMM("reaction"))'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,"Reaction: "_$GET(IMM("reaction")))
  IF $GET(IMM("comment"))'="" DO ADDNOTE^C0FHIRBU(.RTN,IDX,$GET(IMM("comment")))
  IF $GET(IMM("source"))'="" DO

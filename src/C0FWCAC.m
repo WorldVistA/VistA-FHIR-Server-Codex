@@ -110,6 +110,8 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D DATE(CROOT,SUB,"date",$G(@RES@("effectiveDateTime")))
  D DATE(CROOT,SUB,"date",$G(@RES@("issued")))
  D DATE(CROOT,SUB,"date",$G(@RES@("onsetDateTime")))
+ D DATE(CROOT,SUB,"date",$G(@RES@("period","start")))
+ D DATE(CROOT,SUB,"date",$G(@RES@("period","end")))
  D DATE(CROOT,SUB,"recorded-date",$G(@RES@("recordedDate")))
  D DATE(CROOT,SUB,"authored",$G(@RES@("authoredOn")))
  Q
@@ -179,12 +181,17 @@ SET(CROOT,SUB,PRED,OBJ) ; Set one cached search triple
  ;
 WS(OUT,FILTER) ; REST-style /fhir/{resource}[/{id}] search/read endpoint
  N ERR,IDARG,JERR,PATH,RESARG,TMP
- S RESARG=$S($D(FILTER("resource")):$G(FILTER("resource")),$D(FILTER)#2:$G(FILTER),1:"")
- S IDARG=$G(FILTER("id"))
  I $D(HTTPARGS) M FILTER=HTTPARGS
  S PATH=$G(HTTPREQ("path"))
- I RESARG="",$P(PATH,"/",2)="fhir",$P(PATH,"/",3)'="" S RESARG=$P(PATH,"/",3)
- I IDARG="",$P(PATH,"/",2)="fhir",$P(PATH,"/",4)'="" S IDARG=$P(PATH,"/",4)
+ I $EXTRACT(PATH)="/" SET PATH=$EXTRACT(PATH,2,$LENGTH(PATH))
+ ; Prefer path segments so fhir/{resource} still reads fhir/Type/id.
+ I $PIECE(PATH,"/",1)="fhir",$PIECE(PATH,"/",2)'="" DO
+ . S RESARG=$PIECE(PATH,"/",2)
+ . S IDARG=$PIECE(PATH,"/",3)
+ E  DO
+ . S RESARG=$S($D(FILTER("resource")):$G(FILTER("resource")),$D(FILTER)#2:$G(FILTER),1:"")
+ . S IDARG=$G(FILTER("id"))
+ I RESARG["/" S IDARG=$PIECE(RESARG,"/",2),RESARG=$PIECE(RESARG,"/",1)
  I RESARG'="" S FILTER("resource")=RESARG
  I IDARG'="" S FILTER("id")=IDARG
  I IDARG'="" D READ(.FILTER,.TMP,.ERR)
@@ -195,11 +202,16 @@ WS(OUT,FILTER) ; REST-style /fhir/{resource}[/{id}] search/read endpoint
  Q
  ;
 WSREAD(OUT,FILTER,ID) ; GET /fhir/{resource}/{id} wrapper
- N ERR,JERR,PATH,TMP
+ N ERR,IDARG,JERR,PATH,RESARG,TMP
  I $D(HTTPARGS) M FILTER=HTTPARGS
  S PATH=$G(HTTPREQ("path"))
- S FILTER("resource")=$P(PATH,"/",3)
- S FILTER("id")=$P(PATH,"/",4)
+ I $EXTRACT(PATH)="/" SET PATH=$EXTRACT(PATH,2,$LENGTH(PATH))
+ S RESARG=$PIECE(PATH,"/",2),IDARG=$PIECE(PATH,"/",3)
+ I RESARG="" S RESARG=$G(FILTER("resource"))
+ I IDARG="" S IDARG=$G(FILTER("id"))
+ I IDARG="",$G(ID)'="" S IDARG=ID
+ S FILTER("resource")=RESARG
+ S FILTER("id")=IDARG
  D READ(.FILTER,.TMP,.ERR)
  I $G(ERR)'="" D OO(ERR,.TMP)
  D TOJSON^C0FHIRBU(.TMP,.OUT,.JERR)
@@ -345,12 +357,39 @@ DNUM(X) ; $$ - ISO date/dateTime prefix as sortable YYYYMMDD number
  Q ""
  ;
 REQDFN(FILTER,RES) ; $$ - patient id for patient-scoped cache
- N X
- I RES="Patient",$G(FILTER("_id"))'="" Q +$G(FILTER("_id"))
+ N RID,X
+ I RES="Patient" D  Q +X
+ . S X=$G(FILTER("_id")) I X="" S X=$G(FILTER("id"))
+ . I X="" S X=$G(FILTER("patient"))
+ . I X["Patient/" S X=$P(X,"Patient/",2)
  S X=$G(FILTER("patient")) I X="" S X=$G(FILTER("subject"))
  I X="" S X=$G(FILTER("dfn"))
  I X["Patient/" S X=$P(X,"Patient/",2)
- Q +X
+ I +X>0 Q +X
+ ; Encounter?_id=E123 (and similar) has no patient param — resolve from cache.
+ S RID=$G(FILTER("_id")) I RID="" S RID=$G(FILTER("id"))
+ I RID'="" Q $$DFNBYID(RES,RID)
+ Q 0
+ ;
+DFNBYID(RES,RID) ; $$ - DFN owning cached RES/RID via subject/patient
+ N C,ENTRY,IEN,PAT,ROOT,SUB
+ S RES=$G(RES),RID=$G(RID) Q:RES=""!(RID="") 0
+ S SUB=RES_"/"_RID
+ S ROOT=$$ROOT^C0FWGRT("fhir-intake") Q:ROOT="" 0
+ S IEN=0,PAT=0
+ F  S IEN=$O(@ROOT@(IEN)) Q:+IEN<1!(PAT>0)  D
+ . S C="" F  S C=$O(@ROOT@(IEN,"cache",C)) Q:C=""!(PAT>0)  D
+ . . S ENTRY=+$O(@ROOT@(IEN,"cache",C,"SPO",SUB,"entry","")) Q:ENTRY<1
+ . . S PAT=$$PATOF($NA(@ROOT@(IEN,"cache",C,"bundle","entry",ENTRY,"resource")))
+ Q +PAT
+ ;
+PATOF(RES) ; $$ - Patient id from resource subject/patient reference
+ N X
+ S X=$G(@RES@("subject","reference"))
+ I X="" S X=$G(@RES@("patient","reference"))
+ I X["Patient/" Q +$P(X,"Patient/",2)
+ I X?1.N Q +X
+ Q 0
  ;
 RESTYPE(X) ; $$ - normalize supported resource type
  S X=$$UP($G(X))
@@ -359,6 +398,8 @@ RESTYPE(X) ; $$ - normalize supported resource type
  I X="CONDITION" Q "Condition"
  I X="DIAGNOSTICREPORT" Q "DiagnosticReport"
  I X="ORGANIZATION" Q "Organization"
+ I X="LOCATION" Q "Location"
+ I X="PRACTITIONER" Q "Practitioner"
  I X="ENCOUNTER" Q "Encounter"
  I X="ALLERGYINTOLERANCE" Q "AllergyIntolerance"
  I X="IMMUNIZATION" Q "Immunization"

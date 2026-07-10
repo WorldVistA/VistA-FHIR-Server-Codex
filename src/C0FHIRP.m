@@ -210,7 +210,7 @@ SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resourc
  SET RTN("entry",IDX,"resource","id")=RID
  SET STAT=$$PSTAT($GET(PROC("status")))
  SET RTN("entry",IDX,"resource","status")=STAT
- SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET NAME=$GET(PROC("name"))
  SET CODE=$GET(PROC("type"))
  SET CODEVAL=$PIECE(CODE,"^")

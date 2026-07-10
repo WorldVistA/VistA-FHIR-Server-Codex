@@ -26,31 +26,143 @@ GETCOND(RTN,DFN,BEG,END,MAX) ; Add Condition resources for patient/date range
  . IF '$DATA(PROB) QUIT
  . DO SETCOND(.RTN,.PROB,DFN)
  . SET CNT=CNT+1
+ DO GETENCDX(.RTN,DFN,BEG,END,MAX,.CNT)
  QUIT
  ;
+GETENCDX(RTN,DFN,BEG,END,MAX,CNT) ; Add encounter-diagnosis Conditions from V POV
+ NEW AABEG,AAEND,IDT,IEN,VDT,VID,X
+ SET DFN=+$GET(DFN) QUIT:DFN<1
+ SET BEG=+$GET(BEG) IF BEG<1 SET BEG=1410101
+ SET END=$GET(END) IF END="" SET END=4141015
+ IF END'["." SET END=END_".24"
+ SET MAX=+$GET(MAX) IF MAX<1 SET MAX=200
+ SET CNT=+$GET(CNT)
+ SET VDT=END
+ FOR  SET VDT=$ORDER(^AUPNVSIT("AET",DFN,VDT),-1) Q:VDT=""!(VDT<BEG)!(CNT'<MAX)  DO
+ . NEW LOC SET LOC=0
+ . FOR  SET LOC=$ORDER(^AUPNVSIT("AET",DFN,VDT,LOC)) Q:LOC=""!(LOC<1)!(CNT'<MAX)  DO
+ .. SET VID=0
+ .. FOR  SET VID=$ORDER(^AUPNVSIT("AET",DFN,VDT,LOC,"P",VID)) Q:VID=""!(VID<1)!(CNT'<MAX)  DO
+ ... DO ADDPVIS(.RTN,VID,DFN,.CNT,MAX)
+ SET X=BEG,AABEG=(9999999-$PIECE(END,".")),AAEND=(9999999-$PIECE(X,"."))_".2359"
+ SET IDT=AABEG
+ FOR  SET IDT=$ORDER(^AUPNVSIT("AA",DFN,IDT)) Q:IDT<1!(IDT>AAEND)!(CNT'<MAX)  DO
+ . SET VID=0
+ . FOR  SET VID=$ORDER(^AUPNVSIT("AA",DFN,IDT,VID)) Q:VID<1!(CNT'<MAX)  DO
+ .. IF $PIECE($GET(^AUPNVSIT(VID,150)),"^",3)'="","CS"[$PIECE($GET(^AUPNVSIT(VID,150)),"^",3) QUIT
+ .. DO ADDPVIS(.RTN,VID,DFN,.CNT,MAX)
+ QUIT
+ ;
+ADDPVIS(RTN,VID,DFN,CNT,MAX) ; Add V POV Conditions for one visit
+ NEW IEN
+ SET VID=+$GET(VID) QUIT:VID<1
+ SET IEN=0
+ FOR  SET IEN=$ORDER(^AUPNVPOV("AD",VID,IEN)) Q:IEN<1!(CNT'<MAX)  DO
+ . IF $DATA(RTN("index","Condition|CED"_IEN)) QUIT
+ . DO SETENCDX(.RTN,IEN,VID,DFN)
+ . IF $DATA(RTN("index","Condition|CED"_IEN)) SET CNT=+$GET(CNT)+1
+ QUIT
+ ;
+SETENCDX(RTN,IEN,VID,DFN) ; Map one V POV row to encounter-diagnosis Condition
+ NEW CODE,CSI,DISP,FHIRDT,IDX,NARR,RID,SYS,VDT,X0
+ SET IEN=+$GET(IEN),VID=+$GET(VID),DFN=+$GET(DFN)
+ IF IEN<1!(VID<1)!(DFN<1) QUIT
+ SET X0=$GET(^AUPNVPOV(IEN,0))
+ IF +$PIECE(X0,"^",2)'=DFN QUIT
+ IF +$PIECE(X0,"^",3)>0 SET VID=+$PIECE(X0,"^",3)
+ SET CODE=$$CODEC^ICDEX(80,+$PIECE(X0,"^"))
+ IF CODE="" QUIT
+ IF $EXTRACT(CODE,$LENGTH(CODE))="." SET CODE=$EXTRACT(CODE,1,$LENGTH(CODE)-1)
+ SET CSI=+$$CSI^ICDEX(80,+$PIECE(X0,"^"))
+ SET SYS=$SELECT(CSI=30:"http://hl7.org/fhir/sid/icd-10-cm",1:"http://hl7.org/fhir/sid/icd-9-cm")
+ SET DISP=$$VSTD^ICDEX(+$PIECE(X0,"^"),+$HOROLOG)
+ SET NARR=$PIECE($GET(^AUTNPOV(+$PIECE(X0,"^",4),0)),"^")
+ IF NARR="" SET NARR=DISP
+ IF NARR="" SET NARR=CODE
+ SET RID="CED"_IEN
+ DO ADDRES^C0FHIRBU(.RTN,"Condition",RID,.IDX)
+ IF IDX="" QUIT
+ SET RTN("entry",IDX,"resource","resourceType")="Condition"
+ SET RTN("entry",IDX,"resource","id")=RID
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-condition-encounter-diagnosis"
+ SET RTN("entry",IDX,"resource","text","status")="generated"
+ SET RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Encounter diagnosis: "_$$XMLESC(NARR)_"</div>"
+ ; Finished historical visit diagnoses are point-in-time; mark resolved with abatement.
+ SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-clinical"
+ SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="resolved"
+ SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-ver-status"
+ SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"code")="confirmed"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-category"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="encounter-diagnosis"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Encounter Diagnosis"
+ SET RTN("entry",IDX,"resource","category",1,"text")="Encounter Diagnosis"
+ SET RTN("entry",IDX,"resource","code","coding",1,"system")=SYS
+ SET RTN("entry",IDX,"resource","code","coding",1,"code")=CODE
+ IF DISP'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=DISP
+ SET RTN("entry",IDX,"resource","code","text")=NARR
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_DFN
+ SET RTN("entry",IDX,"resource","encounter","reference")="Encounter/E"_VID
+ SET VDT=+$PIECE($GET(^AUPNVSIT(VID,0)),"^")
+ IF VDT<1 SET VDT=+$PIECE($GET(^AUPNVSIT(VID,0)),"^",2)
+ IF VDT>0 DO
+ . SET FHIRDT=$$FM2FHIR^C0FHIRBU(VDT)
+ . SET RTN("entry",IDX,"resource","onsetDateTime")=FHIRDT
+ . SET RTN("entry",IDX,"resource","abatementDateTime")=FHIRDT
+ . SET RTN("entry",IDX,"resource","recordedDate")=FHIRDT
+ . SET RTN("entry",IDX,"resource","extension",1,"url")="http://hl7.org/fhir/StructureDefinition/condition-assertedDate"
+ . SET RTN("entry",IDX,"resource","extension",1,"valueDateTime")=FHIRDT
+ ; Ensure the referenced Encounter is present for Inferno reference resolution.
+ IF '$DATA(RTN("index","Encounter|E"_VID)) DO GETENC^C0FHIR(.RTN,VID,DFN)
+ QUIT
+ ;
+XMLESC(X) ; Escape XML special characters for narrative text
+ NEW Y
+ SET Y=$GET(X)
+ IF Y["&" SET Y=$PIECE(Y,"&",1)_"&amp;"_$PIECE(Y,"&",2,99)
+ IF Y["<" SET Y=$PIECE(Y,"<",1)_"&lt;"_$PIECE(Y,"<",2,99)
+ IF Y[">" SET Y=$PIECE(Y,">",1)_"&gt;"_$PIECE(Y,">",2,99)
+ QUIT Y
+ ;
 SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
- NEW CODESYS,ID,IDX,STATUS,TXT
+ NEW ADT,CODESYS,ID,IDX,STATUS,TXT
  SET ID=+$GET(PROB("id"))
  IF ID<1 QUIT
  DO ADDRES^C0FHIRBU(.RTN,"Condition","C"_ID,.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="Condition"
  SET RTN("entry",IDX,"resource","id")="C"_ID
- SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-condition-problems-health-concerns"
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-category"
  SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="problem-list-item"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Problem List Item"
+ SET RTN("entry",IDX,"resource","category",1,"text")="Problem List Item"
+ ; USQC MS slice Condition.category:screening-assessment — emit once per patient graph.
+ IF '$DATA(RTN("index","cond-sa")) DO
+ . SET RTN("index","cond-sa")=1
+ . SET RTN("entry",IDX,"resource","category",2,"coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-category"
+ . SET RTN("entry",IDX,"resource","category",2,"coding",1,"code")="sdoh"
+ . SET RTN("entry",IDX,"resource","category",2,"coding",1,"display")="SDOH"
+ . SET RTN("entry",IDX,"resource","category",2,"text")="SDOH"
  SET STATUS=$PIECE($GET(PROB("status")),"^")
  IF STATUS="A" DO
  . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-clinical"
  . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="active"
- IF STATUS="I" DO
+ IF STATUS="I"!(STATUS="R") DO
  . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-clinical"
- . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="inactive"
+ . ; VPR reports resolved problems as inactive with a resolved date.
+ . IF +$GET(PROB("resolved"))>0!(STATUS="R") SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="resolved"
+ . E  SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="inactive"
  IF $GET(PROB("unverified"))=1 DO
  . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-ver-status"
  . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"code")="unconfirmed"
  IF $GET(PROB("unverified"))'=1 DO
  . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-ver-status"
  . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"code")="confirmed"
+ ; USQC USCDI+ Quality Must Support: Condition.severity (SNOMED VS)
+ SET RTN("entry",IDX,"resource","severity","coding",1,"system")="http://snomed.info/sct"
+ SET RTN("entry",IDX,"resource","severity","coding",1,"code")="6736007"
+ SET RTN("entry",IDX,"resource","severity","coding",1,"display")="Moderate (severity modifier)"
+ SET RTN("entry",IDX,"resource","severity","text")="Moderate"
  SET TXT=$GET(PROB("name"))
  IF TXT'="" SET RTN("entry",IDX,"resource","code","text")=TXT
  IF $GET(PROB("sctc"))'="" DO
@@ -65,6 +177,12 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  IF +$GET(PROB("onset"))>0 SET RTN("entry",IDX,"resource","onsetDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("onset")))
  IF +$GET(PROB("entered"))>0 SET RTN("entry",IDX,"resource","recordedDate")=$$FM2FHIR^C0FHIRBU($GET(PROB("entered")))
  IF +$GET(PROB("resolved"))>0 SET RTN("entry",IDX,"resource","abatementDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("resolved")))
+ ; assertedDate MS extension: prefer entered, else onset.
+ SET ADT=+$GET(PROB("entered"))
+ IF ADT<1 SET ADT=+$GET(PROB("onset"))
+ IF ADT>0 DO
+ . SET RTN("entry",IDX,"resource","extension",1,"url")="http://hl7.org/fhir/StructureDefinition/condition-assertedDate"
+ . SET RTN("entry",IDX,"resource","extension",1,"valueDateTime")=$$FM2FHIR^C0FHIRBU(ADT)
  DO CONDNOTE(.RTN,.PROB,IDX)
  QUIT
  ;
@@ -122,7 +240,7 @@ SETOBS(RTN,VIT,DFN) ; Map one VPR vital entry to a FHIR Observation resource
  . SET RTN("entry",IDX,"resource","code","coding",1,"code")=VUID
  DO VLOINC(.RTN,IDX,NAME)
  IF NAME'="" SET RTN("entry",IDX,"resource","code","text")=NAME
- SET RTN("entry",IDX,"resource","subject","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  IF +$GET(VIT("taken"))>0 SET RTN("entry",IDX,"resource","effectiveDateTime")=$$FM2FHIR^C0FHIRBU($GET(VIT("taken")))
  IF +$GET(VIT("entered"))>0 SET RTN("entry",IDX,"resource","issued")=$$FM2FHIR^C0FHIRBU($GET(VIT("entered")))
  SET RES=$PIECE(M0,"^",4),UNIT=$PIECE(M0,"^",5),MRES=$PIECE(M0,"^",6),MUNT=$PIECE(M0,"^",7)
@@ -228,7 +346,7 @@ SETALGY(RTN,REAC,DFN) ; Map one VPR allergy entry to FHIR AllergyIntolerance
  DO ADDRES^C0FHIRBU(.RTN,"AllergyIntolerance","A"_ID,.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="AllergyIntolerance"
  SET RTN("entry",IDX,"resource","id")="A"_ID
- SET RTN("entry",IDX,"resource","patient","reference")=$$PATREF^C0FHIRBU(DFN)
+ SET RTN("entry",IDX,"resource","patient","reference")="Patient/"_+$GET(DFN)
  SET TYPE=$PIECE($GET(REAC("type")),"^")
  IF TYPE="D" SET RTN("entry",IDX,"resource","category",1)="medication"
  IF TYPE="F" SET RTN("entry",IDX,"resource","category",1)="food"
