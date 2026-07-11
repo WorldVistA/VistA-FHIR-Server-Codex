@@ -107,6 +107,9 @@ done
 for fn in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
   docker cp "${STAGE}/${fn}" "${FHIRDEV_CONTAINER}:${REMOTE_WWW}/${fn}"
 done
+# %ZISH (WSASSET^C0FHIRWS) reads text line-by-line; a single-line .b64 is truncated
+# (~256KB) and WebAssembly.compile fails. Match local-fhir-container-sync.sh.
+docker exec "$FHIRDEV_CONTAINER" sh -lc "if command -v fold >/dev/null 2>&1 && [ -f \"$REMOTE_WWW/tjson_bg.wasm.b64\" ]; then tmp=\"$REMOTE_WWW/tjson_bg.wasm.b64.wrap\"; tr -d '\\r\\n' < \"$REMOTE_WWW/tjson_bg.wasm.b64\" | fold -w 76 > \"\$tmp\" && mv \"\$tmp\" \"$REMOTE_WWW/tjson_bg.wasm.b64\"; fi"
 EOS
 
 "${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown '${FHIRDEV_M_USER}:${FHIRDEV_M_USER}' $REMOTE_P/*.m 2>/dev/null || true"

@@ -16,8 +16,22 @@ function wasmBytesFromBase64Text(t) {
   return u8.buffer;
 }
 
-const b64res = await fetch(new URL("tjson_bg.wasm.b64?v=0.6.0", import.meta.url));
-const buf = wasmBytesFromBase64Text(await b64res.text());
+const b64url = new URL("tjson_bg.wasm.b64?v=0.6.0", import.meta.url);
+const b64res = await fetch(b64url);
+const b64text = await b64res.text();
+const ctype = (b64res.headers.get("content-type") || "").toLowerCase();
+const trimmed = b64text.trimStart();
+if (!b64res.ok) {
+  throw new Error("tjson_bg.wasm.b64 HTTP " + b64res.status + " from " + b64url.pathname);
+}
+if (ctype.includes("text/html") || trimmed.startsWith("<")) {
+  throw new Error(
+    "tjson_bg.wasm.b64 served as HTML (SPA fallback or missing file) from " +
+      b64url.pathname +
+      "; sync vendor/tjson into M www and ensure /filesystem/* is not rewritten"
+  );
+}
+const buf = wasmBytesFromBase64Text(b64text);
 const wasmMod = await WebAssembly.compile(buf);
 const importDesc = WebAssembly.Module.imports(wasmMod);
 const imports = {};

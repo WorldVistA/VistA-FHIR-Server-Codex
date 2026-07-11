@@ -52,10 +52,12 @@ Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / 
    In the Fetch API, **`Accept-Encoding` is a forbidden request header**; browsers ignore script-set values. The gzip issue could not be fixed from JS that way.
 
 10. **Base64 sidecar `tjson_bg.wasm.b64`**  
-    - Generate (preferred): `./scripts/regen-tjson-wasm-b64.sh` (encodes and **verifies** decode matches wasm).  
-    - Manual: `base64 -w0 vendor/tjson/tjson_bg.wasm > vendor/tjson/tjson_bg.wasm.b64`  
-    - Loader fetches **`tjson_bg.wasm.b64?v=<token>`** as **text**, strips whitespace with **`.replace(/\s/g, "")`**, **`atob` → `Uint8Array` → `compile`**.  
-    - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.
+    - Generate (preferred): `./scripts/regen-tjson-wasm-b64.sh` (encodes, **wraps at 76 cols**, and **verifies** decode matches wasm).  
+    - Manual: `base64 -w0 vendor/tjson/tjson_bg.wasm | fold -w 76 > vendor/tjson/tjson_bg.wasm.b64`  
+    - **Must be line-wrapped** before deploy: `WSASSET^C0FHIRWS` uses `%ZISH`, which truncates a single huge line (~256KB). Symptom: `WebAssembly.compile` fails (`section extends past end` / `function body length too big`). Sync scripts fold after copy.  
+    - Loader fetches **`tjson_bg.wasm.b64?v=<token>`** as **text**, rejects HTML SPA fallbacks, strips whitespace with **`.replace(/\s/g, "")`**, **`atob` → `Uint8Array` → `compile`**.  
+    - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.  
+    - Codex serves these under **`/filesystem/`** (not `/vendor/tjson/`). A root SPA catch-all that returns HTML 200 for `/vendor/*` is a separate routing issue; it does not affect the browser path above.
 
 11. **`C0FHIRWS.m` — JS API (0.4+ / 0.5+)**  
     Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=<version>`** to reduce stale cached JS vs wasm while keeping the live browser token readable, and the vendored loader now applies that same token to **`tjson_bg.js`** and **`tjson_bg.wasm.b64`** so subordinate assets do not stay stale across upgrades. **`update-vendored-tjson.sh`** rewrites these tokens from **`vendor/tjson/VERSION`**; sync scripts verify them before deploy unless **`TJSON_SKIP_VERIFY_TOKEN=1`**. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
