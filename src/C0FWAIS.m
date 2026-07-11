@@ -253,13 +253,20 @@ ADDOO(BUNDLE,SEV,CODE,MSG) ; Add OperationOutcome entry to response Bundle
  Q
  ;
 OO(OUT,SEV,CODE,MSG) ; Error response
+ ; %webreq RSPERROR replaces HTTPRSP when HTTPERR is set, so a custom
+ ; OperationOutcome in OUT is discarded. Use SETERROR (HTTP 400) so the
+ ; client gets diagnostics instead of HTTP 500 with body "{}".
+ N TOP
+ K OUT
+ S TOP=$G(MSG)
+ I TOP="" S TOP=$G(CODE)
+ I $L($T(SETERROR^%webutils)) D SETERROR^%webutils(400,TOP) Q
+ ; Fallback if %webutils missing: return OO on 200
  N TMP,ERR
- K TMP,OUT
- S HTTPERR=$S($G(SEV)="error":502,1:400)
  S TMP("resourceType")="OperationOutcome"
- S TMP("issue",1,"severity")=$G(SEV)
- S TMP("issue",1,"code")=$G(CODE)
- S TMP("issue",1,"diagnostics")=$G(MSG)
+ S TMP("issue",1,"severity")=$G(SEV,"error")
+ S TMP("issue",1,"code")=$G(CODE,"exception")
+ S TMP("issue",1,"diagnostics")=TOP
  D TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
  S HTTPRSP("mime")="application/fhir+json"
  Q

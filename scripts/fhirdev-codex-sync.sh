@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Push VistA-FHIR-Server-Codex src/*.m plus required top-level routines
-# (currently SYNWEBUT.m) and vendor/tjson/* to remote fhirdev22 (SSH + docker).
+# (currently SYNWEBUT.m) and vendor/tjson/web/ to remote fhirdev22 (SSH + docker).
 # Matches vehu layout: routines /home/vehu/p, static /home/vehu/www/filesystem (GET /filesystem/...).
 #
 # Uses SSH connection multiplexing (ControlMaster) so all scp/ssh share one TCP session.
@@ -14,14 +14,13 @@
 # Env: FHIRDEV_SSH, FHIRDEV_CONTAINER, FHIRDEV_ROUTINE_DIR, FHIRDEV_WWW, VEHU_ENV,
 #      FHIRDEV_MUMPS, FHIRDEV_HTTP_BASE, FHIRDEV_M_USER (default vehu; use osehra for fhir.vistaplex.org)
 #      FHIRDEV_SSH_NO_MUX=1   — disable ControlMaster (debug only; increases TCP churn)
-#      TJSON_SKIP_REGEN_B64=1 — skip scripts/regen-tjson-wasm-b64.sh before vendor scp
 #      TJSON_SKIP_VERIFY_TOKEN=1 — skip cache-token verification against src/C0FHIRWS.m
 set -euo pipefail
 shopt -s nullglob
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/src"
-V="$ROOT/vendor/tjson"
+VWEB="$ROOT/vendor/tjson/web"
 REHMP_ROOT="${REHMP_ROOT:-$ROOT/../rehmp}"
 RG_SRC="${REHMP_C0RG_DIR:-$REHMP_ROOT/C0RG}"
 
@@ -67,23 +66,16 @@ if [[ -f "$ROOT/SYNWEBUT.m" ]]; then
   EXTRA_M+=( "$ROOT/SYNWEBUT.m" )
 fi
 RG_M=( "$RG_SRC"/*.m )
-TJSON_FILES=( "$V/tjson.js" "$V/tjson_bg.js" "$V/tjson_bg.wasm" "$V/tjson_bg.wasm.b64" )
-if [[ "${TJSON_SKIP_REGEN_B64:-0}" != "1" ]]; then
-  echo "==> regen tjson_bg.wasm.b64 (verify decode matches wasm)"
-  bash "$ROOT/scripts/regen-tjson-wasm-b64.sh"
-fi
 if [[ "${TJSON_SKIP_VERIFY_TOKEN:-0}" != "1" ]]; then
   echo "==> verify C0FHIRWS tjson cache token"
   bash "$ROOT/scripts/check-tjson-cache-token.sh"
 fi
-for tf in "${TJSON_FILES[@]}"; do
-  [[ -f "$tf" ]] || {
-    echo "error: missing vendor file: $tf" >&2
-    exit 1
-  }
-done
+[[ -f "$VWEB/index.js" && -f "$VWEB/tjson.js" && -d "$VWEB/snippets" ]] || {
+  echo "error: missing vendor/tjson/web (run ./scripts/update-vendored-tjson.sh 0.6.5)" >&2
+  exit 1
+}
 
-echo "==> scp batched routines + tjson -> stage (few connections)"
+echo "==> scp batched routines + tjson/web -> stage (few connections)"
 if ((${#SRC_M[@]})); then
   "${SCP[@]}" "${SRC_M[@]}" "$FHIRDEV_SSH:$STAGE/"
 fi
@@ -93,27 +85,24 @@ fi
 if ((${#RG_M[@]})); then
   "${SCP[@]}" "${RG_M[@]}" "$FHIRDEV_SSH:$STAGE/"
 fi
-"${SCP[@]}" "${TJSON_FILES[@]}" "$FHIRDEV_SSH:$STAGE/"
+"${SSH[@]}" "$FHIRDEV_SSH" "mkdir -p '$STAGE/tjson-web'"
+# scp rejects trailing "/." on some OpenSSH builds — tar the tree instead
+tar -C "$VWEB" -cf - . | "${SSH[@]}" "$FHIRDEV_SSH" "tar -C '$STAGE/tjson-web' -xf -"
 
 echo "==> one ssh: docker cp stage -> container ($FHIRDEV_CONTAINER)"
 "${SSH[@]}" "$FHIRDEV_SSH" "env STAGE=$(printf '%q' "$STAGE") FHIRDEV_CONTAINER=$(printf '%q' "$FHIRDEV_CONTAINER") REMOTE_P=$(printf '%q' "$REMOTE_P") REMOTE_WWW=$(printf '%q' "$REMOTE_WWW") bash -s" <<'EOS'
 set -euo pipefail
 shopt -s nullglob
-docker exec "$FHIRDEV_CONTAINER" mkdir -p "$REMOTE_WWW"
+docker exec "$FHIRDEV_CONTAINER" mkdir -p "$REMOTE_WWW/tjson/web"
 for f in "$STAGE"/*.m; do
   bn=$(basename "$f")
   docker cp "$f" "${FHIRDEV_CONTAINER}:${REMOTE_P}/${bn}"
 done
-for fn in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
-  docker cp "${STAGE}/${fn}" "${FHIRDEV_CONTAINER}:${REMOTE_WWW}/${fn}"
-done
-# %ZISH (WSASSET^C0FHIRWS) reads text line-by-line; a single-line .b64 is truncated
-# (~256KB) and WebAssembly.compile fails. Match local-fhir-container-sync.sh.
-docker exec "$FHIRDEV_CONTAINER" sh -lc "if command -v fold >/dev/null 2>&1 && [ -f \"$REMOTE_WWW/tjson_bg.wasm.b64\" ]; then tmp=\"$REMOTE_WWW/tjson_bg.wasm.b64.wrap\"; tr -d '\\r\\n' < \"$REMOTE_WWW/tjson_bg.wasm.b64\" | fold -w 76 > \"\$tmp\" && mv \"\$tmp\" \"$REMOTE_WWW/tjson_bg.wasm.b64\"; fi"
+docker cp "$STAGE/tjson-web/." "${FHIRDEV_CONTAINER}:${REMOTE_WWW}/tjson/web/"
 EOS
 
 "${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown '${FHIRDEV_M_USER}:${FHIRDEV_M_USER}' $REMOTE_P/*.m 2>/dev/null || true"
-"${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown '${FHIRDEV_M_USER}:${FHIRDEV_M_USER}' '$REMOTE_WWW/tjson.js' '$REMOTE_WWW/tjson_bg.js' '$REMOTE_WWW/tjson_bg.wasm' '$REMOTE_WWW/tjson_bg.wasm.b64' 2>/dev/null || true"
+"${SSH[@]}" "$FHIRDEV_SSH" "docker exec '$FHIRDEV_CONTAINER' chown -R '${FHIRDEV_M_USER}:${FHIRDEV_M_USER}' '$REMOTE_WWW/tjson' 2>/dev/null || true"
 
 echo "==> ZLINK + EN^SYNWEBRG + %webreq restart in $FHIRDEV_CONTAINER"
 {
@@ -137,8 +126,8 @@ echo "==> ZLINK + EN^SYNWEBRG + %webreq restart in $FHIRDEV_CONTAINER"
 
 "${SSH[@]}" "$FHIRDEV_SSH" "docker exec -u '${FHIRDEV_M_USER}' '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; $MUMPS -run %XCMD \"d stop^%webreq d go^%webreq\"'"
 
-echo "==> Smoke: GET $HTTP_BASE/filesystem/tjson.js"
-curl -sS -o /tmp/fhirdev-tjson-smoke.js -w "HTTP %{http_code}\n" "$HTTP_BASE/filesystem/tjson.js" | tail -1
+echo "==> Smoke: GET $HTTP_BASE/filesystem/tjson/web/index.js"
+curl -sS -o /tmp/fhirdev-tjson-smoke.js -w "HTTP %{http_code}\n" "$HTTP_BASE/filesystem/tjson/web/index.js" | tail -1
 head -c 100 /tmp/fhirdev-tjson-smoke.js | cat
 echo
 echo "==> Smoke: GET $HTTP_BASE/fhir (index)"

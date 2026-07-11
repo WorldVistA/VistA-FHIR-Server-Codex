@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
+# Vendor @rfanth/tjson web/ entry (inlined wasm) into vendor/tjson/web/.
+# Usage: ./scripts/update-vendored-tjson.sh 0.6.5
+#        ./scripts/update-vendored-tjson.sh @rfanth/tjson@0.6.5
 set -euo pipefail
 
 usage() {
   echo "usage: $0 <npm-version-or-spec>" >&2
-  echo "example: $0 0.6.0" >&2
-  echo "example: $0 @rfanth/tjson@0.5.1" >&2
+  echo "example: $0 0.6.5" >&2
   exit 1
 }
 
@@ -28,78 +30,71 @@ tar -xzf "$TARBALL"
 popd >/dev/null
 
 PKG="$TMP/package"
-for f in package.json tjson_bg.js tjson_bg.wasm tjson.d.ts; do
-  [[ -f "$PKG/$f" ]] || {
-    echo "error: missing $f in $SPEC tarball" >&2
-    exit 1
-  }
-done
+[[ -f "$PKG/web/index.js" && -f "$PKG/web/tjson.js" ]] || {
+  echo "error: $SPEC tarball missing web/index.js or web/tjson.js (need >= 0.6.5)" >&2
+  exit 1
+}
+[[ -d "$PKG/web/snippets" ]] || {
+  echo "error: $SPEC tarball missing web/snippets/" >&2
+  exit 1
+}
 
 VERSION="$(
 python3 - <<'PY' "$PKG/package.json"
-import json
-import pathlib
-import sys
-
-pkg = json.loads(pathlib.Path(sys.argv[1]).read_text())
-print(pkg["version"])
+import json, pathlib, sys
+print(json.loads(pathlib.Path(sys.argv[1]).read_text())["version"])
 PY
 )"
 
-echo "==> vendor @rfanth/tjson $VERSION into $V"
-cp "$PKG/tjson_bg.js" "$V/tjson_bg.js"
-cp "$PKG/tjson_bg.wasm" "$V/tjson_bg.wasm"
-cp "$PKG/tjson.d.ts" "$V/tjson.d.ts"
+echo "==> vendor @rfanth/tjson $VERSION web/ into $V/web"
+rm -rf "$V/web"
+mkdir -p "$V/web"
+# JS + types + snippets only (wasm is inlined in index.js)
+cp "$PKG/web/index.js" "$V/web/index.js"
+cp "$PKG/web/tjson.js" "$V/web/tjson.js"
+[[ -f "$PKG/web/index.d.ts" ]] && cp "$PKG/web/index.d.ts" "$V/web/index.d.ts"
+[[ -f "$PKG/web/tjson.d.ts" ]] && cp "$PKG/web/tjson.d.ts" "$V/web/tjson.d.ts"
+cp -a "$PKG/web/snippets" "$V/web/snippets"
+
+# Drop legacy patched loader / binary sidecar if present
+rm -f "$V/tjson.js" "$V/tjson_bg.js" "$V/tjson_bg.wasm" "$V/tjson_bg.wasm.b64" "$V/tjson.d.ts"
+
 printf '%s\n' "$VERSION" >"$V/VERSION"
+cat >"$V/README.md" <<EOF
+# Vendored @rfanth/tjson $VERSION
 
-python3 - <<'PY' "$V/tjson.js" "$VERSION"
-import pathlib
-import re
-import sys
+Browser entry: **\`web/index.js\`** (\`@rfanth/tjson/web\`) — wasm inlined as
+base64; top-level await initializes on import. Also needs sibling
+\`web/tjson.js\` and \`web/snippets/\`.
 
-path = pathlib.Path(sys.argv[1])
-version = sys.argv[2]
-text = path.read_text()
-text2, n = re.subn(
-    r"(Vendored @rfanth/tjson )[^ ]+( \(\+ this patch\)\.)",
-    rf"\g<1>{version}\g<2>",
-    text,
-    count=1,
-)
-if n != 1:
-    raise SystemExit("error: could not update version comment in vendor/tjson/tjson.js")
-text3, n = re.subn(
-    r'"\./tjson_bg\.js(?:\?v=[^"]+)?"',
-    rf'"./tjson_bg.js?v={version}"',
-    text2,
-)
-if n != 2:
-    raise SystemExit("error: could not update tjson_bg.js cache tokens in vendor/tjson/tjson.js")
-text4, n = re.subn(
-    r'"tjson_bg\.wasm\.b64(?:\?v=[^"]+)?"',
-    rf'"tjson_bg.wasm.b64?v={version}"',
-    text3,
-    count=1,
-)
-if n != 1:
-    raise SystemExit("error: could not update tjson_bg.wasm.b64 cache token in vendor/tjson/tjson.js")
-path.write_text(text4)
-PY
+Served at \`/filesystem/tjson/web/index.js\` (sync copies \`vendor/tjson/web\`
+→ M user \`www/.../tjson/web\`).
 
-echo "==> regen wasm sidecar"
-bash "$ROOT/scripts/regen-tjson-wasm-b64.sh"
+Refresh: \`./scripts/update-vendored-tjson.sh $VERSION\`
+EOF
 
 TOKEN="$(bash "$ROOT/scripts/tjson-cache-token.sh")"
 echo "==> update C0FHIRWS cache token to $TOKEN"
 python3 - <<'PY' "$ROOT/src/C0FHIRWS.m" "$TOKEN"
-import pathlib
-import re
-import sys
-
+import pathlib, re, sys
 path = pathlib.Path(sys.argv[1])
 token = sys.argv[2]
 text = path.read_text()
-text2, n = re.subn(r"(tjson\.js\?v=)[^'\" ]+", rf"\g<1>{token}", text, count=1)
+# Prefer web entry; accept legacy tjson.js?v= during transition
+text2, n = re.subn(
+    r"(/filesystem/(?:tjson/web/index|tjson)\.js\?v=)[^'\" ]+",
+    rf"/filesystem/tjson/web/index.js?v={token}",
+    text,
+    count=1,
+)
+if n != 1:
+    # insert/replace TJSON_PKG line if pattern drifted
+    text2, n = re.subn(
+        r"const TJSON_PKG=location\.origin\+'/filesystem/[^']+'",
+        f"const TJSON_PKG=location.origin+'/filesystem/tjson/web/index.js?v={token}'",
+        text,
+        count=1,
+    )
 if n != 1:
     raise SystemExit("error: could not update tjson cache token in src/C0FHIRWS.m")
 path.write_text(text2)
@@ -107,5 +102,5 @@ PY
 
 bash "$ROOT/scripts/check-tjson-cache-token.sh"
 
-echo "==> vendored tjson updated to $VERSION"
-echo "next: review changes, then deploy with ./scripts/fhirdev-codex-sync.sh or ./scripts/local-fhir-container-sync.sh"
+echo "==> vendored tjson web/ updated to $VERSION"
+echo "next: deploy with ./scripts/vehu10-fhir-sync.sh or ./scripts/fhirdev-codex-sync.sh"

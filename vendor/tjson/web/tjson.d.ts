@@ -66,10 +66,29 @@ export interface StringifyOptions {
     kvPackMultiple?: number;
 }
 
-/** Parse a TJSON string and return a JSON string. */
+export interface ParseOptions {
+    /** Revive integers beyond Number.MAX_SAFE_INTEGER as BigInt (exact). When
+     * false (the default), such integers throw rather than silently losing
+     * precision as a JS number. Default: `false`. */
+    bigints?: boolean;
+}
+
+/** Parse a TJSON string and return a JavaScript value.
+ *
+ * Inherently precision-bounded: tjson carries numbers at arbitrary
+ * precision, but a JS number is an f64. Plain float precision loss is
+ * accepted (you chose JS values); integers a JS number cannot hold exactly
+ * throw by default or become BigInt with `{ bigints: true }`, and numbers
+ * JSON.parse would turn into ±Infinity throw. For a lossless pipeline use
+ * `toJson` (exact text out) with your own `JSON.parse` reviver. */
+export function parse(input: string, options?: ParseOptions): any;
+
+/** Parse a TJSON string and return a JSON string. Never lossy: numbers of
+ * any size and precision pass through as exact text. */
 export function toJson(input: string): string;
 
-/** Render a JSON string as TJSON, with optional options. */
+/** Render a JSON string as TJSON, with optional options. Never lossy:
+ * numbers of any size and precision pass through as exact text. */
 export function fromJson(input: string, options?: StringifyOptions): string;
 
 /** Render a JavaScript value as TJSON, with optional options. */
@@ -77,18 +96,42 @@ export function stringify(input: any, options?: StringifyOptions): string;
 
 
 
+export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
+
+export interface InitOutput {
+    readonly memory: WebAssembly.Memory;
+    readonly fromJson: (a: number, b: number, c: any) => [number, number, number, number];
+    readonly parse: (a: number, b: number, c: any) => [number, number, number];
+    readonly stringify: (a: any, b: any) => [number, number, number, number];
+    readonly toJson: (a: number, b: number) => [number, number, number, number];
+    readonly __wbindgen_exn_store: (a: number) => void;
+    readonly __externref_table_alloc: () => number;
+    readonly __wbindgen_externrefs: WebAssembly.Table;
+    readonly __wbindgen_malloc: (a: number, b: number) => number;
+    readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+    readonly __externref_table_dealloc: (a: number) => void;
+    readonly __wbindgen_free: (a: number, b: number, c: number) => void;
+    readonly __wbindgen_start: () => void;
+}
+
+export type SyncInitInput = BufferSource | WebAssembly.Module;
+
 /**
- * Parse a TJSON string and return a JavaScript value.
+ * Instantiates the given `module`, which can either be bytes or
+ * a precompiled `WebAssembly.Module`.
  *
- * Accepts the full TJSON format: bare strings and keys, multiline strings,
- * pipe tables, line folding, and comments. The output is a live JavaScript
- * value — object, array, string, number, boolean, or null.
+ * @param {{ module: SyncInitInput }} module - Passing `SyncInitInput` directly is deprecated.
  *
- * ```js
- * const value = parse("  name: Alice\n  age: 30");
- * // → { name: "Alice", age: 30 }
- * ```
- *
- * Throws an `Error` if the input is not valid TJSON.
+ * @returns {InitOutput}
  */
-export function parse(input: string): any;
+export function initSync(module: { module: SyncInitInput } | SyncInitInput): InitOutput;
+
+/**
+ * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
+ * for everything else, calls `WebAssembly.instantiate` directly.
+ *
+ * @param {{ module_or_path: InitInput | Promise<InitInput> }} module_or_path - Passing `InitInput` directly is deprecated.
+ *
+ * @returns {Promise<InitOutput>}
+ */
+export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;

@@ -10,9 +10,9 @@
 # Default transport is docker cp + docker exec (no SSH). Set FHIR_USE_SSH=1 to
 # use scp/ssh instead (same defaults as AGENTS.md).
 #
-# TJSON (C0FHIR browser): **vendor/tjson/** is copied into **FHIR_REMOTE_WWW** (default
-# /home/<M user>/www for **fhir**; **vehu10-fhir-sync.sh** sets ~/www/filesystem). Not the host ~/www.
-# **scripts/link-tjson-to-www.sh** is for a native M listener on the host only.
+# TJSON (C0FHIR browser): **vendor/tjson/web/** → **FHIR_REMOTE_WWW/tjson/web/**
+# (GET /filesystem/tjson/web/index.js). **scripts/link-tjson-to-www.sh** is for a
+# native M listener on the host only.
 #
 # Environment overrides:
 #   FHIR_CONTAINER   (default: fhir)
@@ -28,7 +28,6 @@
 #   FHIR_M_USER      (default: osehra) — su - target for ZLINK / %webreq
 #   FHIR_MUMPS       (default: /home/${FHIR_M_USER}/lib/gtm/mumps)
 #   FHIR_USE_SSH=1   FHIR_SSH_HOST PORT USER KEY — scp to container SSH
-#   TJSON_SKIP_REGEN_B64=1 — skip scripts/regen-tjson-wasm-b64.sh before vendor copy
 #   TJSON_SKIP_VERIFY_TOKEN=1 — skip cache-token verification against src/C0FHIRWS.m
 set -euo pipefail
 
@@ -125,23 +124,16 @@ copy_fhir_write_demo_via_docker() {
 }
 
 copy_vendor_tjson_via_docker() {
-  # C0FHIR browser loads ESM from /filesystem/tjson.js (%W0 maps to ~/www/<file>).
-  local v="$ROOT/vendor/tjson" f
-  [[ -f "$v/tjson.js" && -f "$v/tjson_bg.js" && -f "$v/tjson_bg.wasm" && -f "$v/tjson_bg.wasm.b64" ]] || {
-    echo "WARN: vendor/tjson incomplete — update with ./scripts/update-vendored-tjson.sh <version>" >&2
+  # C0FHIR browser loads ESM from /filesystem/tjson/web/index.js (@rfanth/tjson/web).
+  local v="$ROOT/vendor/tjson/web" dest="$FHIR_REMOTE_WWW/tjson/web"
+  [[ -f "$v/index.js" && -f "$v/tjson.js" && -d "$v/snippets" ]] || {
+    echo "WARN: vendor/tjson/web incomplete — update with ./scripts/update-vendored-tjson.sh <version>" >&2
     return 0
   }
-  echo "==> docker cp vendor/tjson/* -> $FHIR_CONTAINER:$FHIR_REMOTE_WWW/ (for /filesystem/tjson.js)"
-  docker exec "$FHIR_CONTAINER" mkdir -p "$FHIR_REMOTE_WWW"
-  for f in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
-    docker cp "$v/$f" "$FHIR_CONTAINER:$FHIR_REMOTE_WWW/$f"
-  done
-  # %ZISH-backed fallback static routes read text line-by-line; keep the large
-  # base64 sidecar wrapped so M web handlers do not truncate a single long line.
-  docker exec "$FHIR_CONTAINER" sh -lc "if command -v fold >/dev/null 2>&1 && [ -f '$FHIR_REMOTE_WWW/tjson_bg.wasm.b64' ]; then tmp='$FHIR_REMOTE_WWW/tjson_bg.wasm.b64.wrap'; tr -d '\\r\\n' < '$FHIR_REMOTE_WWW/tjson_bg.wasm.b64' | fold -w 76 > \"\$tmp\" && mv \"\$tmp\" '$FHIR_REMOTE_WWW/tjson_bg.wasm.b64'; fi"
-  for f in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
-    docker exec "$FHIR_CONTAINER" chown "${FHIR_M_USER}:${FHIR_M_USER}" "$FHIR_REMOTE_WWW/$f"
-  done
+  echo "==> docker cp vendor/tjson/web -> $FHIR_CONTAINER:$dest/ (for /filesystem/tjson/web/index.js)"
+  docker exec "$FHIR_CONTAINER" mkdir -p "$dest"
+  docker cp "$v/." "$FHIR_CONTAINER:$dest/"
+  docker exec "$FHIR_CONTAINER" chown -R "${FHIR_M_USER}:${FHIR_M_USER}" "$FHIR_REMOTE_WWW/tjson"
 }
 
 copy_rehmp_rpc_demo_via_ssh() {
@@ -194,9 +186,9 @@ copy_fhir_write_demo_via_ssh() {
 }
 
 copy_vendor_tjson_via_ssh() {
-  local v="$ROOT/vendor/tjson" f
-  [[ -f "$v/tjson.js" && -f "$v/tjson_bg.js" && -f "$v/tjson_bg.wasm" && -f "$v/tjson_bg.wasm.b64" ]] || {
-    echo "WARN: vendor/tjson incomplete — update with ./scripts/update-vendored-tjson.sh <version>" >&2
+  local v="$ROOT/vendor/tjson/web" dest="$FHIR_REMOTE_WWW/tjson/web"
+  [[ -f "$v/index.js" && -f "$v/tjson.js" && -d "$v/snippets" ]] || {
+    echo "WARN: vendor/tjson/web incomplete — update with ./scripts/update-vendored-tjson.sh <version>" >&2
     return 0
   }
   FHIR_SSH_HOST="${FHIR_SSH_HOST:-127.0.0.1}"
@@ -205,11 +197,9 @@ copy_vendor_tjson_via_ssh() {
   FHIR_SSH_KEY="${FHIR_SSH_KEY:-$HOME/.ssh/id_ed25519_cursor_agent_test}"
   SSH_BASE=(ssh -i "$FHIR_SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -p "$FHIR_SSH_PORT")
   SCP_BASE=(scp -i "$FHIR_SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -P "$FHIR_SSH_PORT")
-  echo "==> scp vendor/tjson/* -> ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:$FHIR_REMOTE_WWW/"
-  "${SSH_BASE[@]}" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}" "mkdir -p $(printf '%q' "$FHIR_REMOTE_WWW")"
-  for f in tjson.js tjson_bg.js tjson_bg.wasm tjson_bg.wasm.b64; do
-    "${SCP_BASE[@]}" "$v/$f" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${FHIR_REMOTE_WWW}/${f}"
-  done
+  echo "==> scp vendor/tjson/web -> ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:$dest/"
+  "${SSH_BASE[@]}" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}" "mkdir -p $(printf '%q' "$dest")"
+  "${SCP_BASE[@]}" -r "$v/." "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${dest}/"
 }
 
 copy_via_ssh() {
@@ -273,10 +263,6 @@ restart_web_and_register() {
     "${M} -run %XCMD \"d stop^%webreq d go^%webreq\""
 }
 
-if [[ "${TJSON_SKIP_REGEN_B64:-0}" != "1" ]]; then
-  echo "==> regen tjson_bg.wasm.b64 (verify decode matches wasm)"
-  bash "$ROOT/scripts/regen-tjson-wasm-b64.sh"
-fi
 if [[ "${TJSON_SKIP_VERIFY_TOKEN:-0}" != "1" ]]; then
   echo "==> verify C0FHIRWS tjson cache token"
   bash "$ROOT/scripts/check-tjson-cache-token.sh"
@@ -306,8 +292,8 @@ restart_web_and_register
 
 DFN="${1:-}"
 if [[ -z "$DFN" ]]; then
-  echo "==> Smoke: GET $FHIR_HTTP_BASE/filesystem/tjson.js (TJSON ESM for browser)"
-  curl -sS -o /tmp/fhir-smoke-tjson.js -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/filesystem/tjson.js" | tail -1
+  echo "==> Smoke: GET $FHIR_HTTP_BASE/filesystem/tjson/web/index.js (TJSON ESM for browser)"
+  curl -sS -o /tmp/fhir-smoke-tjson.js -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/filesystem/tjson/web/index.js" | tail -1
   head -c 120 /tmp/fhir-smoke-tjson.js | cat
   echo
   echo "==> Smoke: GET $FHIR_HTTP_BASE/fhir (index HTML, no dfn)"

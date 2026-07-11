@@ -220,8 +220,10 @@ FM2FHIR(FMDT) ; Convert FileMan date/time to FHIR date/dateTime
  IF D'?7N QUIT ""
  SET Y=1700+$EXTRACT(D,1,3)
  SET M=$EXTRACT(D,4,5),DAY=$EXTRACT(D,6,7)
- IF M="" SET M="01"
- IF DAY="" SET DAY="01"
+ ; FileMan uses 00 for unknown month/day. FHIR date allows YYYY, YYYY-MM,
+ ; or YYYY-MM-DD - never month/day zero (HAPI rejects "1983-06-00").
+ IF +M=0 QUIT Y
+ IF +DAY=0 QUIT Y_"-"_M
  IF $PIECE($GET(FMDT),".")=$GET(FMDT) QUIT Y_"-"_M_"-"_DAY
  SET T=$EXTRACT($PIECE($GET(FMDT),".",2)_"000000",1,6)
  SET HH=+$EXTRACT(T,1,2),MM=+$EXTRACT(T,3,4),SS=+$EXTRACT(T,5,6)
