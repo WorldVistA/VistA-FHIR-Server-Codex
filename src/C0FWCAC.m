@@ -338,23 +338,34 @@ ADDKEEP(CROOT,PRED,OBJ,KEEP) ; Add exact POS hits
  S SUB="" F  S SUB=$O(@CROOT@("POS",PRED,OBJ,SUB)) Q:SUB=""  S KEEP(SUB)=""
  Q
  ;
-DATEOK(HAVE,OP,WANT) ; $$ - compare ISO-ish date strings lexically
- S HAVE=$$DNUM($P($G(HAVE),"T",1)),WANT=$$DNUM($P($G(WANT),"T",1))
- I HAVE=""!(WANT="") Q 0
- I OP="eq" Q HAVE=WANT
- I OP="ge" Q HAVE'<WANT
- I OP="gt" Q HAVE>WANT
- I OP="le" Q HAVE'>WANT
- I OP="lt" Q HAVE<WANT
+DATEOK(HAVE,OP,WANT) ; $$ - compare FHIR date/dateTime at WANT precision
+ ; Day-only WANT (YYYY-MM-DD) compares calendar days. DateTime WANT keeps
+ ; second precision so ge/gt/le/lt do not return earlier same-day instants
+ ; (Inferno DiagnosticReport patient+category+date).
+ N H,W
+ S W=$$DKEY($G(WANT)),H=$$DKEY($G(HAVE),$L(W))
+ I H=""!(W="") Q 0
+ I OP="eq" Q H=W
+ I OP="ge" Q H'<W
+ I OP="gt" Q H>W
+ I OP="le" Q H'>W
+ I OP="lt" Q H<W
  Q HAVE=WANT
  ;
+DKEY(X,MAX) ; $$ - sortable YYYYMMDD[HHMMSS] clipped to MAX digits (default full)
+ N D,T,KEY
+ S X=$G(X),MAX=+$G(MAX)
+ S D=$P(X,"T",1),T=$P($P(X,"T",2),"Z",1),T=$P(T,"+",1),T=$P(T,"-",1)
+ I D?4N1"-"2N1"-"2N S KEY=$TR(D,"-")
+ E  I D?4N1"-"2N S KEY=$TR(D,"-")_"01"
+ E  I D?4N S KEY=D_"0101"
+ E  Q ""
+ I T'="" S KEY=KEY_$TR($E(T_"00:00:00",1,8),":")
+ I MAX>0,$L(KEY)>MAX S KEY=$E(KEY,1,MAX)
+ Q KEY
+ ;
 DNUM(X) ; $$ - ISO date/dateTime prefix as sortable YYYYMMDD number
- N D
- S D=$P($G(X),"T",1)
- I D?4N1"-"2N1"-"2N Q $TR(D,"-")
- I D?4N1"-"2N Q $TR(D,"-")_"01"
- I D?4N Q D_"0101"
- Q ""
+ Q +$$DKEY($G(X),8)
  ;
 REQDFN(FILTER,RES) ; $$ - patient id for patient-scoped cache
  N RID,X

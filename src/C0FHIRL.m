@@ -246,10 +246,16 @@ LBCMT(DFN,SUB,ID) ; Return one lab comment string from ^TMP("LRRR")
  QUIT $$TRIM^C0FHIR(TXT)
  ;
 LABDT(X) ; Convert inverse FM date piece from lab id to FHIR dateTime
- NEW Y
- SET Y=+$GET(X)
- IF Y<1 QUIT ""
- SET Y=9999999-Y
+ ; Use fixed-scale integer math so 9999999-IDT does not lose a second to
+ ; floating point (e.g. 6849869.848277 -> 3150129.151723, not .151722).
+ NEW FINT,P1,P2,RD,RINT,RT,Y
+ SET P1=$PIECE($GET(X),"."),P2=$PIECE($GET(X),".",2)
+ IF +P1<1 QUIT ""
+ SET P2=$EXTRACT(P2_"000000",1,6)
+ SET FINT=(P1*1000000)+P2
+ SET RINT=(9999999*1000000)-FINT
+ SET RD=RINT\1000000,RT=RINT#1000000
+ SET Y=RD_"."_$EXTRACT(1000000+RT,2,7)
  QUIT $$FM2FHIR^C0FHIRBU(Y)
  ;
 LABID(X) ; Normalize lab id to FHIR-safe id
