@@ -29,8 +29,13 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(WS^C0FWCAC)'="" DO
  . DO addService^%webutils("GET","fhir/{resource}","WS^C0FWCAC")
  . DO addService^%webutils("GET","fhir/{resource}/{id}","WSREAD^C0FWCAC")
+ IF $T(WSALT^C0FHIR)'="" DO
+ . DO addService^%webutils("GET","altfhir","WSALT^C0FHIR")
+ . DO addService^%webutils("GET","altfhir/{resource}","WSALTREST^C0FHIR")
+ . DO addService^%webutils("GET","altfhir/{resource}/{id}","WSALTREST^C0FHIR")
  IF $T(REG^C0XWS)'="" DO REG^C0XWS
  IF $T(DASH^C0FHIRWS)'="" DO addService^%webutils("GET","fhir-dashboard","DASH^C0FHIRWS")
+ IF $T(QDASH^C0FHIRWS)'="" DO addService^%webutils("GET","fhir-quality-dashboard","QDASH^C0FHIRWS")
  IF $T(WSASSET^C0FHIRWS)'="" DO addService^%webutils("GET","filesystem/{file}","WSASSET^C0FHIRWS")
  IF $T(WS^C0FWAIS)'="" DO addService^%webutils("GET","aiconsult","WS^C0FWAIS")
  IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")

@@ -1028,6 +1028,57 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  DO ADDLN(.RTN,"</body></html>")
  QUIT
  ;
+QUALDASH(RTN) ; Render FHIR quality testing dashboard
+ NEW CNT,DFN,IEN,NAME,ROOT,ROW
+ KILL RTN
+ SET ROOT=$$GSROOT()
+ DO ADDLN(.RTN,"<!DOCTYPE HTML>")
+ DO ADDLN(.RTN,"<html><head><title>FHIR Quality Dashboard</title>")
+ DO ADDLN(.RTN,"<style>body{font-family:Arial,sans-serif;margin:24px;line-height:1.4}")
+ DO ADDLN(.RTN,"table{border-collapse:collapse;width:100%;margin:14px 0}")
+ DO ADDLN(.RTN,"th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f1f5f9}")
+ DO ADDLN(.RTN,".muted{color:#64748b}.links a{margin-right:10px}</style>")
+ DO ADDLN(.RTN,"</head><body>")
+ DO ADDLN(.RTN,"<h1>FHIR Quality Dashboard</h1>")
+ DO ADDLN(.RTN,"<p class=""muted"">Quality-measure workspace for devfhir source bundles, VistA round-trip testing, and hosted Inferno US Quality Core validation.</p>")
+ DO ADDLN(.RTN,"<div class=""links""><a href=""/fhir-dashboard"">FHIR dashboard</a><a href=""/altfhir/metadata"">/altfhir metadata</a><a href=""/fhir/metadata"">/fhir metadata</a></div>")
+ DO ADDLN(.RTN,"<h2>First-wave 2026 measures</h2>")
+ DO ADDLN(.RTN,"<table><tr><th>CMS ID</th><th>Measure</th><th>Primary FHIR focus</th></tr>")
+ DO QDMEAS(.RTN,"CMS122v14","Diabetes: Glycemic Status Assessment Greater Than 9%","Condition, Encounter, Observation HbA1c")
+ DO QDMEAS(.RTN,"CMS165v14","Controlling High Blood Pressure","Condition, Encounter, Blood Pressure Observation")
+ DO QDMEAS(.RTN,"CMS130v14","Colorectal Cancer Screening","Procedure, Observation, DiagnosticReport")
+ DO QDMEAS(.RTN,"CMS125v14","Breast Cancer Screening","Procedure, DiagnosticReport")
+ DO QDMEAS(.RTN,"CMS147v14","Influenza Immunization","Immunization")
+ DO QDMEAS(.RTN,"CMS2v15","Screening for Depression and Follow-Up Plan","Observation, Procedure, CarePlan gap")
+ DO QDMEAS(.RTN,"CMS68v15","Documentation of Current Medications","MedicationRequest / medication review evidence")
+ DO QDMEAS(.RTN,"CMS138v14","Tobacco Use: Screening and Cessation Intervention","Social-history Observation, Procedure/Medication")
+ DO QDMEAS(.RTN,"CMS134v14","Diabetes kidney-health measure family","Condition, Observation lab, Procedure")
+ DO QDMEAS(.RTN,"CMS131v14","Diabetes: Eye Exam","Condition, Procedure, Observation")
+ DO ADDLN(.RTN,"</table>")
+ DO ADDLN(.RTN,"<h2>Graph-source patients</h2>")
+ IF ROOT="" DO ADDLN(.RTN,"<p>No fhir-intake graph root is available.</p>") GOTO QDDONE
+ DO ADDLN(.RTN,"<table><tr><th>DFN</th><th>IEN</th><th>Name</th><th>Source bundle</th><th>AltFHIR REST</th><th>VistA FHIR</th><th>Load log</th></tr>")
+ SET CNT=0,DFN=0
+ FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN)) QUIT:+DFN<1!(CNT>250)  DO
+ . SET IEN=$ORDER(@ROOT@("DFN",DFN,""),-1) QUIT:+IEN<1
+ . SET CNT=CNT+1
+ . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^") IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
+ . SET ROW="<tr><td>"_DFN_"</td><td>"_IEN_"</td><td>"_$$HTMLESC(NAME)_"</td>"
+ . SET ROW=ROW_"<td><a href=""/altfhir?ien="_IEN_""">bundle</a></td>"
+ . SET ROW=ROW_"<td><a href=""/altfhir/Patient/"_IEN_""">Patient/"_IEN_"</a></td>"
+ . SET ROW=ROW_"<td><a href=""/fhir?dfn="_DFN_""">/fhir</a></td>"
+ . SET ROW=ROW_"<td><a href="""_$$LOADLOGURL(ROOT,IEN)_""">load</a></td></tr>"
+ . DO ADDLN(.RTN,ROW)
+ IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan=""7"">No devfhir graph-linked patients found yet.</td></tr>")
+ DO ADDLN(.RTN,"</table>")
+QDDONE ;
+ DO ADDLN(.RTN,"</body></html>")
+ QUIT
+ ;
+QDMEAS(RTN,CMS,TITLE,FOCUS) ; Add one quality dashboard measure row
+ DO ADDLN(.RTN,"<tr><td>"_CMS_"</td><td>"_$$HTMLESC(TITLE)_"</td><td>"_$$HTMLESC(FOCUS)_"</td></tr>")
+ QUIT
+ ;
 ADDLRROWS(SORT) ; Add non-Synthea rows discovered via ^LR
  NEW DFN,KEY,LRDFN,NAME
  SET DFN=0
@@ -1185,6 +1236,161 @@ wsShow(OUT,FILTER) ; GET showfhir/tfhir graph JSON through the active Codex grap
  IF SAVEFMT'="" SET FILTER("format")=SAVEFMT
  IF FORMAT="TJSON" DO WSSHOWJSON2TJSON^C0FHIR(FORMAT,.OUT)
  SET HTTPRSP("mime")=$$WSSHOWMIME^C0FHIR(FORMAT)
+ QUIT
+ ;
+WSALT(OUT,FILTER) ; GET /altfhir?ien=n - graph-source FHIR bundle by IEN
+ NEW FORMAT,PATH,SAVEFMT
+ IF '$D(DT) N DIQUIET S DIQUIET=1 D DT^DICRW
+ SET PATH=$GET(HTTPREQ("path"))
+ IF $PIECE(PATH,"/",2)="altfhir",$PIECE(PATH,"/",3)'="" DO WSALTREST(.OUT,.FILTER) QUIT
+ SET SAVEFMT=$GET(FILTER("format"))
+ SET FORMAT=$$UPCASE(SAVEFMT)
+ KILL FILTER("dfn"),FILTER("icn"),FILTER("format")
+ DO WSSHOWFB^C0FHIR(.OUT,.FILTER)
+ IF SAVEFMT'="" SET FILTER("format")=SAVEFMT
+ IF FORMAT="TJSON" DO WSSHOWJSON2TJSON^C0FHIR(FORMAT,.OUT)
+ SET HTTPRSP("mime")=$$WSSHOWMIME^C0FHIR(FORMAT)
+ QUIT
+ ;
+WSALTREST(OUT,FILTER) ; GET /altfhir/{resource}[/{id}] over graph-source bundle cache
+ NEW CROOT,ERR,ID,IEN,JERR,PATH,RES,ROOT,TMP
+ IF $D(HTTPARGS) MERGE FILTER=HTTPARGS
+ SET PATH=$GET(HTTPREQ("path"))
+ IF $EXTRACT(PATH)="/" SET PATH=$EXTRACT(PATH,2,$LENGTH(PATH))
+ SET RES=$PIECE(PATH,"/",2),ID=$PIECE(PATH,"/",3)
+ IF RES="" SET RES=$GET(FILTER("resource"))
+ IF ID="" SET ID=$GET(FILTER("id"))
+ IF RES="metadata" DO ALTCAP(.TMP) GOTO WSALTJSON
+ SET RES=$$RESTYPE^C0FWCAC(RES)
+ IF RES="" SET ERR="Missing or unsupported FHIR resource type" GOTO WSALTERR
+ SET IEN=$$ALTIEN(.FILTER,RES,ID)
+ IF IEN<1 SET ERR="/altfhir requires graph IEN via ien, Patient/_id, or patient/subject" GOTO WSALTERR
+ SET ROOT=$$GSROOT^C0FHIR
+ IF ROOT="" SET ERR="FHIR graph root is unavailable" GOTO WSALTERR
+ IF '$DATA(@ROOT@(IEN,"json")) SET ERR="Graph IEN "_IEN_" has no stored FHIR bundle" GOTO WSALTERR
+ DO ALTIDX(ROOT,IEN,.CROOT)
+ IF $GET(FILTER("patient"))'="" DO ALTFIX(.FILTER,CROOT,IEN,"patient")
+ IF $GET(FILTER("subject"))'="" DO ALTFIX(.FILTER,CROOT,IEN,"subject")
+ IF RES="Patient",$GET(FILTER("_id"))="" SET FILTER("_id")=IEN
+ IF ID'="" DO ALTREAD(CROOT,RES,ID,IEN,.TMP,.ERR)
+ ELSE  DO FINDS^C0FWCAC(.FILTER,CROOT,RES,.TMP)
+ IF $GET(ERR)'="" GOTO WSALTERR
+ DO ALTFIXOUT(.TMP,IEN)
+WSALTJSON ;
+ DO TOJSON^C0FHIRBU(.TMP,.OUT,.JERR)
+ SET HTTPRSP("mime")="application/fhir+json"
+ QUIT
+WSALTERR ;
+ DO OO^C0FWCAC(ERR,.TMP)
+ GOTO WSALTJSON
+ ;
+ALTIEN(FILTER,RES,ID) ; $$ - graph IEN from altfhir request
+ NEW X
+ SET X=+$GET(FILTER("ien")) IF X>0 QUIT X
+ IF RES="Patient" DO  IF X>0 QUIT X
+ . SET X=$GET(FILTER("_id")) IF X["Patient/" SET X=$PIECE(X,"Patient/",2)
+ . IF X="" SET X=ID
+ SET X=$GET(FILTER("patient")) IF X="" SET X=$GET(FILTER("subject"))
+ IF X["Patient/" SET X=$PIECE(X,"Patient/",2)
+ QUIT +X
+ ;
+ALTIDX(ROOT,IEN,CROOT) ; Build/reuse source-bundle cache for one graph IEN
+ NEW CID,ENTRY,PID,PREF,RES,SUB,TYPE
+ SET CID="altfhir-source"
+ SET CROOT=$NAME(@ROOT@(IEN,"cache",CID))
+ IF '$DATA(@CROOT@("bundle","resourceType")) DO
+ . KILL @CROOT
+ . MERGE @CROOT@("bundle")=@ROOT@(IEN,"json")
+ . DO INDEX^C0FWCAC(ROOT,IEN,CID)
+ SET PID=$$ALTPID(CROOT)
+ QUIT:PID=""
+ SET PREF="Patient/"_PID
+ SET ENTRY=0
+ FOR  SET ENTRY=$ORDER(@CROOT@("bundle","entry",ENTRY)) QUIT:+ENTRY<1  DO
+ . SET RES=$NAME(@CROOT@("bundle","entry",ENTRY,"resource"))
+ . SET TYPE=$GET(@RES@("resourceType")) QUIT:TYPE=""
+ . SET SUB=TYPE_"/"_$GET(@RES@("id")) QUIT:SUB="/"
+ . IF TYPE="Patient" DO SETIDXGN^C0FWFUTL(CROOT,SUB,"_id",IEN) QUIT
+ . IF $GET(@RES@("subject","reference"))=PREF DO SETIDXGN^C0FWFUTL(CROOT,SUB,"subject",IEN),SETIDXGN^C0FWFUTL(CROOT,SUB,"subject","Patient/"_IEN)
+ . IF $GET(@RES@("patient","reference"))=PREF DO SETIDXGN^C0FWFUTL(CROOT,SUB,"patient",IEN),SETIDXGN^C0FWFUTL(CROOT,SUB,"patient","Patient/"_IEN)
+ QUIT
+ ;
+ALTPID(CROOT) ; $$ - source Patient.id in an altfhir source cache
+ NEW ENTRY,RES
+ SET ENTRY=0
+ FOR  SET ENTRY=$ORDER(@CROOT@("bundle","entry",ENTRY)) QUIT:+ENTRY<1  DO  QUIT:$GET(RES)'=""
+ . IF $GET(@CROOT@("bundle","entry",ENTRY,"resource","resourceType"))="Patient" SET RES=$GET(@CROOT@("bundle","entry",ENTRY,"resource","id"))
+ QUIT $GET(RES)
+ ;
+ALTFIX(FILTER,CROOT,IEN,KEY) ; Replace graph IEN patient token with source Patient id token
+ NEW PID,VAL
+ SET VAL=$GET(FILTER(KEY)) QUIT:VAL=""
+ SET PID=$$ALTPID(CROOT) QUIT:PID=""
+ IF VAL=IEN!(VAL=("Patient/"_IEN)) SET FILTER(KEY)=PID_","_"Patient/"_PID_","_IEN_","_"Patient/"_IEN
+ QUIT
+ ;
+ALTREAD(CROOT,RES,ID,IEN,OUT,ERR) ; Read one altfhir resource
+ NEW ENTRY,SUB
+ KILL OUT,ERR
+ IF RES="Patient",(+ID=IEN) DO  QUIT:$DATA(OUT)
+ . SET ENTRY=+$ORDER(@CROOT@("type","Patient",""))
+ . IF ENTRY>0 MERGE OUT=@CROOT@("bundle","entry",ENTRY,"resource")
+ SET SUB=RES_"/"_ID
+ SET ENTRY=+$ORDER(@CROOT@("SPO",SUB,"entry",""))
+ IF ENTRY>0 MERGE OUT=@CROOT@("bundle","entry",ENTRY,"resource")
+ IF '$DATA(OUT) SET ERR=RES_"/"_ID_" not found in graph source cache"
+ QUIT
+ ;
+ALTFIXOUT(OUT,IEN) ; Present graph IEN as the Patient id in altfhir responses
+ NEW IDX
+ IF $GET(OUT("resourceType"))="Patient" SET OUT("id")=IEN QUIT
+ IF $GET(OUT("resourceType"))'="Bundle" QUIT
+ SET IDX=0
+ FOR  SET IDX=$ORDER(OUT("entry",IDX)) QUIT:+IDX<1  DO
+ . IF $GET(OUT("entry",IDX,"resource","resourceType"))="Patient" SET OUT("entry",IDX,"resource","id")=IEN
+ QUIT
+ ;
+ALTCAP(OUT) ; Minimal CapabilityStatement for graph-source /altfhir
+ KILL OUT
+ SET OUT("resourceType")="CapabilityStatement"
+ SET OUT("status")="draft"
+ SET OUT("date")=$$NOW^C0FWCAC()
+ SET OUT("kind")="instance"
+ SET OUT("fhirVersion")="4.0.1"
+ SET OUT("format",1)="json"
+ SET OUT("rest",1,"mode")="server"
+ SET OUT("rest",1,"resource",1,"type")="Patient"
+ SET OUT("rest",1,"resource",1,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",1,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",1,"searchParam",1,"name")="_id"
+ SET OUT("rest",1,"resource",1,"searchParam",1,"type")="token"
+ SET OUT("rest",1,"resource",2,"type")="Observation"
+ SET OUT("rest",1,"resource",2,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",2,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",2,"searchParam",1,"name")="patient"
+ SET OUT("rest",1,"resource",2,"searchParam",1,"type")="reference"
+ SET OUT("rest",1,"resource",3,"type")="Condition"
+ SET OUT("rest",1,"resource",3,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",3,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",4,"type")="Encounter"
+ SET OUT("rest",1,"resource",4,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",4,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",5,"type")="DiagnosticReport"
+ SET OUT("rest",1,"resource",5,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",5,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",6,"type")="Immunization"
+ SET OUT("rest",1,"resource",6,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",6,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",7,"type")="Procedure"
+ SET OUT("rest",1,"resource",7,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",7,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",8,"type")="MedicationRequest"
+ SET OUT("rest",1,"resource",8,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",8,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",9,"type")="DocumentReference"
+ SET OUT("rest",1,"resource",9,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",9,"interaction",2,"code")="search-type"
+ DO FINAL^C0FHIRBU(.OUT)
  QUIT
  ;
 WSSHOWFB(OUT,FILTER) ; Fallback when wsShow^SYNFHIR missing: old C0FHIR graph path + encode

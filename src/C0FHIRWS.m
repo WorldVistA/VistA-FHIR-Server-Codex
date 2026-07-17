@@ -50,6 +50,13 @@ DASH(RTN,FILTER) ; Human FHIR patient dashboard
  S HTTPRSP("mime")="text/html"
  Q
  ;
+QDASH(RTN,FILTER) ; FHIR quality dashboard
+ K RTN
+ S FILTER("type")="text/html"
+ D QUALDASH^C0FHIR(.RTN)
+ S HTTPRSP("mime")="text/html"
+ Q
+ ;
 WSASSET(RTN,FILTER) ; Serve allowlisted browser assets when static /filesystem is unavailable
  N DIR,FILE,OK,TMP
  K RTN
