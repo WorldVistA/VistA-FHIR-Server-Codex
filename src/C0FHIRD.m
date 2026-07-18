@@ -166,7 +166,8 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  SET TXT=$GET(PROB("name"))
  IF TXT'="" SET RTN("entry",IDX,"resource","code","text")=TXT
  IF $GET(PROB("sctc"))'="" DO
- . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://snomed.info/sct"
+ . SET CODESYS=$$CONDSYS($GET(PROB("sctc")))
+ . SET RTN("entry",IDX,"resource","code","coding",1,"system")=CODESYS
  . SET RTN("entry",IDX,"resource","code","coding",1,"code")=$GET(PROB("sctc"))
  . IF $GET(PROB("sctt"))'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$GET(PROB("sctt"))
  IF $GET(PROB("sctc"))="",($GET(PROB("icd"))'="") DO
@@ -189,6 +190,7 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
 CONDSYS(X) ; Map VPR coding system token to FHIR system URL
  NEW Y
  SET Y=$$UPCASE^C0FHIR($GET(X))
+ IF Y?1U2N.E QUIT "http://hl7.org/fhir/sid/icd-10-cm"
  IF Y["10" QUIT "http://hl7.org/fhir/sid/icd-10-cm"
  IF Y["SNOMED" QUIT "http://snomed.info/sct"
  QUIT "http://hl7.org/fhir/sid/icd-9-cm"
@@ -239,19 +241,34 @@ SETOBS(RTN,VIT,DFN) ; Map one VPR vital entry to a FHIR Observation resource
  . SET RTN("entry",IDX,"resource","code","coding",1,"system")="urn:va:vuid"
  . SET RTN("entry",IDX,"resource","code","coding",1,"code")=VUID
  DO VLOINC(.RTN,IDX,NAME)
+ DO VPROFILE(.RTN,IDX,NAME)
  IF NAME'="" SET RTN("entry",IDX,"resource","code","text")=NAME
  SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  IF +$GET(VIT("taken"))>0 SET RTN("entry",IDX,"resource","effectiveDateTime")=$$FM2FHIR^C0FHIRBU($GET(VIT("taken")))
  IF +$GET(VIT("entered"))>0 SET RTN("entry",IDX,"resource","issued")=$$FM2FHIR^C0FHIRBU($GET(VIT("entered")))
  SET RES=$PIECE(M0,"^",4),UNIT=$PIECE(M0,"^",5),MRES=$PIECE(M0,"^",6),MUNT=$PIECE(M0,"^",7)
  DO BPCOMP(.RTN,IDX,NAME,RES,MRES,UNIT,MUNT)
+ IF $$ISBP($GET(NAME)) QUIT
  IF $$ISNUM(MRES) DO  QUIT
  . SET RTN("entry",IDX,"resource","valueQuantity","value")=+MRES
- . IF MUNT'="" SET RTN("entry",IDX,"resource","valueQuantity","unit")=MUNT
+ . DO QTYUNIT(.RTN,$NAME(RTN("entry",IDX,"resource","valueQuantity")),MUNT)
  IF $$ISNUM(RES) DO  QUIT
  . SET RTN("entry",IDX,"resource","valueQuantity","value")=+RES
- . IF UNIT'="" SET RTN("entry",IDX,"resource","valueQuantity","unit")=UNIT
+ . DO QTYUNIT(.RTN,$NAME(RTN("entry",IDX,"resource","valueQuantity")),UNIT)
  IF RES'="" SET RTN("entry",IDX,"resource","valueString")=RES
+ QUIT
+ ;
+VPROFILE(RTN,IDX,NAME) ; Add US Core vital profile when known
+ NEW CODE,PROF
+ SET CODE=$PIECE($$VLCODE($GET(NAME)),"^")
+ IF CODE="85354-9" SET PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-blood-pressure|6.1.0"
+ IF CODE="8302-2" SET PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-body-height|6.1.0"
+ IF CODE="29463-7" SET PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-body-weight|6.1.0"
+ IF CODE="8310-5" SET PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-body-temperature|6.1.0"
+ IF CODE="8867-4" SET PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-heart-rate|6.1.0"
+ IF CODE="9279-1" SET PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-respiratory-rate|6.1.0"
+ IF CODE="59408-5" SET PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-pulse-oximetry|6.1.0"
+ IF $GET(PROF)'="" SET RTN("entry",IDX,"resource","meta","profile",1)=PROF
  QUIT
  ;
 VLOINC(RTN,IDX,NAME) ; Add LOINC coding for known VistA vital types
@@ -263,6 +280,11 @@ VLOINC(RTN,IDX,NAME) ; Add LOINC coding for known VistA vital types
  SET RTN("entry",IDX,"resource","code","coding",N,"system")="http://loinc.org"
  SET RTN("entry",IDX,"resource","code","coding",N,"code")=CODE
  IF DISPLAY'="" SET RTN("entry",IDX,"resource","code","coding",N,"display")=DISPLAY
+ IF CODE="59408-5" DO
+ . SET N=$ORDER(RTN("entry",IDX,"resource","code","coding",""),-1)+1
+ . SET RTN("entry",IDX,"resource","code","coding",N,"system")="http://loinc.org"
+ . SET RTN("entry",IDX,"resource","code","coding",N,"code")="2708-6"
+ . SET RTN("entry",IDX,"resource","code","coding",N,"display")="Oxygen saturation in Arterial blood"
  QUIT
  ;
 VLCODE(NAME) ; $$ - LOINC code^display for known vital display names
@@ -293,13 +315,35 @@ BPCOMP(RTN,IDX,NAME,RES,MRES,UNIT,MUNT) ; Add systolic/diastolic components for 
  SET RTN("entry",IDX,"resource","component",1,"code","coding",1,"code")="8480-6"
  SET RTN("entry",IDX,"resource","component",1,"code","coding",1,"display")="Systolic blood pressure"
  SET RTN("entry",IDX,"resource","component",1,"valueQuantity","value")=+SYS
- SET RTN("entry",IDX,"resource","component",1,"valueQuantity","unit")=U
+ DO QTYUNIT(.RTN,$NAME(RTN("entry",IDX,"resource","component",1,"valueQuantity")),U)
  SET RTN("entry",IDX,"resource","component",2,"code","coding",1,"system")="http://loinc.org"
  SET RTN("entry",IDX,"resource","component",2,"code","coding",1,"code")="8462-4"
  SET RTN("entry",IDX,"resource","component",2,"code","coding",1,"display")="Diastolic blood pressure"
  SET RTN("entry",IDX,"resource","component",2,"valueQuantity","value")=+DIA
- SET RTN("entry",IDX,"resource","component",2,"valueQuantity","unit")=U
+ DO QTYUNIT(.RTN,$NAME(RTN("entry",IDX,"resource","component",2,"valueQuantity")),U)
  QUIT
+ ;
+QTYUNIT(RTN,NODE,UNIT) ; Populate UCUM unit fields for vital Quantity
+ NEW CODE,U
+ SET U=$GET(UNIT) QUIT:U=""
+ SET CODE=$$UCUM(U)
+ SET @NODE@("unit")=U
+ IF CODE'="" SET @NODE@("system")="http://unitsofmeasure.org",@NODE@("code")=CODE
+ QUIT
+ ;
+UCUM(UNIT) ; $$ - normalize common VistA/RPMS vital units to UCUM code
+ NEW U
+ SET U=$$UPCASE^C0FHIR($GET(UNIT))
+ IF U="KG" QUIT "kg"
+ IF U="CM" QUIT "cm"
+ IF U="LB"!(U="LBS") QUIT "[lb_av]"
+ IF U="IN"!(U="INCH")!(U="INCHES") QUIT "[in_i]"
+ IF U="MM[HG]"!(U="MMHG") QUIT "mm[Hg]"
+ IF U="DEGF" QUIT "[degF]"
+ IF U="DEGC"!(U="CEL")!(U="C") QUIT "Cel"
+ IF U="%" QUIT "%"
+ IF U="{SCORE}" QUIT "{score}"
+ QUIT $GET(UNIT)
  ;
 ISBP(NAME) ; $$ - true for blood pressure vital names
  NEW X

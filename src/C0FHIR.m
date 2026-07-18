@@ -710,12 +710,20 @@ ADDDOCREF(RTN,IDX,DA,DOC,TXT,VST,DFN) ; Add one TIU DocumentReference resource
  DO ADDRES^C0FHIRBU(.RTN,"DocumentReference","D"_+$GET(DA),.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="DocumentReference"
  SET RTN("entry",IDX,"resource","id")="D"_+$GET(DA)
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference|6.1.0"
  SET RTN("entry",IDX,"resource","status")="current"
  SET TITLE=$P($GET(DOC),U,2) I TITLE="" SET TITLE=$P($GET(DOC),U,3)
  IF TITLE="" SET TITLE=$$GET1^DIQ(8925,+$GET(DA)_",",.01,"E")
+ SET RTN("entry",IDX,"resource","type","coding",1,"system")="http://loinc.org"
+ SET RTN("entry",IDX,"resource","type","coding",1,"code")="11506-3"
+ SET RTN("entry",IDX,"resource","type","coding",1,"display")="Progress note"
  IF TITLE'="" DO
  . SET RTN("entry",IDX,"resource","type","text")=TITLE
  . SET RTN("entry",IDX,"resource","description")=TITLE
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="clinical-note"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Clinical Note"
+ SET RTN("entry",IDX,"resource","category",1,"text")="Clinical Note"
  SET DT=+$P($GET(DOC),U,6)
  IF DT<1 SET DT=+$P($GET(^TIU(8925,+$GET(DA),0)),U,7)
  IF DT>0 SET RTN("entry",IDX,"resource","date")=$$FM2FHIR^C0FHIRBU(DT)

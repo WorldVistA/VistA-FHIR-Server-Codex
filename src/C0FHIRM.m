@@ -156,7 +156,8 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  . SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"system")="http://hl7.org/fhir/sid/cvx"
  . SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"code")=$PIECE(CVX,"^")
  . SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"code","\s")=""
- . IF $PIECE(CVX,"^",2)'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"display")=$PIECE(CVX,"^",2)
+ . IF $$CVXDISP($PIECE(CVX,"^"))'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"display")=$$CVXDISP($PIECE(CVX,"^"))
+ . E  IF $PIECE(CVX,"^",2)'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"display")=$PIECE(CVX,"^",2)
  . E  IF $GET(IMM("name"))'="" SET RTN("entry",IDX,"resource","vaccineCode","coding",1,"display")=$GET(IMM("name"))
  SET CPT=$PIECE($GET(IMM("cpt")),"^")
  IF CPT'="",($$UPCASE^C0FHIR(CPT)'["NO SUCH") DO
@@ -201,4 +202,9 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  . SET SRC=$SELECT($PIECE($GET(IMM("source")),"^",2)'="":$PIECE($GET(IMM("source")),"^",2),$PIECE($GET(IMM("source")),"^",1)'="":$PIECE($GET(IMM("source")),"^",1),1:$GET(IMM("source")))
  . DO ADDNOTE^C0FHIRBU(.RTN,IDX,"Source: "_SRC)
  QUIT
+ ;
+CVXDISP(CODE) ; $$ - validator-preferred CVX display overrides
+ SET CODE=$GET(CODE)
+ IF CODE="197" QUIT "Influenza, high-dose, quadrivalent, PF"
+ QUIT ""
  ;

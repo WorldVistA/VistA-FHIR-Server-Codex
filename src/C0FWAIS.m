@@ -3,17 +3,18 @@ C0FWAIS ; VEHU/Codex - AI Consult web service orchestration ;Jun 05, 2026
  ;
  Q
  ;
-WS(OUT,FILTER) ; GET /aiconsult?dfn=&file=0|1
- N AI,DFN,ERR,FILE,PAT,PATJSON,REQ,RESP,REPORTS,STAGE,TMP,UPD
+WS(OUT,FILTER) ; GET /aiconsult?dfn=&file=0|1&mode=&measure=
+ N AI,DFN,ERR,FILE,MEASURE,MODE,PAT,PATJSON,REQ,RESP,REPORTS,STAGE,TMP,UPD
  S U="^",HTTPRSP("mime")="application/fhir+json"
  K OUT
  S DFN=+$G(FILTER("dfn"))
  I DFN<1 D OO(.OUT,"error","exception","Missing or invalid dfn parameter") Q
  S FILE=$S($G(FILTER("file"))="0":0,1:1)
  S STAGE=$S($G(FILTER("stage"))="2":2,1:1)
+ S MODE=$G(FILTER("mode")),MEASURE=$G(FILTER("measure"))
  D PATBNDL(DFN,.PAT,.PATJSON,.ERR,STAGE)
  I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
- D CALLCDS(.PATJSON,.AI,.ERR)
+ D CALLCDS(.PATJSON,.AI,.ERR,MODE,MEASURE)
  I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
  D DECORATE(.PAT,.AI,.REPORTS)
  I STAGE=2,'$D(REPORTS("entry")) D FBACK(.PAT,.REPORTS)
@@ -66,12 +67,15 @@ ISEVID(ROOT,IEN,RIEN) ; $$ - true if graph entry is Stage 1/2 seed evidence
  . I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","meta","tag",CI,"system"))="https://github.com/glilly/cds-hooks-on-fhir/seed/stage2/evidence" S SYS=1
  Q +$G(SYS)
  ;
-CALLCDS(JSON,AI,ERR) ; POST patient bundle JSON to cds1
- N HDR,OPT,PAYLOAD,RET,STATUS
+CALLCDS(JSON,AI,ERR,MODE,MEASURE) ; POST patient bundle JSON to cds1
+ N HDR,OPT,PAYLOAD,RET,STATUS,URL
  K AI,ERR,PAYLOAD,RET,HDR
  D CHUNK(.JSON,.PAYLOAD)
  S OPT("header",1)="Expect:"
- S STATUS=$$%^%WC(.RET,"POST","https://cds1.vistaplex.org/analyze",.PAYLOAD,"application/fhir+json",60,.HDR,.OPT)
+ S URL="https://cds1.vistaplex.org/analyze"
+ I $G(MODE)'="" S URL=URL_"?mode="_$G(MODE)
+ I $G(MEASURE)'="" S URL=URL_$S(URL["?":"&",1:"?")_"measure="_$G(MEASURE)
+ S STATUS=$$%^%WC(.RET,"POST",URL,.PAYLOAD,"application/fhir+json",60,.HDR,.OPT)
  I +$G(STATUS)'=0 S ERR="cds1 curl exit status "_STATUS Q
  I $G(HDR("STATUS"))'="",($G(HDR("STATUS"))<200!($G(HDR("STATUS"))>299)) S ERR="cds1 HTTP status "_$G(HDR("STATUS")) Q
  D DECODE^XLFJSON("RET","AI","ERR")
