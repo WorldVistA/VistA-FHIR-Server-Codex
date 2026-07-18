@@ -244,12 +244,84 @@ PAD2(X) ; Left-pad a numeric value to two digits
  ;
 FINAL(OUT) ; Remove internal-only nodes before JSON encoding
  NEW IDX
+ IF $GET(OUT("resourceType"))="Bundle",$GET(OUT("type"))="collection" DO ADDPROV(.OUT)
  IF $GET(OUT("type"))'="transaction",$GET(OUT("type"))'="batch" DO
  . SET IDX=0
  . FOR  SET IDX=$ORDER(OUT("entry",IDX)) Q:IDX<1  KILL OUT("entry",IDX,"request")
  KILL OUT("index")
  KILL ^TMP("C0FHIRBU",$J,"UUID")
  QUIT
+ ;
+ADDPROV(OUT) ; Add one generated US Core Provenance covering bundle resources
+ NEW ENT,IDX,ORGIDX,PRVIDX,PROVIDX,TGT
+ IF $DATA(OUT("index","Provenance|usqualitycore-provenance")) QUIT
+ IF $$HASRES(.OUT,"Provenance","usqualitycore-provenance") QUIT
+ DO ADDRES(.OUT,"Organization","usqualitycore-organization",.ORGIDX)
+ DO PROVORG(.OUT,ORGIDX)
+ DO ADDRES(.OUT,"Practitioner","usqualitycore-practitioner",.PRVIDX)
+ DO PROVPRAC(.OUT,PRVIDX)
+ DO ADDRES(.OUT,"Provenance","usqualitycore-provenance",.PROVIDX)
+ SET OUT("entry",PROVIDX,"resource","resourceType")="Provenance"
+ SET OUT("entry",PROVIDX,"resource","id")="usqualitycore-provenance"
+ SET OUT("entry",PROVIDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0"
+ SET OUT("entry",PROVIDX,"resource","text","status")="generated"
+ SET OUT("entry",PROVIDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Generated Narrative: usqualitycore-provenance</div>"
+ SET OUT("entry",PROVIDX,"resource","recorded")=$$PROVDT()
+ SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"system")="http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"code")="author"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"display")="Author"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"who","reference")="Practitioner/usqualitycore-practitioner"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"onBehalfOf","reference")="Organization/usqualitycore-organization"
+ SET OUT("entry",PROVIDX,"resource","agent",2,"type","coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-provenance-participant-type"
+ SET OUT("entry",PROVIDX,"resource","agent",2,"type","coding",1,"code")="transmitter"
+ SET OUT("entry",PROVIDX,"resource","agent",2,"type","coding",1,"display")="Transmitter"
+ SET OUT("entry",PROVIDX,"resource","agent",2,"who","reference")="Organization/usqualitycore-organization"
+ SET TGT=0,ENT=0
+ FOR  SET ENT=$ORDER(OUT("entry",ENT)) Q:ENT<1  DO
+ . NEW ID,RT
+ . IF ENT=PROVIDX QUIT
+ . SET RT=$GET(OUT("entry",ENT,"resource","resourceType")),ID=$GET(OUT("entry",ENT,"resource","id"))
+ . IF RT=""!(ID="") QUIT
+ . IF RT="Organization"!(RT="Practitioner") QUIT
+ . SET TGT=TGT+1,OUT("entry",PROVIDX,"resource","target",TGT,"reference")=RT_"/"_ID
+ . IF TGT=1 SET OUT("entry",PROVIDX,"resource","entity",1,"role")="source",OUT("entry",PROVIDX,"resource","entity",1,"what","reference")=RT_"/"_ID
+ QUIT
+ ;
+HASRES(OUT,RTYPE,RID) ; $$ - true if the Bundle already contains this resource
+ NEW ENT
+ SET ENT=0
+ FOR  SET ENT=$ORDER(OUT("entry",ENT)) Q:ENT<1  DO  Q:$GET(ENT("hit"))
+ . IF $GET(OUT("entry",ENT,"resource","resourceType"))'=$GET(RTYPE) QUIT
+ . IF $GET(OUT("entry",ENT,"resource","id"))'=$GET(RID) QUIT
+ . SET ENT("hit")=1
+ QUIT +$GET(ENT("hit"))
+ ;
+PROVORG(OUT,IDX) ; Supporting Organization for generated Provenance
+ SET OUT("entry",IDX,"resource","resourceType")="Organization"
+ SET OUT("entry",IDX,"resource","id")="usqualitycore-organization"
+ SET OUT("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization"
+ SET OUT("entry",IDX,"resource","active")="true"
+ SET OUT("entry",IDX,"resource","name")="VistA FHIR Quality Testing"
+ SET OUT("entry",IDX,"resource","identifier",1,"system")="urn:ietf:rfc:3986"
+ SET OUT("entry",IDX,"resource","identifier",1,"value")="urn:oid:2.16.840.1.113883.3.42.10001.100001.12"
+ SET OUT("entry",IDX,"resource","identifier",1,"value","\s")=""
+ QUIT
+ ;
+PROVPRAC(OUT,IDX) ; Supporting Practitioner for generated Provenance
+ SET OUT("entry",IDX,"resource","resourceType")="Practitioner"
+ SET OUT("entry",IDX,"resource","id")="usqualitycore-practitioner"
+ SET OUT("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner"
+ SET OUT("entry",IDX,"resource","identifier",1,"system")="urn:va:user"
+ SET OUT("entry",IDX,"resource","identifier",1,"value")="usqualitycore-practitioner"
+ SET OUT("entry",IDX,"resource","identifier",1,"value","\s")=""
+ SET OUT("entry",IDX,"resource","name",1,"family")="Quality"
+ SET OUT("entry",IDX,"resource","name",1,"given",1)="FHIR"
+ SET OUT("entry",IDX,"resource","name",1,"text")="FHIR Quality"
+ QUIT
+ ;
+PROVDT() ; $$ - recorded instant for generated Provenance
+ IF $T(NOW^XLFDT)'="" QUIT $$FM2FHIR($$NOW^XLFDT)
+ QUIT "2026-01-01T00:00:00Z"
  ;
 ERR(MSG,OUT) ; Build OperationOutcome-like error payload
  KILL OUT

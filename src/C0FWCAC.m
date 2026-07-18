@@ -100,6 +100,7 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D REF(CROOT,SUB,"patient",$G(@RES@("patient","reference")))
  D REF(CROOT,SUB,"patient",$G(@RES@("subject","reference")))
  D REF(CROOT,SUB,"subject",$G(@RES@("subject","reference")))
+ I TYPE="Provenance" D PROV(CROOT,SUB,RES)
  D REF(CROOT,SUB,"encounter",$G(@RES@("encounter","reference")))
  D REF(CROOT,SUB,"encounter",$G(@RES@("context","reference")))
  D CODEABLE(CROOT,SUB,"code",$NA(@RES@("code")))
@@ -114,6 +115,11 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D DATE(CROOT,SUB,"date",$G(@RES@("period","end")))
  D DATE(CROOT,SUB,"recorded-date",$G(@RES@("recordedDate")))
  D DATE(CROOT,SUB,"authored",$G(@RES@("authoredOn")))
+ Q
+ ;
+PROV(CROOT,SUB,RES) ; Provenance target search parameter
+ N I
+ S I=0 F  S I=$O(@RES@("target",I)) Q:+I<1  D REF(CROOT,SUB,"target",$G(@RES@("target",I,"reference")))
  Q
  ;
 PAT(CROOT,SUB,RES) ; Patient search parameters
@@ -218,6 +224,84 @@ WSREAD(OUT,FILTER,ID) ; GET /fhir/{resource}/{id} wrapper
  S HTTPRSP("mime")="application/fhir+json"
  Q
  ;
+WSPOST(ARGS,BODY,RESULT) ; POST /fhir/{resource}/_search form search wrapper
+ I '$DATA(RESULT) DO  QUIT ""
+ . NEW EMPTY
+ . DO WSPOST2(.ARGS,.EMPTY,.BODY)
+ DO WSPOST2(.RESULT,.ARGS,.BODY)
+ QUIT ""
+ ;
+WSPOST2(OUT,ARGS,BODY) ; Core POST search handler
+ N ERR,FILTER,JERR,PATH,RESARG,TMP
+ K OUT,FILTER
+ I $DATA(HTTPARGS) MERGE FILTER=HTTPARGS
+ I $DATA(ARGS) MERGE FILTER=ARGS
+ DO FORMBODY(.FILTER,.BODY)
+ S PATH=$G(HTTPREQ("path"))
+ I $EXTRACT(PATH)="/" SET PATH=$EXTRACT(PATH,2,$LENGTH(PATH))
+ S RESARG=$PIECE(PATH,"/",2)
+ IF RESARG="" S RESARG=$G(FILTER("resource"))
+ IF RESARG["/" S RESARG=$PIECE(RESARG,"/",1)
+ S FILTER("resource")=RESARG
+ DO SEARCH(.FILTER,.TMP,.ERR)
+ IF $G(ERR)'="" D OO(ERR,.TMP)
+ D TOJSON^C0FHIRBU(.TMP,.OUT,.JERR)
+ S HTTPRSP("mime")="application/fhir+json"
+ QUIT
+ ;
+FORMBODY(FILTER,BODY) ; Merge application/x-www-form-urlencoded body into FILTER
+ N RAW
+ SET RAW=$$BODYTXT(.BODY)
+ IF RAW="" QUIT
+ DO FORMDECODE(.FILTER,RAW)
+ QUIT
+ ;
+BODYTXT(BODY) ; $$ - flatten %web POST body array/string
+ N I,RAW
+ SET RAW=""
+ IF $DATA(BODY)#2 SET RAW=$GET(BODY)
+ SET I=0
+ FOR  SET I=$ORDER(BODY(I)) QUIT:I=""  SET RAW=RAW_$GET(BODY(I))
+ QUIT RAW
+ ;
+FORMDECODE(FILTER,RAW) ; Parse k=v&k2=v2 pairs
+ N K,PAIR,V
+ FOR  QUIT:RAW=""  DO
+ . SET PAIR=$PIECE(RAW,"&",1),RAW=$PIECE(RAW,"&",2,999)
+ . IF PAIR="" QUIT
+ . SET K=$$URLDEC($PIECE(PAIR,"=",1)),V=$$URLDEC($PIECE(PAIR,"=",2,999))
+ . IF K'="" SET FILTER(K)=V
+ QUIT
+ ;
+URLDEC(X) ; $$ - decode minimal URL-encoded form value
+ N H,I,N,Y
+ SET X=$TRANSLATE($GET(X),"+"," "),Y="",I=1
+ FOR  QUIT:I>$LENGTH(X)  DO
+ . IF $EXTRACT(X,I)'="%" SET Y=Y_$EXTRACT(X,I),I=I+1 QUIT
+ . SET H=$EXTRACT(X,I+1,I+2)
+ . IF H'?2AN SET Y=Y_"%",I=I+1 QUIT
+ . SET N=$$HEX(H)
+ . IF N<0 SET Y=Y_"%",I=I+1 QUIT
+ . SET Y=Y_$CHAR(N),I=I+3
+ QUIT Y
+ ;
+HEX(H) ; $$ - two hex characters to decimal, -1 if invalid
+ N A,B
+ SET A=$$HEXDIG($EXTRACT($GET(H),1)),B=$$HEXDIG($EXTRACT($GET(H),2))
+ IF A<0!(B<0) QUIT -1
+ QUIT (A*16)+B
+ ;
+HEXDIG(C) ; $$ - one hex digit to decimal
+ SET C=$$UP($GET(C))
+ IF C?1N QUIT +C
+ IF C="A" QUIT 10
+ IF C="B" QUIT 11
+ IF C="C" QUIT 12
+ IF C="D" QUIT 13
+ IF C="E" QUIT 14
+ IF C="F" QUIT 15
+ QUIT -1
+ ;
 READ(FILTER,OUT,ERR) ; Read one cached resource by resource type/id
  N C,ENTRY,IEN,RES,ROOT,SUB
  K OUT,ERR
@@ -263,6 +347,7 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  D APPLY(.CAND,CROOT,"identifier",$G(FILTER("identifier")),"TOKEN")
  D APPLY(.CAND,CROOT,"patient",$G(FILTER("patient")),"REF")
  D APPLY(.CAND,CROOT,"subject",$G(FILTER("subject")),"REF")
+ D APPLY(.CAND,CROOT,"target",$G(FILTER("target")),"REF")
  D APPLY(.CAND,CROOT,"encounter",$G(FILTER("encounter")),"REF")
  D APPLY(.CAND,CROOT,"code",$G(FILTER("code")),"TOKEN")
  D APPLY(.CAND,CROOT,"status",$G(FILTER("status")),"TOKEN")
@@ -283,9 +368,22 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  . S IDX=IDX+1
  . M MATCH("entry",IDX)=@CROOT@("bundle","entry",ENTRY)
  S MATCH("total")=IDX
+ D REVINC(.FILTER,CROOT,.MATCH,.CAND)
  K OUT
  M OUT=MATCH
  D FINAL^C0FHIRBU(.OUT)
+ Q
+ ;
+REVINC(FILTER,CROOT,MATCH,CAND) ; Include Provenance resources matching _revinclude=Provenance:target
+ N ENTRY,INC,PCAND,PROV,SUB
+ SET INC=$GET(FILTER("_revinclude")) QUIT:INC=""
+ IF INC'["Provenance:target" QUIT
+ SET PROV="" F  SET PROV=$O(@CROOT@("POS","type","Provenance",PROV)) Q:PROV=""  DO
+ . SET SUB="" F  SET SUB=$O(CAND(SUB)) Q:SUB=""  DO  Q:$DATA(PCAND(PROV))
+ . . IF $DATA(@CROOT@("SPO",PROV,"target",SUB)) SET PCAND(PROV)=""
+ S PROV="" F  SET PROV=$O(PCAND(PROV)) Q:PROV=""  DO
+ . SET ENTRY=+$O(@CROOT@("SPO",PROV,"entry","")) Q:ENTRY<1
+ . MERGE MATCH("entry",$O(MATCH("entry",""),-1)+1)=@CROOT@("bundle","entry",ENTRY)
  Q
  ;
 INITSRCH(OUT) ; Initialize searchset Bundle
@@ -377,7 +475,7 @@ REQDFN(FILTER,RES) ; $$ - patient id for patient-scoped cache
  I X="" S X=$G(FILTER("dfn"))
  I X["Patient/" S X=$P(X,"Patient/",2)
  I +X>0 Q +X
- ; Encounter?_id=E123 (and similar) has no patient param — resolve from cache.
+ ; Encounter?_id=E123 (and similar) has no patient param - resolve from cache.
  S RID=$G(FILTER("_id")) I RID="" S RID=$G(FILTER("id"))
  I RID'="" Q $$DFNBYID(RES,RID)
  Q 0
@@ -418,6 +516,23 @@ RESTYPE(X) ; $$ - normalize supported resource type
  I X="MEDICATIONREQUEST" Q "MedicationRequest"
  I X="MEDICATION" Q "Medication"
  I X="DOCUMENTREFERENCE" Q "DocumentReference"
+ I X="PROVENANCE" Q "Provenance"
+ I X="ADVERSEEVENT" Q "AdverseEvent"
+ I X="CAREPLAN" Q "CarePlan"
+ I X="CARETEAM" Q "CareTeam"
+ I X="COVERAGE" Q "Coverage"
+ I X="DEVICE" Q "Device"
+ I X="DEVICEREQUEST" Q "DeviceRequest"
+ I X="FAMILYMEMBERHISTORY" Q "FamilyMemberHistory"
+ I X="GOAL" Q "Goal"
+ I X="MEDICATIONADMINISTRATION" Q "MedicationAdministration"
+ I X="MEDICATIONDISPENSE" Q "MedicationDispense"
+ I X="QUESTIONNAIRERESPONSE" Q "QuestionnaireResponse"
+ I X="RELATEDPERSON" Q "RelatedPerson"
+ I X="SERVICEREQUEST" Q "ServiceRequest"
+ I X="TASK" Q "Task"
+ I X="PRACTITIONERROLE" Q "PractitionerRole"
+ I X="SPECIMEN" Q "Specimen"
  Q ""
  ;
 OO(MSG,OUT) ; OperationOutcome

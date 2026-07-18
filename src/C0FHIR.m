@@ -1252,6 +1252,22 @@ WSALT(OUT,FILTER) ; GET /altfhir?ien=n - graph-source FHIR bundle by IEN
  SET HTTPRSP("mime")=$$WSSHOWMIME^C0FHIR(FORMAT)
  QUIT
  ;
+WSALTPOST(ARGS,BODY,RESULT) ; POST /altfhir/{resource}/_search form search wrapper
+ IF '$DATA(RESULT) DO  QUIT ""
+ . NEW EMPTY
+ . DO WSALTPOST2(.ARGS,.EMPTY,.BODY)
+ DO WSALTPOST2(.RESULT,.ARGS,.BODY)
+ QUIT ""
+ ;
+WSALTPOST2(OUT,ARGS,BODY) ; Core altfhir POST search handler
+ NEW FILTER
+ KILL FILTER
+ IF $DATA(HTTPARGS) MERGE FILTER=HTTPARGS
+ IF $DATA(ARGS) MERGE FILTER=ARGS
+ DO FORMBODY^C0FWCAC(.FILTER,.BODY)
+ DO WSALTREST(.OUT,.FILTER)
+ QUIT
+ ;
 WSALTREST(OUT,FILTER) ; GET /altfhir/{resource}[/{id}] over graph-source bundle cache
  NEW CROOT,ERR,ID,IEN,JERR,PATH,RES,ROOT,TMP
  IF $D(HTTPARGS) MERGE FILTER=HTTPARGS
@@ -1260,6 +1276,11 @@ WSALTREST(OUT,FILTER) ; GET /altfhir/{resource}[/{id}] over graph-source bundle 
  SET RES=$PIECE(PATH,"/",2),ID=$PIECE(PATH,"/",3)
  IF RES="" SET RES=$GET(FILTER("resource"))
  IF ID="" SET ID=$GET(FILTER("id"))
+ IF ID="_search" SET ID=""
+ IF ID="",RES["/" SET ID=$PIECE(RES,"/",2),RES=$PIECE(RES,"/",1)
+ IF ID="_search" SET ID=""
+ IF ID="" DO ALTPATH(.RES,.ID)
+ IF ID="_search" SET ID=""
  IF RES="metadata" DO ALTCAP(.TMP) GOTO WSALTJSON
  SET RES=$$RESTYPE^C0FWCAC(RES)
  IF RES="" SET ERR="Missing or unsupported FHIR resource type" GOTO WSALTERR
@@ -1272,10 +1293,10 @@ WSALTREST(OUT,FILTER) ; GET /altfhir/{resource}[/{id}] over graph-source bundle 
  IF $GET(FILTER("patient"))'="" DO ALTFIX(.FILTER,CROOT,IEN,"patient")
  IF $GET(FILTER("subject"))'="" DO ALTFIX(.FILTER,CROOT,IEN,"subject")
  IF RES="Patient",$GET(FILTER("_id"))="" SET FILTER("_id")=IEN
- IF ID'="" DO ALTREAD(CROOT,RES,ID,IEN,.TMP,.ERR)
- ELSE  DO FINDS^C0FWCAC(.FILTER,CROOT,RES,.TMP)
+ IF $LENGTH(ID)>0 DO ALTREAD(CROOT,RES,ID,IEN,.TMP,.ERR)
+ IF $LENGTH(ID)<1 DO FINDS^C0FWCAC(.FILTER,CROOT,RES,.TMP)
  IF $GET(ERR)'="" GOTO WSALTERR
- DO ALTFIXOUT(.TMP,IEN)
+ DO ALTFIXOUT(.TMP,IEN,CROOT)
 WSALTJSON ;
  DO TOJSON^C0FHIRBU(.TMP,.OUT,.JERR)
  SET HTTPRSP("mime")="application/fhir+json"
@@ -1292,7 +1313,27 @@ ALTIEN(FILTER,RES,ID) ; $$ - graph IEN from altfhir request
  . IF X="" SET X=ID
  SET X=$GET(FILTER("patient")) IF X="" SET X=$GET(FILTER("subject"))
  IF X["Patient/" SET X=$PIECE(X,"Patient/",2)
- QUIT +X
+ SET X=+X
+ IF X>0 QUIT X
+ IF $GET(FILTER("_id"))'="" QUIT $$ALTID2IEN(RES,$GET(FILTER("_id")))
+ IF $GET(ID)'="" QUIT $$ALTID2IEN(RES,ID)
+ QUIT 0
+ ;
+ALTID2IEN(RES,ID) ; $$ - graph IEN containing resource type/id
+ NEW ENTRY,IEN,ROOT
+ SET RES=$GET(RES),ID=$GET(ID)
+ IF RES=""!(ID="") QUIT 0
+ SET ROOT=$$GSROOT^C0FHIR
+ IF ROOT="" QUIT 0
+ SET IEN=0
+ FOR  SET IEN=$ORDER(@ROOT@(IEN)) QUIT:+IEN<1  DO  QUIT:$GET(ENTRY)>0
+ . SET ENTRY=0
+ . FOR  SET ENTRY=$ORDER(@ROOT@(IEN,"json","entry",ENTRY)) QUIT:+ENTRY<1  DO  QUIT:$GET(ENTRY(0))
+ . . IF $GET(@ROOT@(IEN,"json","entry",ENTRY,"resource","resourceType"))'=RES QUIT
+ . . IF $GET(@ROOT@(IEN,"json","entry",ENTRY,"resource","id"))'=ID QUIT
+ . . SET ENTRY(0)=1
+ . IF $GET(ENTRY(0)) SET ENTRY=IEN
+ QUIT +$GET(ENTRY)
  ;
 ALTIDX(ROOT,IEN,CROOT) ; Build/reuse source-bundle cache for one graph IEN
  NEW CID,ENTRY,PID,PREF,RES,SUB,TYPE
@@ -1338,16 +1379,47 @@ ALTREAD(CROOT,RES,ID,IEN,OUT,ERR) ; Read one altfhir resource
  SET SUB=RES_"/"_ID
  SET ENTRY=+$ORDER(@CROOT@("SPO",SUB,"entry",""))
  IF ENTRY>0 MERGE OUT=@CROOT@("bundle","entry",ENTRY,"resource")
+ IF '$DATA(OUT) DO
+ . SET ENTRY=0
+ . FOR  SET ENTRY=$ORDER(@CROOT@("bundle","entry",ENTRY)) QUIT:+ENTRY<1  DO  QUIT:$DATA(OUT)
+ . . IF $GET(@CROOT@("bundle","entry",ENTRY,"resource","resourceType"))'=RES QUIT
+ . . IF $GET(@CROOT@("bundle","entry",ENTRY,"resource","id"))'=ID QUIT
+ . . MERGE OUT=@CROOT@("bundle","entry",ENTRY,"resource")
  IF '$DATA(OUT) SET ERR=RES_"/"_ID_" not found in graph source cache"
  QUIT
  ;
-ALTFIXOUT(OUT,IEN) ; Present graph IEN as the Patient id in altfhir responses
- NEW IDX
- IF $GET(OUT("resourceType"))="Patient" SET OUT("id")=IEN QUIT
- IF $GET(OUT("resourceType"))'="Bundle" QUIT
+ALTPATH(RES,ID) ; Recover /altfhir/{resource}/{id} from raw request metadata
+ NEW IDX,KEY,PATH,VAL
+ SET KEY=""
+ FOR  SET KEY=$ORDER(HTTPREQ(KEY)) QUIT:KEY=""  DO  QUIT:$GET(ID)'=""
+ . SET VAL=$GET(HTTPREQ(KEY)) QUIT:VAL'["altfhir/"
+ . SET IDX=$FIND(VAL,"altfhir/")-$LENGTH("altfhir/")
+ . SET PATH=$EXTRACT(VAL,IDX,$LENGTH(VAL))
+ . SET PATH=$PIECE(PATH,"?",1),PATH=$PIECE(PATH," ",1)
+ . IF $PIECE(PATH,"/",2)'="" SET RES=$PIECE(PATH,"/",2)
+ . IF $PIECE(PATH,"/",3)'="" SET ID=$PIECE(PATH,"/",3)
+ QUIT
+ ;
+ALTFIXOUT(OUT,IEN,CROOT) ; Present graph IEN as Patient id/references
+ NEW IDX,PID,PREF
+ SET PID=$$ALTPID(CROOT)
+ IF PID="" QUIT
+ SET PREF="Patient/"_PID
+ IF $GET(OUT("resourceType"))'="Bundle" DO  QUIT
+ . IF $GET(OUT("resourceType"))="Patient" SET OUT("id")=IEN
+ . DO ALTFIXRF($NAME(OUT),PREF,"Patient/"_IEN)
  SET IDX=0
  FOR  SET IDX=$ORDER(OUT("entry",IDX)) QUIT:+IDX<1  DO
  . IF $GET(OUT("entry",IDX,"resource","resourceType"))="Patient" SET OUT("entry",IDX,"resource","id")=IEN
+ . DO ALTFIXRF($NAME(OUT("entry",IDX,"resource")),PREF,"Patient/"_IEN)
+ QUIT
+ ;
+ALTFIXRF(NODE,PREF,NEWREF) ; Rewrite nested Patient references in one resource
+ NEW SUB
+ IF $DATA(@NODE@("reference"))#2,@NODE@("reference")=PREF SET @NODE@("reference")=NEWREF
+ SET SUB=""
+ FOR  SET SUB=$ORDER(@NODE@(SUB)) QUIT:SUB=""  DO
+ . IF $DATA(@NODE@(SUB))>1 DO ALTFIXRF($NAME(@NODE@(SUB)),PREF,NEWREF)
  QUIT
  ;
 ALTCAP(OUT) ; Minimal CapabilityStatement for graph-source /altfhir

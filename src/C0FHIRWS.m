@@ -13,7 +13,9 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  S PATH=$G(HTTPREQ("path"))
  I $P(PATH,"/",2)="fhir",$P(PATH,"/",3)'="" D  Q
  . S FILTER("resource")=$P(PATH,"/",3)
- . I $P(PATH,"/",4)'="",$P(PATH,"/",4)'="_search" S FILTER("id")=$P(PATH,"/",4)
+ . I $P(PATH,"/",4)'="",$P(PATH,"/",4)'="_search" DO  QUIT
+ . . S FILTER("id")=$P(PATH,"/",4)
+ . . D WSREAD^C0FWCAC(.RTN,.FILTER,$P(PATH,"/",4))
  . D WS^C0FWCAC(.RTN,.FILTER)
  ;
  S DFN=$G(FILTER("dfn"))

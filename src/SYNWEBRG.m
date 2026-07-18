@@ -27,12 +27,35 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(REGTFHIR^C0FHIR)'="" DO REGTFHIR^C0FHIR
  IF $T(WEB^C0FHIRWS)'="" DO addService^%webutils("GET","fhir","WEB^C0FHIRWS")
  IF $T(WS^C0FWCAC)'="" DO
- . DO addService^%webutils("GET","fhir/{resource}","WS^C0FWCAC")
+ . IF $T(deleteService^%webutils)'="" DO
+ . . DO deleteService^%webutils("GET","fhir/{resource}")
+ . . DO deleteService^%webutils("GET","fhir/{resource}/{id}")
+ . . DO deleteService^%webutils("POST","fhir/{resource}/_search")
+ . . DO deleteService^%webutils("POST","fhir/{resource}")
+ . DO ADDREADS
+ . NEW PARAMS
+ . SET PARAMS(1)="B"
  . DO addService^%webutils("GET","fhir/{resource}/{id}","WSREAD^C0FWCAC")
+ . DO addService^%webutils("GET","fhir/{resource}","WS^C0FWCAC")
+ . DO addService^%webutils("POST","fhir/{resource}/_search","WSPOST^C0FWCAC","","","",.PARAMS)
+ . DO addService^%webutils("POST","fhir/{resource}","WSPOST^C0FWCAC","","","",.PARAMS)
  IF $T(WSALT^C0FHIR)'="" DO
+ . IF $T(deleteService^%webutils)'="" DO
+ . . DO deleteService^%webutils("GET","altfhir")
+ . . DO deleteService^%webutils("GET","altfhir/{resource}")
+ . . DO deleteService^%webutils("GET","altfhir/{resource}/{id}")
+ . . DO deleteService^%webutils("POST","altfhir/{resource}/_search")
+ . . DO deleteService^%webutils("POST","altfhir/{resource}")
+ . DO ADDALTREADS
+ . NEW APARAMS
+ . SET APARAMS(1)="U^resource",APARAMS(2)="U^id"
+ . DO addService^%webutils("GET","altfhir/{resource}/{id}","WSALTREST^C0FHIR","","","",.APARAMS)
+ . KILL APARAMS SET APARAMS(1)="U^resource"
+ . DO addService^%webutils("GET","altfhir/{resource}","WSALTREST^C0FHIR","","","",.APARAMS)
+ . KILL APARAMS SET APARAMS(1)="B"
+ . DO addService^%webutils("POST","altfhir/{resource}/_search","WSALTPOST^C0FHIR","","","",.APARAMS)
+ . DO addService^%webutils("POST","altfhir/{resource}","WSALTPOST^C0FHIR","","","",.APARAMS)
  . DO addService^%webutils("GET","altfhir","WSALT^C0FHIR")
- . DO addService^%webutils("GET","altfhir/{resource}","WSALTREST^C0FHIR")
- . DO addService^%webutils("GET","altfhir/{resource}/{id}","WSALTREST^C0FHIR")
  IF $T(REG^C0XWS)'="" DO REG^C0XWS
  IF $T(DASH^C0FHIRWS)'="" DO addService^%webutils("GET","fhir-dashboard","DASH^C0FHIRWS")
  IF $T(QDASH^C0FHIRWS)'="" DO addService^%webutils("GET","fhir-quality-dashboard","QDASH^C0FHIRWS")
@@ -56,6 +79,68 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . DO addService^%webutils("GET","writebacksaves/{id}","WSGET^C0RGWBS")
  . DO addService^%webutils("POST","writebacksaves/{id}/rename","WSRENAME^C0RGWBS")
  . DO addService^%webutils("POST","writebacksaves/{id}/archive","WSARCH^C0RGWBS")
+ QUIT
+ ;
+ADDREADS ; Register concrete read routes before broad FHIR search routes
+ DO ADDREAD("Patient")
+ DO ADDREAD("Observation")
+ DO ADDREAD("Condition")
+ DO ADDREAD("DiagnosticReport")
+ DO ADDREAD("Organization")
+ DO ADDREAD("Location")
+ DO ADDREAD("Practitioner")
+ DO ADDREAD("Encounter")
+ DO ADDREAD("AllergyIntolerance")
+ DO ADDREAD("Immunization")
+ DO ADDREAD("Procedure")
+ DO ADDREAD("MedicationRequest")
+ DO ADDREAD("Medication")
+ DO ADDREAD("DocumentReference")
+ DO ADDREAD("Provenance")
+ QUIT
+ ;
+ADDREAD(RT) ; Register one concrete read route
+ IF $T(deleteService^%webutils)'="" DO deleteService^%webutils("GET","fhir/"_RT_"/{id}")
+ DO addService^%webutils("GET","fhir/"_RT_"/{id}","WSREAD^C0FWCAC")
+ QUIT
+ ;
+ADDALTREADS ; Register concrete altfhir read routes before broad search routes
+ DO ADDALTREAD("Patient")
+ DO ADDALTREAD("Observation")
+ DO ADDALTREAD("Condition")
+ DO ADDALTREAD("DiagnosticReport")
+ DO ADDALTREAD("Organization")
+ DO ADDALTREAD("Location")
+ DO ADDALTREAD("Practitioner")
+ DO ADDALTREAD("Encounter")
+ DO ADDALTREAD("AllergyIntolerance")
+ DO ADDALTREAD("Immunization")
+ DO ADDALTREAD("Procedure")
+ DO ADDALTREAD("MedicationRequest")
+ DO ADDALTREAD("Medication")
+ DO ADDALTREAD("DocumentReference")
+ DO ADDALTREAD("Provenance")
+ DO ADDALTREAD("AdverseEvent")
+ DO ADDALTREAD("CarePlan")
+ DO ADDALTREAD("CareTeam")
+ DO ADDALTREAD("Coverage")
+ DO ADDALTREAD("Device")
+ DO ADDALTREAD("DeviceRequest")
+ DO ADDALTREAD("FamilyMemberHistory")
+ DO ADDALTREAD("Goal")
+ DO ADDALTREAD("MedicationAdministration")
+ DO ADDALTREAD("MedicationDispense")
+ DO ADDALTREAD("QuestionnaireResponse")
+ DO ADDALTREAD("RelatedPerson")
+ DO ADDALTREAD("ServiceRequest")
+ DO ADDALTREAD("Task")
+ QUIT
+ ;
+ADDALTREAD(RT) ; Register one concrete altfhir read route
+ NEW PARAMS
+ SET PARAMS(1)="U^id"
+ IF $T(deleteService^%webutils)'="" DO deleteService^%webutils("GET","altfhir/"_RT_"/{id}")
+ DO addService^%webutils("GET","altfhir/"_RT_"/{id}","WSALTREST^C0FHIR","","","",.PARAMS)
  QUIT
  ;
 LOADDEF ; Same routes as SYNINIT LOADHAND^SYNINIT (master) when branch has no LOADHAND
