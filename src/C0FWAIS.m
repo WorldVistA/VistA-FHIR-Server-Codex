@@ -34,23 +34,70 @@ WSUPD(ARGS,BODY,RESULT) ; POST /aiconsult/update-bundle?dfn= with acceptedAction
  Q ""
  ;
 WSUPD2(OUT,BODY) ; Build quality helper update Bundle preview, but do not file it
- N DFN,ERR,PAT,PATJSON,REQ,REQJSON,RESP
+ N DFN,ERR,REQ,RESP
  S U="^",HTTPRSP("mime")="application/fhir+json"
  K OUT
- S DFN=+$G(HTTPARGS("dfn"))
- I DFN<1 D OO(.OUT,"error","exception","Missing or invalid dfn parameter") Q
- D DECACT(.BODY,.REQ,.ERR)
- I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
- I '$D(REQ("acceptedActions")) D OO(.OUT,"error","exception","Request body must include acceptedActions") Q
- D PATBNDL(DFN,.PAT,.PATJSON,.ERR,2)
- I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
- M REQ("fhirBundle")=PAT
- D TOJSON^C0FHIRBU(.REQ,.REQJSON,.ERR)
- I $D(ERR) D OO(.OUT,"error","exception","Unable to encode quality update request") Q
- D CALLUPD(.REQJSON,.RESP,.ERR)
+ D BLDUPD(.BODY,.REQ,.RESP,.DFN,.ERR)
  I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
  D TOJSON^C0FHIRBU(.RESP,.OUT,.ERR)
  I $D(ERR) D OO(.OUT,"error","exception","Unable to encode quality update Bundle") Q
+ Q
+ ;
+WSREV(ARGS,BODY,RESULT) ; POST /aiconsult/update-review?dfn= with acceptedActions JSON
+ I '$D(RESULT) D WSREV2(.ARGS,.BODY) Q ""
+ D WSREV2(.RESULT,.BODY)
+ Q ""
+ ;
+WSREV2(OUT,BODY) ; Save quality helper update Bundle as review artifact only
+ N DFN,ERR,REQ,RESP
+ S U="^",HTTPRSP("mime")="application/json"
+ K OUT
+ D BLDUPD(.BODY,.REQ,.RESP,.DFN,.ERR)
+ I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
+ D SAVEUPD(DFN,.REQ,.RESP,.OUT,.ERR)
+ I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
+ Q
+ ;
+BLDUPD(BODY,REQ,RESP,DFN,ERR) ; Build quality update Bundle request and CDS response
+ N PAT,PATJSON,REQJSON
+ K REQ,RESP,ERR
+ S DFN=+$G(HTTPARGS("dfn"))
+ I DFN<1 S ERR="Missing or invalid dfn parameter" Q
+ D DECACT(.BODY,.REQ,.ERR)
+ I $G(ERR)'="" Q
+ I '$D(REQ("acceptedActions")) S ERR="Request body must include acceptedActions" Q
+ D PATBNDL(DFN,.PAT,.PATJSON,.ERR,2)
+ I $G(ERR)'="" Q
+ M REQ("fhirBundle")=PAT
+ D TOJSON^C0FHIRBU(.REQ,.REQJSON,.ERR)
+ I $D(ERR) S ERR="Unable to encode quality update request" Q
+ D CALLUPD(.REQJSON,.RESP,.ERR)
+ Q
+ ;
+SAVEUPD(DFN,REQ,RESP,OUT,ERR) ; Store review artifact in writeback-save graph
+ N ID,ITEM,NOW,PNAME,RESULT,ROOT
+ K OUT,ERR
+ S ROOT=$$ROOT^C0FWWBS()
+ I ROOT="" S ERR="Unable to open reminder-writeback-saves graph" Q
+ S ID=$$NEWID^C0FWWBS(),NOW=$$NOWISO^C0FWWBS()
+ S PNAME=$P($G(^DPT(+$G(DFN),0)),U,1)
+ S ITEM("id")=ID
+ S ITEM("kind")="quality-ai-consult-update-review"
+ S ITEM("name")="Quality AI Consult Review "_+$G(DFN)_" "_NOW
+ S ITEM("createdAt")=NOW,ITEM("savedAt")=NOW,ITEM("updatedAt")=NOW
+ S ITEM("patient","dfn")=+$G(DFN)
+ I PNAME'="" S ITEM("patient","displayName")=PNAME
+ S ITEM("reminder","id")="quality-ai-consult"
+ S ITEM("reminder","label")="Quality AI Consult"
+ S ITEM("post","status")="preview"
+ S ITEM("post","persisted")=0
+ M ITEM("acceptedActions")=REQ("acceptedActions")
+ M ITEM("updateBundle")=RESP
+ K @ROOT@("items",ID)
+ M @ROOT@("items",ID,"artifact")=ITEM
+ D SETMETA^C0FWWBS(ROOT,ID,.ITEM)
+ D ENCODEONE^C0FWWBS(.RESULT,ROOT,ID)
+ M OUT=RESULT
  Q
  ;
 DECACT(BODY,REQ,ERR) ; Decode accepted quality action request body

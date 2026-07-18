@@ -37,7 +37,8 @@ WSLIST(RESULT,ARGS) ; GET /writebacksaves
  S HTTPRSP("mime")="application/json"
  S ROOT=$$ROOT()
  I ROOT="" D ERR(.RESULT,"GRAPH","Unable to open reminder-writeback-saves graph") Q ""
- S ID=$G(ARGS("id")) I ID'="" D  Q ""
+ S ID=$G(ARGS("id")) I ID="" S ID=$$PATHID()
+ I ID'="" D  Q ""
  . I '$D(@ROOT@("items",ID)) D ERR(.RESULT,"NOT_FOUND","Saved writeback not found") S HTTPERR=404 Q
  . D ENCODEONE(.RESULT,ROOT,ID)
  S DFN=$G(ARGS("dfn")),ICN=$G(ARGS("icn")),REM=$G(ARGS("reminder"))
@@ -152,6 +153,13 @@ ENCODEONE(RESULT,ROOT,ID) ; encode one artifact response
  M OUT("artifact")=@ROOT@("items",ID,"artifact")
  D ENCODE^XLFJSON("OUT","RESULT")
  Q
+ ;
+PATHID() ; $$ - saved writeback id from broad route path fallback
+ N PATH
+ S PATH=$G(HTTPREQ("path"))
+ I $E(PATH)="/" S PATH=$E(PATH,2,$L(PATH))
+ I $P(PATH,"/",1)'="writebacksaves" Q ""
+ Q $P(PATH,"/",2)
  ;
 ERR(RESULT,CODE,MESSAGE) ; encode error response
  K OUT

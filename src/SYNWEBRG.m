@@ -65,6 +65,10 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . NEW PARAMS
  . SET PARAMS(1)="B"
  . DO addService^%webutils("POST","aiconsult/update-bundle","WSUPD^C0FWAIS","","","",.PARAMS)
+ IF $T(WSREV^C0FWAIS)'="" DO
+ . NEW PARAMS
+ . SET PARAMS(1)="B"
+ . DO addService^%webutils("POST","aiconsult/update-review","WSREV^C0FWAIS","","","",.PARAMS)
  IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")
  IF $T(wsTIUVPatients^C0FTIUST)'="" DO addService^%webutils("GET","tiuvpatients","wsTIUVPatients^C0FTIUST")
  IF $T(wsLists^C0FPSL)'="" DO
@@ -72,15 +76,28 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . DO addService^%webutils("GET","problemselection/categories","wsCategories^C0FPSL")
  . DO addService^%webutils("GET","problemselection/problems","wsProblems^C0FPSL")
  IF $T(WSSAVE^C0FWWBS)'="" DO
- . DO addService^%webutils("POST","writebacksaves","WSSAVE^C0FWWBS")
+ . IF $T(deleteService^%webutils)'="" DO
+ . . DO deleteService^%webutils("GET","writebacksaves")
+ . . DO deleteService^%webutils("GET","writebacksaves/{id}")
+ . . DO deleteService^%webutils("POST","writebacksaves/{id}/rename")
+ . . DO deleteService^%webutils("POST","writebacksaves/{id}/archive")
+ . NEW PARAMS
+ . SET PARAMS(1)="U^id"
+ . DO addService^%webutils("GET","writebacksaves/{id}","WSGET^C0FWWBS","","","",.PARAMS)
  . DO addService^%webutils("GET","writebacksaves","WSLIST^C0FWWBS")
- . DO addService^%webutils("GET","writebacksaves/{id}","WSGET^C0FWWBS")
- . DO addService^%webutils("POST","writebacksaves/{id}/rename","WSRENAME^C0FWWBS")
- . DO addService^%webutils("POST","writebacksaves/{id}/archive","WSARCH^C0FWWBS")
+ . DO addService^%webutils("POST","writebacksaves","WSSAVE^C0FWWBS")
+ . KILL PARAMS SET PARAMS(1)="U^id",PARAMS(2)="B"
+ . DO addService^%webutils("POST","writebacksaves/{id}/rename","WSRENAME^C0FWWBS","","","",.PARAMS)
+ . DO addService^%webutils("POST","writebacksaves/{id}/archive","WSARCH^C0FWWBS","","","",.PARAMS)
  E  IF $T(WSSAVE^C0RGWBS)'="" DO
- . DO addService^%webutils("POST","writebacksaves","WSSAVE^C0RGWBS")
+ . IF $T(deleteService^%webutils)'="" DO
+ . . DO deleteService^%webutils("GET","writebacksaves")
+ . . DO deleteService^%webutils("GET","writebacksaves/{id}")
+ . NEW PARAMS
+ . SET PARAMS(1)="U^id"
+ . DO addService^%webutils("GET","writebacksaves/{id}","WSGET^C0RGWBS","","","",.PARAMS)
  . DO addService^%webutils("GET","writebacksaves","WSLIST^C0RGWBS")
- . DO addService^%webutils("GET","writebacksaves/{id}","WSGET^C0RGWBS")
+ . DO addService^%webutils("POST","writebacksaves","WSSAVE^C0RGWBS")
  . DO addService^%webutils("POST","writebacksaves/{id}/rename","WSRENAME^C0RGWBS")
  . DO addService^%webutils("POST","writebacksaves/{id}/archive","WSARCH^C0RGWBS")
  QUIT
