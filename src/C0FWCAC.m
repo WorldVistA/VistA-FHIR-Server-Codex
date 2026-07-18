@@ -108,6 +108,8 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D CODEABLE(CROOT,SUB,"clinical-status",$NA(@RES@("clinicalStatus")))
  D CODEABLE(CROOT,SUB,"status",$NA(@RES@("status")))
  I $G(@RES@("status"))'="" D SET(CROOT,SUB,"status",$G(@RES@("status")))
+ I $G(@RES@("intent"))'="" D SET(CROOT,SUB,"intent",$G(@RES@("intent")))
+ D BOOL(CROOT,SUB,"do-not-perform",$$DONOT(RES))
  D DATE(CROOT,SUB,"date",$G(@RES@("effectiveDateTime")))
  D DATE(CROOT,SUB,"date",$G(@RES@("issued")))
  D DATE(CROOT,SUB,"date",$G(@RES@("onsetDateTime")))
@@ -149,6 +151,26 @@ IDENT(CROOT,SUB,RES) ; identifier token values
  . D SET(CROOT,SUB,"identifier",VAL)
  . I SYS'="" D SET(CROOT,SUB,"identifier",SYS_"|"_VAL)
  Q
+ ;
+DONOT(RES) ; $$ - doNotPerform token, inferred for USQC not-requested fixtures
+ N I,ID,PROF,X
+ SET X=$G(@RES@("doNotPerform")) IF X'="" QUIT X
+ SET ID=$$UP($G(@RES@("id")))
+ IF ID["NOTREQUESTED"!(ID["NOTDONE")!(ID["DECLINED") QUIT "true"
+ SET I=0
+ FOR  SET I=$O(@RES@("meta","profile",I)) Q:+I<1  DO  Q:$GET(X)'=""
+ . SET PROF=$$UP($G(@RES@("meta","profile",I)))
+ . IF PROF["NOTREQUESTED"!(PROF["NOTDONE")!(PROF["DECLINED") SET X="true"
+ IF X'="" QUIT X
+ IF ID["DEVICEREQUEST"!(ID["SERVICEREQUEST")!(ID["MEDICATIONREQUEST") QUIT "false"
+ QUIT ""
+ ;
+BOOL(CROOT,SUB,PRED,VAL) ; Boolean token aliases
+ SET VAL=$GET(VAL) QUIT:VAL=""
+ IF VAL="True"!(VAL="TRUE") SET VAL="true"
+ IF VAL="False"!(VAL="FALSE") SET VAL="false"
+ D SET(CROOT,SUB,PRED,VAL)
+ QUIT
  ;
 CODEABLE(CROOT,SUB,PRED,NODE) ; CodeableConcept token extraction
  N CODE,I,SYS,TXT
@@ -351,6 +373,8 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  D APPLY(.CAND,CROOT,"encounter",$G(FILTER("encounter")),"REF")
  D APPLY(.CAND,CROOT,"code",$G(FILTER("code")),"TOKEN")
  D APPLY(.CAND,CROOT,"status",$G(FILTER("status")),"TOKEN")
+ D APPLY(.CAND,CROOT,"intent",$G(FILTER("intent")),"TOKEN")
+ D APPLY(.CAND,CROOT,"do-not-perform",$G(FILTER("do-not-perform")),"TOKEN")
  D APPLY(.CAND,CROOT,"clinical-status",$G(FILTER("clinical-status")),"TOKEN")
  D APPLY(.CAND,CROOT,"category",$G(FILTER("category")),"TOKEN")
  D APPLY(.CAND,CROOT,"gender",$G(FILTER("gender")),"TOKEN")
@@ -441,6 +465,7 @@ DATEOK(HAVE,OP,WANT) ; $$ - compare FHIR date/dateTime at WANT precision
  ; second precision so ge/gt/le/lt do not return earlier same-day instants
  ; (Inferno DiagnosticReport patient+category+date).
  N H,W
+ I $G(WANT)["T",$G(HAVE)'["T" Q 0
  S W=$$DKEY($G(WANT)),H=$$DKEY($G(HAVE),$L(W))
  I H=""!(W="") Q 0
  I OP="eq" Q H=W

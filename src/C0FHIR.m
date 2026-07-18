@@ -1339,10 +1339,11 @@ ALTIDX(ROOT,IEN,CROOT) ; Build/reuse source-bundle cache for one graph IEN
  NEW CID,ENTRY,PID,PREF,RES,SUB,TYPE
  SET CID="altfhir-source"
  SET CROOT=$NAME(@ROOT@(IEN,"cache",CID))
- IF '$DATA(@CROOT@("bundle","resourceType")) DO
+ IF '$DATA(@CROOT@("bundle","resourceType"))!($GET(@CROOT@("meta","searchVersion"))<3) DO
  . KILL @CROOT
  . MERGE @CROOT@("bundle")=@ROOT@(IEN,"json")
  . DO INDEX^C0FWCAC(ROOT,IEN,CID)
+ . SET @CROOT@("meta","searchVersion")=3
  SET PID=$$ALTPID(CROOT)
  QUIT:PID=""
  SET PREF="Patient/"_PID
