@@ -61,6 +61,10 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(QDASH^C0FHIRWS)'="" DO addService^%webutils("GET","fhir-quality-dashboard","QDASH^C0FHIRWS")
  IF $T(WSASSET^C0FHIRWS)'="" DO addService^%webutils("GET","filesystem/{file}","WSASSET^C0FHIRWS")
  IF $T(WS^C0FWAIS)'="" DO addService^%webutils("GET","aiconsult","WS^C0FWAIS")
+ IF $T(WSUPD^C0FWAIS)'="" DO
+ . NEW PARAMS
+ . SET PARAMS(1)="B"
+ . DO addService^%webutils("POST","aiconsult/update-bundle","WSUPD^C0FWAIS","","","",.PARAMS)
  IF $T(wsTIUStats^C0FTIUST)'="" DO addService^%webutils("GET","tiustats","wsTIUStats^C0FTIUST")
  IF $T(wsTIUVPatients^C0FTIUST)'="" DO addService^%webutils("GET","tiuvpatients","wsTIUVPatients^C0FTIUST")
  IF $T(wsLists^C0FPSL)'="" DO

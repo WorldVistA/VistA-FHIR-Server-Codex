@@ -28,6 +28,41 @@ WS(OUT,FILTER) ; GET /aiconsult?dfn=&file=0|1&mode=&measure=
  D TOJSON^C0FHIRBU(.RESP,.OUT,.ERR)
  Q
  ;
+WSUPD(ARGS,BODY,RESULT) ; POST /aiconsult/update-bundle?dfn= with acceptedActions JSON
+ I '$D(RESULT) D WSUPD2(.ARGS,.BODY) Q ""
+ D WSUPD2(.RESULT,.BODY)
+ Q ""
+ ;
+WSUPD2(OUT,BODY) ; Build quality helper update Bundle preview, but do not file it
+ N DFN,ERR,PAT,PATJSON,REQ,REQJSON,RESP
+ S U="^",HTTPRSP("mime")="application/fhir+json"
+ K OUT
+ S DFN=+$G(HTTPARGS("dfn"))
+ I DFN<1 D OO(.OUT,"error","exception","Missing or invalid dfn parameter") Q
+ D DECACT(.BODY,.REQ,.ERR)
+ I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
+ I '$D(REQ("acceptedActions")) D OO(.OUT,"error","exception","Request body must include acceptedActions") Q
+ D PATBNDL(DFN,.PAT,.PATJSON,.ERR,2)
+ I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
+ M REQ("fhirBundle")=PAT
+ D TOJSON^C0FHIRBU(.REQ,.REQJSON,.ERR)
+ I $D(ERR) D OO(.OUT,"error","exception","Unable to encode quality update request") Q
+ D CALLUPD(.REQJSON,.RESP,.ERR)
+ I $G(ERR)'="" D OO(.OUT,"error","exception",ERR) Q
+ D TOJSON^C0FHIRBU(.RESP,.OUT,.ERR)
+ I $D(ERR) D OO(.OUT,"error","exception","Unable to encode quality update Bundle") Q
+ Q
+ ;
+DECACT(BODY,REQ,ERR) ; Decode accepted quality action request body
+ N JSON,RAW
+ K REQ,ERR
+ S RAW=$$BODYTXT^C0FWCAC(.BODY)
+ I RAW="" S ERR="Request body must include acceptedActions" Q
+ S JSON(1)=RAW
+ D DECODE^XLFJSON("JSON","REQ","ERR")
+ I $D(ERR) S ERR="Unable to decode acceptedActions JSON"
+ Q
+ ;
 PATBNDL(DFN,OUT,JSON,ERR,STAGE) ; Build patient Bundle as native array and canonical JSON
  N FILTER
  K OUT,JSON,ERR
@@ -80,6 +115,19 @@ CALLCDS(JSON,AI,ERR,MODE,MEASURE) ; POST patient bundle JSON to cds1
  I $G(HDR("STATUS"))'="",($G(HDR("STATUS"))<200!($G(HDR("STATUS"))>299)) S ERR="cds1 HTTP status "_$G(HDR("STATUS")) Q
  D DECODE^XLFJSON("RET","AI","ERR")
  I $D(ERR) S ERR="Unable to decode cds1 response JSON"
+ Q
+ ;
+CALLUPD(JSON,OUT,ERR) ; POST quality accepted actions to cds1 update-bundle endpoint
+ N HDR,OPT,PAYLOAD,RET,STATUS,URL
+ K OUT,ERR,PAYLOAD,RET,HDR
+ D CHUNK(.JSON,.PAYLOAD)
+ S OPT("header",1)="Expect:"
+ S URL="https://cds1.vistaplex.org/quality/update-bundle"
+ S STATUS=$$%^%WC(.RET,"POST",URL,.PAYLOAD,"application/json",60,.HDR,.OPT)
+ I +$G(STATUS)'=0 S ERR="cds1 curl exit status "_STATUS Q
+ I $G(HDR("STATUS"))'="",($G(HDR("STATUS"))<200!($G(HDR("STATUS"))>299)) S ERR="cds1 HTTP status "_$G(HDR("STATUS")) Q
+ D DECODE^XLFJSON("RET","OUT","ERR")
+ I $D(ERR) S ERR="Unable to decode cds1 update-bundle response JSON"
  Q
  ;
 CHUNK(IN,OUT) ; Re-chunk JSON so %WC-added newlines fall outside strings
