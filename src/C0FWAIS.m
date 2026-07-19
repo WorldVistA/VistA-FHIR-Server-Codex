@@ -92,6 +92,7 @@ SAVEUPD(DFN,REQ,RESP,OUT,ERR) ; Store review artifact in writeback-save graph
  S ITEM("post","status")="preview"
  S ITEM("post","persisted")=0
  M ITEM("acceptedActions")=REQ("acceptedActions")
+ I $D(REQ("actionValues")) M ITEM("actionValues")=REQ("actionValues")
  M ITEM("updateBundle")=RESP
  K @ROOT@("items",ID)
  M @ROOT@("items",ID,"artifact")=ITEM

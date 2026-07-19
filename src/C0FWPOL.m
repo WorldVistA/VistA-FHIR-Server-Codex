@@ -98,6 +98,7 @@ CAP(DOMAIN,ENG) ; $$ - true if requested engine is available
  I ENG="off" Q 1
  I ENG="auto" Q 1
  I ENG="syn",DOMAIN="HealthFactor" S X="GETHF^SYNFHF" Q $S($T(@X)'="":1,1:0)
+ I ENG="syn"!(ENG="isi"),DOMAIN="Lab" S X="LABADD^SYNDHP63" Q $S($T(@X)'="":1,1:0)
  Q 0
  ;
 UP(X) ; $$ - uppercase
