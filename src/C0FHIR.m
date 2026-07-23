@@ -972,7 +972,7 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  DO ADDLN(.RTN,"<!DOCTYPE HTML>")
  DO ADDLN(.RTN,"<html><head><title>FHIR Dashboard</title></head><body>")
  DO ADDLN(.RTN,"<h1>FHIR Dashboard</h1>")
- DO ADDLN(.RTN,"<p>This dashboard is available at /fhir-dashboard. Click Name for the VistA FHIR browser. The Synthea FHIR column opens the stored source bundle in a light-theme browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea).</p>")
+ DO ADDLN(.RTN,"<p>This dashboard is available at /fhir-dashboard. Click Name for the VistA FHIR browser. The Synthea FHIR column opens the stored source bundle in a light-theme browser view. Rows with IEN '-' were discovered from ^LR (non-Synthea). Quality measures: <a href=""/fhir-quality-dashboards"">/fhir-quality-dashboards</a>.</p>")
  DO ADDLN(.RTN,"<table border=""1"" cellpadding=""4"" cellspacing=""0"">")
  SET ROW="<tr><th>Name</th><th>C0FHIR fhir</th><th>DFN</th><th>IEN</th><th>rehmp CPRS</th><th>AI Consult</th>"
  IF HASGRAPH SET ROW=ROW_"<th>Synthea FHIR</th><th>Load Log</th>"
@@ -1036,54 +1036,11 @@ FHIRIDX(RTN) ; Render HTML index when /fhir is called without dfn
  DO ADDLN(.RTN,"</body></html>")
  QUIT
  ;
-QUALDASH(RTN) ; Render FHIR quality testing dashboard
- NEW CNT,DFN,IEN,NAME,ROOT,ROW
- KILL RTN
- SET ROOT=$$GSROOT()
- DO ADDLN(.RTN,"<!DOCTYPE HTML>")
- DO ADDLN(.RTN,"<html><head><title>FHIR Quality Dashboard</title>")
- DO ADDLN(.RTN,"<style>body{font-family:Arial,sans-serif;margin:24px;line-height:1.4}")
- DO ADDLN(.RTN,"table{border-collapse:collapse;width:100%;margin:14px 0}")
- DO ADDLN(.RTN,"th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f1f5f9}")
- DO ADDLN(.RTN,".muted{color:#64748b}.links a{margin-right:10px}</style>")
- DO ADDLN(.RTN,"</head><body>")
- DO ADDLN(.RTN,"<h1>FHIR Quality Dashboard</h1>")
- DO ADDLN(.RTN,"<p class=""muted"">Quality-measure workspace for devfhir source bundles, VistA round-trip testing, and hosted Inferno US Quality Core validation.</p>")
- DO ADDLN(.RTN,"<div class=""links""><a href=""/fhir-dashboard"">FHIR dashboard</a><a href=""/altfhir/metadata"">/altfhir metadata</a><a href=""/fhir/metadata"">/fhir metadata</a></div>")
- DO ADDLN(.RTN,"<h2>First-wave 2026 measures</h2>")
- DO ADDLN(.RTN,"<table><tr><th>CMS ID</th><th>Measure</th><th>Primary FHIR focus</th></tr>")
- DO QDMEAS(.RTN,"CMS122v14","Diabetes: Glycemic Status Assessment Greater Than 9%","Condition, Encounter, Observation HbA1c")
- DO QDMEAS(.RTN,"CMS165v14","Controlling High Blood Pressure","Condition, Encounter, Blood Pressure Observation")
- DO QDMEAS(.RTN,"CMS130v14","Colorectal Cancer Screening","Procedure, Observation, DiagnosticReport")
- DO QDMEAS(.RTN,"CMS125v14","Breast Cancer Screening","Procedure, DiagnosticReport")
- DO QDMEAS(.RTN,"CMS147v14","Influenza Immunization","Immunization")
- DO QDMEAS(.RTN,"CMS2v15","Screening for Depression and Follow-Up Plan","Observation, Procedure, CarePlan gap")
- DO QDMEAS(.RTN,"CMS68v15","Documentation of Current Medications","MedicationRequest / medication review evidence")
- DO QDMEAS(.RTN,"CMS138v14","Tobacco Use: Screening and Cessation Intervention","Social-history Observation, Procedure/Medication")
- DO QDMEAS(.RTN,"CMS134v14","Diabetes kidney-health measure family","Condition, Observation lab, Procedure")
- DO QDMEAS(.RTN,"CMS131v14","Diabetes: Eye Exam","Condition, Procedure, Observation")
- DO ADDLN(.RTN,"</table>")
- DO ADDLN(.RTN,"<h2>Graph-source patients</h2>")
- IF ROOT="" DO ADDLN(.RTN,"<p>No fhir-intake graph root is available.</p>") GOTO QDDONE
- DO ADDLN(.RTN,"<table><tr><th>DFN</th><th>IEN</th><th>Name</th><th>Source bundle</th><th>AltFHIR REST</th><th>VistA FHIR</th><th>Load log</th></tr>")
- SET CNT=0,DFN=0
- FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN)) QUIT:+DFN<1!(CNT>250)  DO
- . SET IEN=$ORDER(@ROOT@("DFN",DFN,""),-1) QUIT:+IEN<1
- . SET CNT=CNT+1
- . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^") IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
- . SET ROW="<tr><td>"_DFN_"</td><td>"_IEN_"</td><td>"_$$HTMLESC(NAME)_"</td>"
- . SET ROW=ROW_"<td><a href=""/altfhir?ien="_IEN_""">bundle</a></td>"
- . SET ROW=ROW_"<td><a href=""/altfhir/Patient/"_IEN_""">Patient/"_IEN_"</a></td>"
- . SET ROW=ROW_"<td><a href=""/fhir?dfn="_DFN_""">/fhir</a></td>"
- . SET ROW=ROW_"<td><a href="""_$$LOADLOGURL(ROOT,IEN)_""">load</a></td></tr>"
- . DO ADDLN(.RTN,ROW)
- IF CNT=0 DO ADDLN(.RTN,"<tr><td colspan=""7"">No devfhir graph-linked patients found yet.</td></tr>")
- DO ADDLN(.RTN,"</table>")
-QDDONE ;
- DO ADDLN(.RTN,"</body></html>")
+QUALDASH(RTN) ; Legacy entry — active quality dashboards summary
+ DO SUMMARY^C0FQUAL(.RTN)
  QUIT
  ;
-QDMEAS(RTN,CMS,TITLE,FOCUS) ; Add one quality dashboard measure row
+QDMEAS(RTN,CMS,TITLE,FOCUS) ; Compatibility no-op row helper
  DO ADDLN(.RTN,"<tr><td>"_CMS_"</td><td>"_$$HTMLESC(TITLE)_"</td><td>"_$$HTMLESC(FOCUS)_"</td></tr>")
  QUIT
  ;

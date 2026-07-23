@@ -52,10 +52,21 @@ DASH(RTN,FILTER) ; Human FHIR patient dashboard
  S HTTPRSP("mime")="text/html"
  Q
  ;
-QDASH(RTN,FILTER) ; FHIR quality dashboard
+QDASH(RTN,FILTER) ; Legacy /fhir-quality-dashboard → active summary
+ D QDASHES(.RTN,.FILTER)
+ Q
+ ;
+QDASHES(RTN,FILTER) ; /fhir-quality-dashboards[+/{measure}]
+ N CMS,PATH,VIEW
  K RTN
  S FILTER("type")="text/html"
- D QUALDASH^C0FHIR(.RTN)
+ S PATH=$G(HTTPREQ("path"))
+ S CMS=$G(FILTER("measure"))
+ I CMS="" S CMS=$P(PATH,"/",3)
+ S VIEW=$$UPCASE^C0FHIR($G(FILTER("view")))
+ I VIEW="ALL" D CATALOG^C0FQUAL(.RTN) S HTTPRSP("mime")="text/html" Q
+ I CMS'="" D MEASURE^C0FQUAL(.RTN,CMS) S HTTPRSP("mime")="text/html" Q
+ D SUMMARY^C0FQUAL(.RTN)
  S HTTPRSP("mime")="text/html"
  Q
  ;

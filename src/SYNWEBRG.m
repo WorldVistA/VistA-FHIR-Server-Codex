@@ -59,7 +59,14 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(REG^C0XWS)'="" DO REG^C0XWS
  IF $T(DASH^C0FHIRWS)'="" DO addService^%webutils("GET","fhir-dashboard","DASH^C0FHIRWS")
  IF $T(QDASH^C0FHIRWS)'="" DO addService^%webutils("GET","fhir-quality-dashboard","QDASH^C0FHIRWS")
+ IF $T(QDASHES^C0FHIRWS)'="" DO
+ . DO addService^%webutils("GET","fhir-quality-dashboards","QDASHES^C0FHIRWS")
+ . NEW QPARAMS
+ . SET QPARAMS(1)="U^measure"
+ . DO addService^%webutils("GET","fhir-quality-dashboards/{measure}","QDASHES^C0FHIRWS","","","",.QPARAMS)
  IF $T(WSASSET^C0FHIRWS)'="" DO addService^%webutils("GET","filesystem/{file}","WSASSET^C0FHIRWS")
+ ; Seed quality-measure catalog when routine is present
+ IF $T(SEED^C0FQUAL)'="" DO SEED^C0FQUAL
  IF $T(WS^C0FWAIS)'="" DO addService^%webutils("GET","aiconsult","WS^C0FWAIS")
  IF $T(WSUPD^C0FWAIS)'="" DO
  . NEW PARAMS
