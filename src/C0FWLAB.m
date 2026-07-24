@@ -46,17 +46,27 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Observation lab result through LABADD
  D LOG(ROOT,IEN,RIEN,ICN,LOCN,TEST,VAL,HL7DT,LOINC,CSAMP,"error",MSG)
  Q
  ;
-ICN(DFN,IEN) ; $$ - ICN for LABADD (graph first, then Patient ICN fields)
- N ICN
- S ICN=$$IEN2ICN^C0FWFUTL(IEN)
- I ICN'="" Q ICN
- S ICN=$$DFN2ICN^C0FWFUTL(DFN)
- I ICN'="" Q ICN
- I $T(dfn2icn^SYNFUTL)'="" S ICN=$$dfn2icn^SYNFUTL(DFN) I ICN'="" Q ICN
+ICN(DFN,IEN) ; $$ - ICN for LABADD (must be a ^DPT("AFICN") key)
+ N FULL,ICN
+ ; LABADD^SYNDHP63 resolves patients only through ^DPT("AFICN",ICN).
+ ; Prefer full ICN (991.1 / MPI piece 10). Bare 991.01 (e.g. 10108) is NOT
+ ; an AFICN key when the indexed value is 10108V420871.
+ S ICN=$$IEN2ICN^C0FWFUTL(IEN) I $$OKAFICN(ICN) Q ICN
+ S ICN=$$DFN2ICN^C0FWFUTL(DFN) I $$OKAFICN(ICN) Q ICN
+ I $T(dfn2icn^SYNFUTL)'="" S ICN=$$dfn2icn^SYNFUTL(DFN) I $$OKAFICN(ICN) Q ICN
+ S ICN=$$GET1^DIQ(2,DFN_",",991.1,"E") I $$OKAFICN(ICN) Q ICN
+ S ICN=$P($G(^DPT(DFN,"MPI")),U,10) I $$OKAFICN(ICN) Q ICN
  S ICN=$$GET1^DIQ(2,DFN_",",991.01,"E")
- I ICN'="" Q ICN
- S ICN=$$GET1^DIQ(2,DFN_",",991.1,"E")
- Q ICN
+ I $$OKAFICN(ICN) Q ICN
+ I ICN'="",ICN'["V" D
+ . S FULL=ICN_"V"_$P($G(^DPT(DFN,"MPI")),U,2)
+ . I $$OKAFICN(FULL) S ICN=FULL
+ I $$OKAFICN(ICN) Q ICN
+ Q ""
+ ;
+OKAFICN(ICN) ; $$ - 1 if ICN is present in ^DPT("AFICN")
+ I $G(ICN)="" Q 0
+ Q ($D(^DPT("AFICN",ICN))>0)
  ;
 LOINC(ROOT,IEN,RIEN) ; $$ - first LOINC code on Observation.code
  N C,CODE,N,SYS

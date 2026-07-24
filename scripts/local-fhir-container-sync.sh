@@ -22,8 +22,10 @@
 #   FHIR_REMOTE_DEMOS_ROOT — parent dir for URL /demos/rpc/ (default: same as FHIR_REMOTE_WWW
 #     for fhir; for vehu10 .../www/filesystem use .../www so files land in ~/www/demos/rpc/)
 #   FHIR_SKIP_RPC_DEMO=1 — do not copy rehmp-rpc-demo into www (see below)
+#   FHIR_SKIP_CPRS_DEMO=1 — do not copy rehmp-cprs-demo into www (see below)
 #   FHIR_SKIP_WRITE_DEMO=1 — do not copy reminders-on-fhir writeback UI (see below)
 #   REHMP_RPC_DEMO     — path to rehmp-rpc-demo package (default: $REHMP_ROOT/ehmp-ui/rehmp-rpc-demo)
+#   REHMP_CPRS_DEMO    — path to rehmp-cprs-demo package (default: $REHMP_ROOT/ehmp-ui/rehmp-cprs-demo)
 #   REMINDERS_FHIR_WRITE_DEMO — path to reminders-on-fhir ui/fhir-write-demo (Codex www build)
 #   FHIR_M_USER      (default: osehra) — su - target for ZLINK / %webreq
 #   FHIR_MUMPS       (default: /home/${FHIR_M_USER}/lib/gtm/mumps)
@@ -50,6 +52,7 @@ FHIR_REMOTE_WWW="${FHIR_REMOTE_WWW:-/home/${FHIR_M_USER}/www}"
 FHIR_MUMPS="${FHIR_MUMPS:-/home/${FHIR_M_USER}/lib/gtm/mumps}"
 FHIR_USE_SSH="${FHIR_USE_SSH:-0}"
 REHMP_RPC_DEMO="${REHMP_RPC_DEMO:-$REHMP_ROOT/ehmp-ui/rehmp-rpc-demo}"
+REHMP_CPRS_DEMO="${REHMP_CPRS_DEMO:-$REHMP_ROOT/ehmp-ui/rehmp-cprs-demo}"
 
 # GET /demos/rpc/ is served from disk under www (not the /filesystem/ prefix).
 demos_parent_dir() {
@@ -101,6 +104,23 @@ copy_rehmp_rpc_demo_via_docker() {
   if [[ -d "$d/examples" ]]; then
     docker cp "$d/examples/." "$FHIR_CONTAINER:$dest/examples/"
   fi
+  docker exec "$FHIR_CONTAINER" chown -R "${FHIR_M_USER}:${FHIR_M_USER}" "$dest" 2>/dev/null || true
+}
+
+copy_rehmp_cprs_demo_via_docker() {
+  local d root dest
+  d="$REHMP_CPRS_DEMO/dist"
+  root="$(demos_parent_dir)"
+  dest="$root/demos/cprs"
+  [[ "${FHIR_SKIP_CPRS_DEMO:-0}" == "1" ]] && return 0
+  [[ -f "$d/index.html" ]] || {
+    echo "WARN: rehmp CPRS demo dist missing ($d/index.html) — /demos/cprs/ may be stale. Build: (cd $REHMP_CPRS_DEMO && npm ci && npm run build)" >&2
+    return 0
+  }
+  echo "==> docker cp rehmp-cprs-demo dist -> $FHIR_CONTAINER:$dest/ (GET /demos/cprs/)"
+  docker exec "$FHIR_CONTAINER" mkdir -p "$dest/assets"
+  docker cp "$d/index.html" "$FHIR_CONTAINER:$dest/"
+  docker cp "$d/assets/." "$FHIR_CONTAINER:$dest/assets/"
   docker exec "$FHIR_CONTAINER" chown -R "${FHIR_M_USER}:${FHIR_M_USER}" "$dest" 2>/dev/null || true
 }
 
@@ -159,6 +179,28 @@ copy_rehmp_rpc_demo_via_ssh() {
   if [[ -d "$d/examples" ]]; then
     "${SCP_BASE[@]}" -r "$d/examples" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${dest}/"
   fi
+}
+
+copy_rehmp_cprs_demo_via_ssh() {
+  local d root dest
+  d="$REHMP_CPRS_DEMO/dist"
+  root="$(demos_parent_dir)"
+  dest="$root/demos/cprs"
+  [[ "${FHIR_SKIP_CPRS_DEMO:-0}" == "1" ]] && return 0
+  [[ -f "$d/index.html" ]] || {
+    echo "WARN: rehmp CPRS demo dist missing ($d/index.html) — skip SSH copy" >&2
+    return 0
+  }
+  FHIR_SSH_HOST="${FHIR_SSH_HOST:-127.0.0.1}"
+  FHIR_SSH_PORT="${FHIR_SSH_PORT:-2223}"
+  FHIR_SSH_USER="${FHIR_SSH_USER:-osehra}"
+  FHIR_SSH_KEY="${FHIR_SSH_KEY:-$HOME/.ssh/id_ed25519_cursor_agent_test}"
+  SSH_BASE=(ssh -i "$FHIR_SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -p "$FHIR_SSH_PORT")
+  SCP_BASE=(scp -i "$FHIR_SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new -P "$FHIR_SSH_PORT")
+  echo "==> scp rehmp-cprs-demo dist -> ${FHIR_SSH_USER}@${FHIR_SSH_HOST}:$dest/"
+  "${SSH_BASE[@]}" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}" "mkdir -p $(printf '%q' "$dest/assets")"
+  "${SCP_BASE[@]}" "$d/index.html" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${dest}/"
+  "${SCP_BASE[@]}" -r "$d/assets" "${FHIR_SSH_USER}@${FHIR_SSH_HOST}:${dest}/"
 }
 
 copy_fhir_write_demo_via_ssh() {
@@ -272,6 +314,7 @@ if [[ "$FHIR_USE_SSH" == "1" ]]; then
   copy_via_ssh
   copy_vendor_tjson_via_ssh
   copy_rehmp_rpc_demo_via_ssh
+  copy_rehmp_cprs_demo_via_ssh
   copy_fhir_write_demo_via_ssh
 else
   echo "==> docker cp $SRC/*.m -> $FHIR_CONTAINER:$FHIR_REMOTE_P/"
@@ -284,6 +327,7 @@ else
   copy_via_docker
   copy_vendor_tjson_via_docker
   copy_rehmp_rpc_demo_via_docker
+  copy_rehmp_cprs_demo_via_docker
   copy_fhir_write_demo_via_docker
 fi
 
@@ -303,6 +347,13 @@ if [[ -z "$DFN" ]]; then
     curl -sS -o /tmp/fhir-smoke-rpc.html -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/demos/rpc/?dfn=1&rehmpBase=/rehmp" | tail -1
     head -c 80 /tmp/fhir-smoke-rpc.html | cat
     echo
+  fi
+  if [[ -f "$REHMP_CPRS_DEMO/dist/index.html" ]]; then
+    echo "==> Smoke: GET $FHIR_HTTP_BASE/demos/cprs/ (CPRS demo; Quality AI Consult)"
+    curl -sS -o /tmp/fhir-smoke-cprs.html -w "HTTP %{http_code}\n" "$FHIR_HTTP_BASE/demos/cprs/?dfn=1&autoload=dfn&rehmpBase=/rehmp" | tail -1
+    if ! grep -q 'Quality AI Consult\|index-.*\.js' /tmp/fhir-smoke-cprs.html; then
+      echo "WARN: CPRS index may be stale (expected built assets / Quality AI Consult)" >&2
+    fi
   fi
   if [[ -f "$REMINDERS_FHIR_WRITE_DEMO/dist-codex-www/index.html" ]]; then
     echo "==> Smoke: GET $FHIR_HTTP_BASE/filesystem/demos/fhir-write/index.html (reminder writeback UI)"

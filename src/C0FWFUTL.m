@@ -49,11 +49,20 @@ IEN2ICN(IEN) ; $$ - ICN for graph ien
  Q $O(@ROOT@("PSO","ICN",+$G(IEN),""))
  ;
 DFN2ICN(DFN) ; $$ - existing ICN for patient/graph link
- N ICN,IEN
+ N FULL,ICN,IEN
  S DFN=+$G(DFN)
  Q:DFN<1 ""
  S IEN=$$DFN2IEN(DFN)
  I IEN>0 S ICN=$$IEN2ICN(IEN) I ICN'="" Q ICN
+ ; Prefer full ICN used as ^DPT("AFICN") key (991.1), not bare 991.01.
+ S ICN=$$GET1^DIQ(2,DFN_",",991.1,"E")
+ I ICN'="" Q ICN
+ S ICN=$P($G(^DPT(DFN,"MPI")),U,10)
+ I ICN'="" Q ICN
+ S ICN=$$GET1^DIQ(2,DFN_",",991.01,"E")
+ I ICN'="",$D(^DPT("AFICN",ICN)) Q ICN
+ I ICN'="",ICN'["V" S FULL=ICN_"V"_$P($G(^DPT(DFN,"MPI")),U,2) I $D(^DPT("AFICN",FULL)) Q FULL
+ ; Legacy reverse probes (not the normal AFICN shape)
  S ICN=$O(^DPT("AFICN",DFN,""))
  I ICN'="" Q ICN
  S ICN=$O(^DPT("ARFICN",DFN,""))
