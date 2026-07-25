@@ -33,7 +33,7 @@ D SETPOP^C0FQUAL("CMS165v14",101090,1,1,1,0,"HTN+BP controlled","official-cql")
 | `SUM,CMS` | `N^IPP^DENOM^NUMER^DENEX^ASOF^COHORT` |
 | `POP,CMS,DFN` | `IPP^DENOM^NUMER^DENEX^EVIDENCE^MODE` |
 
-Seed version `^C0FQUAL(0)=2` adds META/SUM (preserves prior Active flags).
+Seed version `^C0FQUAL(0)=3` refreshes CMS165/CMS122 aggregate cards from the 2026-07-24 overnight CQL re-eval (preserves Active flags).
 
 Default active: `CMS165v14`, `CMS122v14`.
 
@@ -42,11 +42,14 @@ D ACTIVATE^C0FQUAL("CMS130v14")
 D DEACTIVATE^C0FQUAL("CMS122v14")
 ```
 
-## CMS165 seeded summary
+## Seeded summary (selected-18 CQL, 2026-07-24)
 
-- Cohort: selected-18 CQL (`cqm-execution` 4.4.3 / `cql-execution` 3.3.2)
-- IPP/DENOM/NUMER **15/15/15** (n=18) as of 2026-07-23
-- Docs: `HL7-FHIR-quality-testing` `docs/VSAC_CMS165_RUN_2026-07-23.md`
+| Measure | IPP / DENOM / NUMER | Mode |
+|---------|---------------------:|------|
+| CMS165v14 | **14 / 14 / 14** (n=18) | official-cql |
+| CMS122v14 | **5 / 5 / 0** (n=18) | official-cql |
+
+Source batches: `HL7-FHIR-quality-testing/2026/cohorts/*/reports/cqm-execution-batch.json`.
 
 Graph DFN rows show **—** until `SETPOP` is used; aggregate card is the official CQL summary.
 

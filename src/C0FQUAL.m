@@ -17,7 +17,23 @@ SEED ; Ensure catalog + metadata exist (versioned)
  SET VER=+$GET(^C0FQUAL(0))
  IF VER<1 DO SEEDMEAS
  IF VER<2 DO SEEDMETA
- SET ^C0FQUAL(0)=2
+ IF VER<3 DO SEEDSUM25
+ SET ^C0FQUAL(0)=3
+ QUIT
+ ;
+SEEDSUM25 ; Overnight 2026-07-24 CQL re-eval (selected-18) → dashboard aggregates
+ NEW DOCS,IPP,TOOLS
+ SET DOCS="https://github.com/glilly/HL7-FHIR-quality-testing/blob/master/docs/SEPTEMBER_MEASURE_INFERNO_ELEMENT_MAPPING.md"
+ SET TOOLS="cqm-execution 4.4.3 + cql-execution 3.3.2 (Project Tacoma);"
+ SET TOOLS=TOOLS_" VSAC SVS expansions; FHIR→QDM via fhir-to-qdm-patient.js"
+ SET IPP="Age 18-85 at end of MP; essential hypertension diagnosis overlapping"
+ SET IPP=IPP_" first 6 months of MP; qualifying adult outpatient encounter during MP"
+ DO SETMETA("CMS165v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
+ DO SETSUM("CMS165v14",18,14,14,14,0,"2026-07-24","selected-18 CQL after VSAC restore")
+ SET IPP="Adults with diabetes and qualifying encounter; glycemic status (HbA1c)"
+ SET IPP=IPP_" assessment logic per CMS122v14"
+ DO SETMETA("CMS122v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
+ DO SETSUM("CMS122v14",18,5,5,0,0,"2026-07-24","selected-18 CQL (NUMER=0 in this cohort)")
  QUIT
  ;
 SEEDMEAS ; Default measure catalog
@@ -40,13 +56,14 @@ SEEDMETA ; IPP text, tools, aggregate summary slots
  SET TOOLS="cqm-execution 4.4.3 + cql-execution 3.3.2 (Project Tacoma);"
  SET TOOLS=TOOLS_" VSAC SVS expansions; FHIR→QDM via fhir-to-qdm-patient.js"
  DO SETMETA("CMS165v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
- DO SETSUM("CMS165v14",18,15,15,15,0,"2026-07-23","selected-18 CQL cohort (not full graph DFN list)")
+ DO SETSUM("CMS165v14",18,14,14,14,0,"2026-07-24","selected-18 CQL after VSAC restore")
  SET IPP="Adults with diabetes and qualifying encounter; glycemic status (HbA1c)"
  SET IPP=IPP_" assessment logic per CMS122v14"
- SET DOCS="https://github.com/glilly/HL7-FHIR-quality-testing/blob/master/docs/CMS_2026_QUALITY_MEASURES.md"
- SET TOOLS="Quality AI Consult / heuristic FHIR proxy until CQL package wired"
- DO SETMETA("CMS122v14",IPP,"Calendar year 2026",DOCS,TOOLS,"heuristic-proxy")
- DO SETSUM("CMS122v14",0,0,0,0,0,"","not yet CQL-evaluated on this host")
+ SET DOCS="https://github.com/glilly/HL7-FHIR-quality-testing/blob/master/docs/SEPTEMBER_MEASURE_INFERNO_ELEMENT_MAPPING.md"
+ SET TOOLS="cqm-execution 4.4.3 + cql-execution 3.3.2 (Project Tacoma);"
+ SET TOOLS=TOOLS_" VSAC SVS expansions; FHIR→QDM via fhir-to-qdm-patient.js"
+ DO SETMETA("CMS122v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
+ DO SETSUM("CMS122v14",18,5,5,0,0,"2026-07-24","selected-18 CQL (NUMER=0 in this cohort)")
  QUIT
  ;
 NORM(CMS) ;
