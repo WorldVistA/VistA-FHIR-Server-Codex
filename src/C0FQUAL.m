@@ -20,7 +20,8 @@ SEED ; Ensure catalog + metadata exist (versioned)
  IF VER<3 DO SEEDSUM25
  IF VER<4 DO SEED130
  IF VER<5 DO SEED138
- SET ^C0FQUAL(0)=5
+ IF VER<6 DO SEED2
+ SET ^C0FQUAL(0)=6
  QUIT
  ;
 SEED130 ; Activate CMS130 + selected-18 CQL aggregates (2026-07-25)
@@ -47,6 +48,18 @@ SEED138 ; Activate CMS138 + selected-18 CQL aggregates (2026-07-25)
  DO SETSUM("CMS138v14",18,1,0,0,0,"2026-07-25","selected-18 CQL (IPP=1; DENOM/NUMER=0 in this cohort)")
  QUIT
  ;
+SEED2 ; Activate CMS2 + selected-18 CQL aggregates (2026-07-25)
+ NEW DOCS,IPP,TOOLS
+ SET DOCS="https://github.com/glilly/HL7-FHIR-quality-testing/blob/master/docs/SEPTEMBER_MEASURE_INFERNO_ELEMENT_MAPPING.md"
+ SET TOOLS="cqm-execution 4.4.3 + cql-execution 3.3.2 (Project Tacoma);"
+ SET TOOLS=TOOLS_" VSAC SVS expansions; FHIR→QDM via fhir-to-qdm-patient.js"
+ SET IPP="Adults with qualifying encounter; depression screening (PHQ) and"
+ SET IPP=IPP_" follow-up plan per CMS2v15"
+ DO SETMEAS("CMS2v15","Screening for Depression and Follow-Up Plan","Observation, Procedure, CarePlan","A","First-wave; CQL/VSAC path ready")
+ DO SETMETA("CMS2v15",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
+ DO SETSUM("CMS2v15",18,6,6,0,0,"2026-07-25","selected-18 CQL (NUMER=0 in this cohort)")
+ QUIT
+ ;
 SEEDSUM25 ; Overnight 2026-07-24 CQL re-eval (selected-18) → dashboard aggregates
  NEW DOCS,IPP,TOOLS
  SET DOCS="https://github.com/glilly/HL7-FHIR-quality-testing/blob/master/docs/SEPTEMBER_MEASURE_INFERNO_ELEMENT_MAPPING.md"
@@ -68,7 +81,7 @@ SEEDMEAS ; Default measure catalog
  DO SETMEAS("CMS130v14","Colorectal Cancer Screening","Procedure, Observation, DiagnosticReport","A","First-wave; CQL/VSAC path ready")
  DO SETMEAS("CMS125v14","Breast Cancer Screening","Procedure, DiagnosticReport","I","First-wave shortlist")
  DO SETMEAS("CMS22v14","Screening for High Blood Pressure and Follow-Up","Encounter, Blood Pressure, Follow-up","I","CMS147 substitute in 2026 EC ZIP")
- DO SETMEAS("CMS2v15","Screening for Depression and Follow-Up Plan","Observation, Procedure, CarePlan","I","First-wave shortlist")
+ DO SETMEAS("CMS2v15","Screening for Depression and Follow-Up Plan","Observation, Procedure, CarePlan","A","First-wave; CQL/VSAC path ready")
  DO SETMEAS("CMS68v15","Documentation of Current Medications","MedicationRequest / medication review","I","First-wave shortlist")
  DO SETMEAS("CMS138v14","Tobacco Use: Screening and Cessation Intervention","Social-history Observation, Procedure/Medication","A","First-wave; CQL/VSAC path ready")
  DO SETMEAS("CMS131v14","Diabetes: Eye Exam","Condition, Procedure, Observation","I","First-wave shortlist")
