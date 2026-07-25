@@ -18,7 +18,20 @@ SEED ; Ensure catalog + metadata exist (versioned)
  IF VER<1 DO SEEDMEAS
  IF VER<2 DO SEEDMETA
  IF VER<3 DO SEEDSUM25
- SET ^C0FQUAL(0)=3
+ IF VER<4 DO SEED130
+ SET ^C0FQUAL(0)=4
+ QUIT
+ ;
+SEED130 ; Activate CMS130 + selected-18 CQL aggregates (2026-07-25)
+ NEW DOCS,IPP,TOOLS
+ SET DOCS="https://github.com/glilly/HL7-FHIR-quality-testing/blob/master/docs/SEPTEMBER_MEASURE_INFERNO_ELEMENT_MAPPING.md"
+ SET TOOLS="cqm-execution 4.4.3 + cql-execution 3.3.2 (Project Tacoma);"
+ SET TOOLS=TOOLS_" VSAC SVS expansions; FHIR→QDM via fhir-to-qdm-patient.js"
+ SET IPP="Adults 45-75 with qualifying encounter; colorectal cancer screening"
+ SET IPP=IPP_" (FOBT/FIT, FIT-DNA, CT colonography, flex sig, colonoscopy) per CMS130v14"
+ DO SETMEAS("CMS130v14","Colorectal Cancer Screening","Procedure, Observation, DiagnosticReport","A","First-wave; CQL/VSAC path ready")
+ DO SETMETA("CMS130v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
+ DO SETSUM("CMS130v14",18,9,9,0,0,"2026-07-25","selected-18 CQL (NUMER=0 in this cohort)")
  QUIT
  ;
 SEEDSUM25 ; Overnight 2026-07-24 CQL re-eval (selected-18) → dashboard aggregates
@@ -39,7 +52,7 @@ SEEDSUM25 ; Overnight 2026-07-24 CQL re-eval (selected-18) → dashboard aggrega
 SEEDMEAS ; Default measure catalog
  DO SETMEAS("CMS165v14","Controlling High Blood Pressure","Condition, Encounter, Blood Pressure Observation","A","First-wave; CQL/VSAC path ready")
  DO SETMEAS("CMS122v14","Diabetes: Glycemic Status Assessment Greater Than 9%","Condition, Encounter, Observation HbA1c","A","First-wave; Quality AI Consult demo")
- DO SETMEAS("CMS130v14","Colorectal Cancer Screening","Procedure, Observation, DiagnosticReport","I","First-wave shortlist")
+ DO SETMEAS("CMS130v14","Colorectal Cancer Screening","Procedure, Observation, DiagnosticReport","A","First-wave; CQL/VSAC path ready")
  DO SETMEAS("CMS125v14","Breast Cancer Screening","Procedure, DiagnosticReport","I","First-wave shortlist")
  DO SETMEAS("CMS22v14","Screening for High Blood Pressure and Follow-Up","Encounter, Blood Pressure, Follow-up","I","CMS147 substitute in 2026 EC ZIP")
  DO SETMEAS("CMS2v15","Screening for Depression and Follow-Up Plan","Observation, Procedure, CarePlan","I","First-wave shortlist")
