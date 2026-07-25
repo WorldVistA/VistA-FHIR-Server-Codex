@@ -239,9 +239,41 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  DO MHEAD(.RTN,CMS,STAT,FOCUS,NOTE)
+ ; Curated CQL cohort rows from ^C0FQUAL("POP") — always listed first
+ DO ADDLN^C0FHIR(.RTN,"<h2>Curated CQL cohort</h2>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Per-DFN flags from SETPOP^C0FQUAL (selected-18 / showcase CQL).</p>")
+ DO ADDLN^C0FHIR(.RTN,"<table>")
+ DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>FHIR browser</th><th>rehmp</th><th>AI Consult</th><th>Bundle</th></tr>")
+ SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=0
+ FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:+DFN<1  DO
+ . SET CNT=CNT+1
+ . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^") IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
+ . SET IPP=$$YN($$POP(CMS,DFN,1)),DENOM=$$YN($$POP(CMS,DFN,2))
+ . SET NUMER=$$YN($$POP(CMS,DFN,3)),DENEX=$$YN($$POP(CMS,DFN,4))
+ . SET EVID=$PIECE($GET(^C0FQUAL("POP",CMS,DFN)),"^",5)
+ . SET IEN=0 IF ROOT'="" SET IEN=+$ORDER(@ROOT@("DFN",DFN,""),-1)
+ . SET BURL="/fhir?dfn="_DFN_"&view=browser"
+ . SET SURL=$SELECT(IEN>0:"/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN,1:BURL)
+ . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
+ . SET AURL="/aiconsult?dfn="_DFN_"&measure="_CMS
+ . SET ROW="<tr><td>"_DFN_"</td><td>"_$$HTMLESC^C0FHIR(NAME)_"</td>"
+ . SET ROW=ROW_"<td class="""_$$PCLS(IPP)_""">"_IPP_"</td>"
+ . SET ROW=ROW_"<td class="""_$$PCLS(DENOM)_""">"_DENOM_"</td>"
+ . SET ROW=ROW_"<td class="""_$$PCLS(NUMER)_""">"_NUMER_"</td>"
+ . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
+ . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
+ . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a>"
+ . IF IEN>0 SET ROW=ROW_" · <a href="""_SURL_""">source bundle</a>"
+ . SET ROW=ROW_"</td><td><a href="""_RURL_""">rehmp</a></td>"
+ . SET ROW=ROW_"<td><a href="""_AURL_""">aiconsult</a></td>"
+ . IF IEN>0 SET ROW=ROW_"<td><a href=""/altfhir?ien="_IEN_""">altfhir</a></td></tr>"
+ . ELSE  SET ROW=ROW_"<td class=""muted"">—</td></tr>"
+ . DO ADDLN^C0FHIR(.RTN,ROW)
+ IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""11"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
+ DO ADDLN^C0FHIR(.RTN,"</table>")
+ ;
  DO ADDLN^C0FHIR(.RTN,"<h2>Patients (graph source)</h2>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">IPP/DENOM/NUMER/DENEX show Yes/No when stored in ^C0FQUAL(""POP""); otherwise — (not evaluated for this DFN). Aggregate CQL summary above may use a separate curated cohort.</p>")
- SET ROOT=$$GSROOT^C0FHIR()
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Graph-linked patients (first 250). Flags show when POP is stored for that DFN.</p>")
  IF ROOT="" DO  GOTO MDONE
  . DO ADDLN^C0FHIR(.RTN,"<p>No fhir-intake graph root is available.</p>")
  DO ADDLN^C0FHIR(.RTN,"<table>")

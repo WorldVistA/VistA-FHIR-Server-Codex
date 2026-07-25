@@ -51,7 +51,7 @@ D DEACTIVATE^C0FQUAL("CMS122v14")
 
 Source batches: `HL7-FHIR-quality-testing/2026/cohorts/*/reports/cqm-execution-batch.json`.
 
-Graph DFN rows show **—** until `SETPOP` is used; aggregate card is the official CQL summary.
+Per-DFN flags via `SETPOP` appear in a **Curated CQL cohort** table on the measure page (then the first 250 graph DFNs). Aggregate card remains the official CQL summary.
 
 ## Smoke
 
