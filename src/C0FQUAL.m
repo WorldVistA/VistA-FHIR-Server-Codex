@@ -289,6 +289,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<div class=""links"">")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-dashboards"">All active measures</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
+ DO ADDLN^C0FHIR(.RTN,"<a href=""/filesystem/c0x/index.html?measure="_CMS_"">C0X population IPP</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  DO MHEAD(.RTN,CMS,STAT,FOCUS,NOTE)
  ; Curated CQL cohort rows from ^C0FQUAL("POP") — always listed first
