@@ -57,9 +57,23 @@ Source batches: `HL7-FHIR-quality-testing/2026/cohorts/*/reports/cqm-execution-b
 
 Per-DFN flags via `SETPOP` appear in a **Curated CQL cohort** table on the measure page (then the first 250 graph DFNs). Aggregate card remains the official CQL summary.
 
+## Demo host (fhirdev)
+
+Authoritative target for September Inferno / Quality AI demos:
+
+| URL | Purpose |
+|-----|---------|
+| `https://devfhir.vistaplex.org/fhir` | FHIR base (hosted Inferno) |
+| `https://devfhir.vistaplex.org/fhir-quality-dashboards` | Active measure summary |
+| `https://devfhir.vistaplex.org/fhir-quality-dashboards/CMS165v14` | Per-measure curated cohort |
+
+Deploy: `./scripts/fhirdev-codex-sync.sh` then apply SETPOP from quality-testing `scripts/fhirdev-apply-setpop.sh`.
+
+Local `vehu10` (`9085`) remains a sync/smoke sandbox only — not the Inferno demo endpoint.
+
 ## Smoke
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:9085/fhir-quality-dashboards
-curl -sS http://127.0.0.1:9085/fhir-quality-dashboards/CMS165v14 | tr '>' '>\n' | rg -n 'Initial Population|summary results|CQM tools|rehmp|IPP|NUMER' | head
+curl -sS -o /dev/null -w '%{http_code}\n' https://devfhir.vistaplex.org/fhir-quality-dashboards
+curl -sS https://devfhir.vistaplex.org/fhir-quality-dashboards/CMS165v14 | tr '>' '>\n' | rg -n 'Initial Population|summary results|CQM tools|rehmp|IPP|NUMER|SCHMELER' | head
 ```

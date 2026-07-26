@@ -132,4 +132,7 @@ head -c 100 /tmp/fhirdev-tjson-smoke.js | cat
 echo
 echo "==> Smoke: GET $HTTP_BASE/fhir (index)"
 curl -sS -o /dev/null -w "HTTP %{http_code}\n" "$HTTP_BASE/fhir" | tail -1
-echo "Done."
+echo "==> Smoke: GET $HTTP_BASE/fhir-quality-dashboards"
+curl -sS -o /dev/null -w "HTTP %{http_code}\n" "$HTTP_BASE/fhir-quality-dashboards" | tail -1
+echo "Done. Inferno FHIR base: $HTTP_BASE/fhir"
+echo "Re-apply SETPOP after sync: HL7-FHIR-quality-testing/scripts/fhirdev-apply-setpop.sh"
