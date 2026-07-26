@@ -34,7 +34,7 @@ SEED130 ; Activate CMS130 + selected-18 CQL aggregates (2026-07-25)
  SET IPP=IPP_" (FOBT/FIT, FIT-DNA, CT colonography, flex sig, colonoscopy) per CMS130v14"
  DO SETMEAS("CMS130v14","Colorectal Cancer Screening","Procedure, Observation, DiagnosticReport","A","First-wave; CQL/VSAC path ready")
  DO SETMETA("CMS130v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
- DO SETSUM("CMS130v14",18,9,9,0,0,"2026-07-25","selected-18 CQL (NUMER=0 in this cohort)")
+ DO SETSUM("CMS130v14",17,13,9,1,0,"2026-07-26","c0x IPP→CQL")
  QUIT
  ;
 SEED138 ; Activate CMS138 + selected-18 CQL aggregates (2026-07-25)
@@ -81,11 +81,11 @@ SEEDSUM25 ; Overnight 2026-07-24 CQL re-eval (selected-18) → dashboard aggrega
  SET IPP="Age 18-85 at end of MP; essential hypertension diagnosis overlapping"
  SET IPP=IPP_" first 6 months of MP; qualifying adult outpatient encounter during MP"
  DO SETMETA("CMS165v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
- DO SETSUM("CMS165v14",18,14,14,14,0,"2026-07-24","selected-18 CQL after VSAC restore")
+ DO SETSUM("CMS165v14",23,19,16,15,0,"2026-07-26","c0x IPP→CQL (19 IPP / 16 DENOM / 15 NUMER)")
  SET IPP="Adults with diabetes and qualifying encounter; glycemic status (HbA1c)"
  SET IPP=IPP_" assessment logic per CMS122v14"
  DO SETMETA("CMS122v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
- DO SETSUM("CMS122v14",18,5,5,0,0,"2026-07-24","selected-18 CQL (NUMER=0 in this cohort)")
+ DO SETSUM("CMS122v14",9,5,4,0,0,"2026-07-26","c0x IPP→CQL")
  QUIT
  ;
 SEEDMEAS ; Default measure catalog
@@ -108,14 +108,14 @@ SEEDMETA ; IPP text, tools, aggregate summary slots
  SET TOOLS="cqm-execution 4.4.3 + cql-execution 3.3.2 (Project Tacoma);"
  SET TOOLS=TOOLS_" VSAC SVS expansions; FHIR→QDM via fhir-to-qdm-patient.js"
  DO SETMETA("CMS165v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
- DO SETSUM("CMS165v14",18,14,14,14,0,"2026-07-24","selected-18 CQL after VSAC restore")
+ DO SETSUM("CMS165v14",23,19,16,15,0,"2026-07-26","c0x IPP→CQL (19 IPP / 16 DENOM / 15 NUMER)")
  SET IPP="Adults with diabetes and qualifying encounter; glycemic status (HbA1c)"
  SET IPP=IPP_" assessment logic per CMS122v14"
  SET DOCS="https://github.com/glilly/HL7-FHIR-quality-testing/blob/master/docs/SEPTEMBER_MEASURE_INFERNO_ELEMENT_MAPPING.md"
  SET TOOLS="cqm-execution 4.4.3 + cql-execution 3.3.2 (Project Tacoma);"
  SET TOOLS=TOOLS_" VSAC SVS expansions; FHIR→QDM via fhir-to-qdm-patient.js"
  DO SETMETA("CMS122v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
- DO SETSUM("CMS122v14",18,5,5,0,0,"2026-07-24","selected-18 CQL (NUMER=0 in this cohort)")
+ DO SETSUM("CMS122v14",9,5,4,0,0,"2026-07-26","c0x IPP→CQL")
  QUIT
  ;
 NORM(CMS) ;
