@@ -271,7 +271,7 @@ CATALOG(RTN) ;
  ;
 MEASURE(RTN,CMS) ; HTML single-measure dashboard
  NEW CNT,DFN,FOCUS,IEN,NAME,NOTE,ROOT,ROW,STAT,TITLE,RAW
- NEW AURL,BURL,FURL,LURL,RURL,SURL
+ NEW AURL,BURL,CURL,FURL,LURL,RURL,SURL
  NEW IPP,DENOM,NUMER,DENEX,EVID,MODE,FLAG
  DO SEED
  SET RAW=$$NORM($GET(CMS))
@@ -289,7 +289,8 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<div class=""links"">")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-dashboards"">All active measures</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
- DO ADDLN^C0FHIR(.RTN,"<a href=""/filesystem/c0x/index.html?measure="_CMS_"">C0X population IPP</a>")
+ SET CURL="/filesystem/c0x/index.html?measure="_CMS
+ DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">C0X population IPP</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  DO MHEAD(.RTN,CMS,STAT,FOCUS,NOTE)
  ; Curated CQL cohort rows from ^C0FQUAL("POP") — always listed first
