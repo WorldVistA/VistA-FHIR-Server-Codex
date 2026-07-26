@@ -47,18 +47,20 @@ TRIPLES(INDEX,ARY,WI,TYPE) ; Build graph triples for one FHIR entry
  . D SETIDX(INDEX,PURL,"type",TYPE)
  . D SETIDX(INDEX,PURL,"rien",WI)
  . S ENC=$G(@ARY@("resource","context","reference"))
- . I ENC="" S ENC=$G(@ARY@("resource","encounter","reference")) Q:ENC=""
- . D SETIDX(INDEX,PURL,"encounterReference",ENC)
- . S PAT=$G(@ARY@("resource","subject","reference")) Q:PAT=""
- . D SETIDX(INDEX,PURL,"patientReference",PAT)
+ . I ENC="" S ENC=$G(@ARY@("resource","encounter","reference"))
+ . I ENC'="" D SETIDX(INDEX,PURL,"encounterReference",ENC)
+ . S PAT=$G(@ARY@("resource","subject","reference"))
+ . I PAT'="" D SETIDX(INDEX,PURL,"patientReference",PAT)
+ . D ADDCODES(INDEX,PURL,ARY)
  I TYPE="Observation" D  Q
  . D SETIDX(INDEX,PURL,"type",TYPE)
  . D SETIDX(INDEX,PURL,"rien",WI)
  . S ENC=$G(@ARY@("resource","context","reference"))
- . I ENC="" S ENC=$G(@ARY@("resource","encounter","reference")) Q:ENC=""
- . D SETIDX(INDEX,PURL,"encounterReference",ENC)
- . S PAT=$G(@ARY@("resource","subject","reference")) Q:PAT=""
- . D SETIDX(INDEX,PURL,"patientReference",PAT)
+ . I ENC="" S ENC=$G(@ARY@("resource","encounter","reference"))
+ . I ENC'="" D SETIDX(INDEX,PURL,"encounterReference",ENC)
+ . S PAT=$G(@ARY@("resource","subject","reference"))
+ . I PAT'="" D SETIDX(INDEX,PURL,"patientReference",PAT)
+ . D ADDCODES(INDEX,PURL,ARY)
  I TYPE="Medication" D  Q
  . D SETIDX(INDEX,PURL,"type",TYPE)
  . D SETIDX(INDEX,PURL,"rien",WI)
@@ -80,10 +82,30 @@ TRIPLES(INDEX,ARY,WI,TYPE) ; Build graph triples for one FHIR entry
  D SETIDX(INDEX,PURL,"type",TYPE)
  D SETIDX(INDEX,PURL,"rien",WI)
  S ENC=$G(@ARY@("resource","context","reference"))
- I ENC="" S ENC=$G(@ARY@("resource","encounter","reference")) Q:ENC=""
- D SETIDX(INDEX,PURL,"encounterReference",ENC)
- S PAT=$G(@ARY@("resource","subject","reference")) Q:PAT=""
- D SETIDX(INDEX,PURL,"patientReference",PAT)
+ I ENC="" S ENC=$G(@ARY@("resource","encounter","reference"))
+ I ENC'="" D SETIDX(INDEX,PURL,"encounterReference",ENC)
+ S PAT=$G(@ARY@("resource","subject","reference"))
+ I PAT="" S PAT=$G(@ARY@("resource","patient","reference"))
+ I PAT'="" D SETIDX(INDEX,PURL,"patientReference",PAT)
+ D ADDCODES(INDEX,PURL,ARY)
+ Q
+ ;
+ADDCODES(INDEX,PURL,ARY) ; Index CodeableConcept codes for SPARQL FILTER CONTAINS
+ N I,J,C,D
+ S I=0 F  S I=$O(@ARY@("resource","code","coding",I)) Q:+I=0  D
+ . S C=$G(@ARY@("resource","code","coding",I,"code")) Q:C=""
+ . D SETIDX(INDEX,PURL,"code",C)
+ . S D=$G(@ARY@("resource","code","coding",I,"display"))
+ . I D'="" D SETIDX(INDEX,PURL,"display",D)
+ I $G(@ARY@("resource","code","text"))'="" D SETIDX(INDEX,PURL,"display",$G(@ARY@("resource","code","text")))
+ S I=0 F  S I=$O(@ARY@("resource","category",I)) Q:+I=0  D
+ . S J=0 F  S J=$O(@ARY@("resource","category",I,"coding",J)) Q:+J=0  D
+ . . S C=$G(@ARY@("resource","category",I,"coding",J,"code")) Q:C=""
+ . . D SETIDX(INDEX,PURL,"category",C)
+ S I=0 F  S I=$O(@ARY@("resource","component",I)) Q:+I=0  D
+ . S J=0 F  S J=$O(@ARY@("resource","component",I,"code","coding",J)) Q:+J=0  D
+ . . S C=$G(@ARY@("resource","component",I,"code","coding",J,"code")) Q:C=""
+ . . D SETIDX(INDEX,PURL,"code",C)
  Q
  ;
 SETIDX(GN,SUB,PRED,OBJ) ; Set graph indexes on supplied graph node
