@@ -76,6 +76,10 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . NEW PARAMS
  . SET PARAMS(1)="B"
  . DO addService^%webutils("POST","aiconsult/update-review","WSREV^C0FWAIS","","","",.PARAMS)
+ IF $T(WSRECOMP^C0FQUAL)'="" DO
+ . NEW PARAMS
+ . SET PARAMS(1)="B"
+ . DO addService^%webutils("POST","fhir-quality-recompute","WSRECOMP^C0FQUAL","","","",.PARAMS)
  IF $T(WSAPP^C0FWAIR)'="" DO
  . NEW PARAMS
  . SET PARAMS(1)="B"

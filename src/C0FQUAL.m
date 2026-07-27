@@ -236,17 +236,19 @@ SUMMARY(RTN) ; HTML summary of active measures
  DO ADDLN^C0FHIR(.RTN,"<h2>Active measures ("_N_")</h2>")
  IF N<1 DO  GOTO SUMDONE
  . DO ADDLN^C0FHIR(.RTN,"<p>No active measures. Activate with ACTIVATE^C0FQUAL(""CMS165v14"").</p>")
- DO ADDLN^C0FHIR(.RTN,"<table><tr><th>CMS ID</th><th>Measure</th><th>Summary (IPP/DENOM/NUMER)</th><th>Mode</th><th></th></tr>")
+ DO ADDLN^C0FHIR(.RTN,"<table><tr><th>CMS ID</th><th>Measure</th><th>Summary (IPP/DENOM/NUMER)</th><th>Rate</th><th>Mode</th><th></th></tr>")
  SET CMS=""
  FOR  SET CMS=$ORDER(^C0FQUAL("MEAS",CMS)) QUIT:CMS=""  DO
  . IF '$$ISACTIVE(CMS) QUIT
  . SET TITLE=$$TITLE(CMS)
  . SET IPP=$$SUM(CMS,2),DENOM=$$SUM(CMS,3),NUMER=$$SUM(CMS,4)
+ . SET RATE=$SELECT(+DENOM>0:$JUSTIFY(NUMER/DENOM*100,0,1)_"%",1:"n/a")
  . SET URL="/fhir-quality-dashboards/"_CMS
  . DO ADDLN^C0FHIR(.RTN,"<tr><td><a href="""_URL_""">"_$$HTMLESC^C0FHIR(CMS)_"</a></td>")
  . DO ADDLN^C0FHIR(.RTN,"<td>"_$$HTMLESC^C0FHIR(TITLE)_"</td>")
  . IF +$$SUM(CMS,1)>0 DO ADDLN^C0FHIR(.RTN,"<td>"_IPP_" / "_DENOM_" / "_NUMER_" <span class=""muted"">(n="_$$SUM(CMS,1)_")</span></td>")
  . ELSE  DO ADDLN^C0FHIR(.RTN,"<td class=""muted"">not evaluated</td>")
+ . DO ADDLN^C0FHIR(.RTN,"<td>"_$$HTMLESC^C0FHIR(RATE)_"</td>")
  . DO ADDLN^C0FHIR(.RTN,"<td>"_$$HTMLESC^C0FHIR($$META(CMS,5))_"</td>")
  . DO ADDLN^C0FHIR(.RTN,"<td><a class=""btn"" href="""_URL_""">Open</a></td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
@@ -442,5 +444,102 @@ HDR(RTN,TITLE,SUB) ;
  ;
 FTR(RTN) ;
  DO ADDLN^C0FHIR(.RTN,"</body></html>")
+ QUIT
+ ;
+ ;----- Post-writeback heuristic recompute (demo closed-loop) -----
+WSRECOMP(ARGS,BODY,RESULT) ; POST /fhir-quality-recompute?dfn=&measure=
+ IF '$DATA(RESULT) DO WSRECOMP2(.ARGS,.BODY) QUIT ""
+ DO WSRECOMP2(.RESULT,.BODY)
+ QUIT ""
+ ;
+WSRECOMP2(OUT,BODY) ; Apply accepted quality actions → SETPOP + SETSUM
+ NEW CMS,DFN,ERR,REQ,TMP
+ SET U="^",HTTPRSP("mime")="application/json"
+ KILL OUT
+ DO SEED
+ SET DFN=+$GET(HTTPARGS("dfn"))
+ SET CMS=$$FIND($GET(HTTPARGS("measure")))
+ DO DECACT^C0FWAIS(.BODY,.REQ,.ERR)
+ IF $GET(ERR)'="" DO OO^C0FWAIS(.OUT,"error","invalid",ERR) QUIT
+ IF DFN<1 SET DFN=+$GET(REQ("dfn"))
+ IF CMS="" SET CMS=$$MEASACT(.REQ)
+ IF DFN<1 DO OO^C0FWAIS(.OUT,"error","invalid","Missing or invalid dfn") QUIT
+ IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Unable to determine measure (pass measure= or cmsNNN-* actions)") QUIT
+ DO APPLY(.TMP,CMS,DFN,.REQ)
+ DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
+ IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode recompute response") QUIT
+ QUIT
+ ;
+MEASACT(REQ) ; Infer CMS id from first accepted action
+ NEW A,I,X
+ SET A="",I=0
+ FOR  SET I=$ORDER(REQ("acceptedActions",I)) QUIT:'I  DO  QUIT:A'=""
+ . SET X=$$UPCASE^C0FHIR($GET(REQ("acceptedActions",I)))
+ . IF X["CMS165" SET A="CMS165v14" QUIT
+ . IF X["CMS122" SET A="CMS122v14" QUIT
+ . IF X["CMS130" SET A="CMS130v14" QUIT
+ . IF X["CMS138" SET A="CMS138v14" QUIT
+ . IF X["CMS2-"!(X["CMS2_") SET A="CMS2v15" QUIT
+ . IF X["CMS125" SET A="CMS125v14" QUIT
+ QUIT $$FIND(A)
+ ;
+APPLY(OUT,CMS,DFN,REQ) ; Heuristic POP update from acceptedActions/actionValues
+ NEW CUR,IPP,DENOM,NUMER,DENEX,EVID,MODE,ACT,I,SBP,DBP,A1C,CHANGED
+ SET CMS=$$FIND(CMS),DFN=+DFN
+ SET CUR=$GET(^C0FQUAL("POP",CMS,DFN))
+ SET IPP=+$PIECE(CUR,"^",1),DENOM=+$PIECE(CUR,"^",2)
+ SET NUMER=+$PIECE(CUR,"^",3),DENEX=+$PIECE(CUR,"^",4)
+ SET EVID=$PIECE(CUR,"^",5),MODE=$PIECE(CUR,"^",6)
+ ; If never scored, assume DENOM candidate when we are closing a numerator gap
+ IF CUR="" SET IPP=1,DENOM=1,NUMER=0,DENEX=0
+ SET CHANGED=0,I=0
+ FOR  SET I=$ORDER(REQ("acceptedActions",I)) QUIT:'I  DO
+ . SET ACT=$$UPCASE^C0FHIR($GET(REQ("acceptedActions",I)))
+ . IF ACT["CMS165-RECORD-BLOOD-PRESSURE" DO  QUIT
+ . . SET SBP=+$GET(REQ("actionValues","cms165-record-blood-pressure","systolic"))
+ . . IF SBP=0 SET SBP=+$GET(REQ("actionValues","CMS165-RECORD-BLOOD-PRESSURE","systolic"))
+ . . SET DBP=+$GET(REQ("actionValues","cms165-record-blood-pressure","diastolic"))
+ . . IF DBP=0 SET DBP=+$GET(REQ("actionValues","CMS165-RECORD-BLOOD-PRESSURE","diastolic"))
+ . . IF SBP>0,DBP>0,SBP<140,DBP<90 DO
+ . . . SET NUMER=1,IPP=1,DENOM=1,CHANGED=1
+ . . . SET EVID="heuristic-recompute BP "_SBP_"/"_DBP_" controlled"
+ . . . SET MODE="heuristic-closed-loop"
+ . IF ACT["CMS122-IMPORT-HBA1C" DO  QUIT
+ . . SET A1C=+$GET(REQ("actionValues","cms122-import-hba1c","value"))
+ . . IF A1C=0 SET A1C=+$GET(REQ("actionValues","CMS122-IMPORT-HBA1C","value"))
+ . . IF A1C>0 DO
+ . . . SET IPP=1,DENOM=1,CHANGED=1
+ . . . ; CMS122 poor-control style: NUMER when A1c > 9
+ . . . SET NUMER=$SELECT(A1C>9:1,1:0)
+ . . . SET EVID="heuristic-recompute HbA1c="_A1C_" numer="_NUMER
+ . . . SET MODE="heuristic-closed-loop"
+ IF 'CHANGED DO  QUIT
+ . SET OUT("status")="noop"
+ . SET OUT("dfn")=DFN,OUT("measure")=CMS
+ . SET OUT("message")="No supported numerator-closing action/values recognized"
+ . SET OUT("pop")=CUR
+ DO SETPOP(CMS,DFN,IPP,DENOM,NUMER,DENEX,EVID,MODE)
+ DO RESUM(CMS,.OUT)
+ SET OUT("status")="ok"
+ SET OUT("dfn")=DFN,OUT("measure")=CMS
+ SET OUT("pop","ipp")=IPP,OUT("pop","denom")=DENOM
+ SET OUT("pop","numer")=NUMER,OUT("pop","denex")=DENEX
+ SET OUT("pop","evidence")=EVID,OUT("pop","mode")=MODE
+ QUIT
+ ;
+RESUM(CMS,OUT) ; Rebuild SUM from POP rows for one measure
+ NEW D,N,IPP,DENOM,NUMER,DENEX,ROW,ASOF
+ SET CMS=$$FIND(CMS)
+ SET (N,IPP,DENOM,NUMER,DENEX)=0,D=0
+ FOR  SET D=$ORDER(^C0FQUAL("POP",CMS,D)) QUIT:'D  DO
+ . SET ROW=$GET(^C0FQUAL("POP",CMS,D)),N=N+1
+ . SET IPP=IPP+$PIECE(ROW,"^",1),DENOM=DENOM+$PIECE(ROW,"^",2)
+ . SET NUMER=NUMER+$PIECE(ROW,"^",3),DENEX=DENEX+$PIECE(ROW,"^",4)
+ SET ASOF=$PIECE($$NOW^XLFDT,".",1)
+ SET ASOF=$$FMTE^XLFDT(ASOF,5)
+ DO SETSUM(CMS,N,IPP,DENOM,NUMER,DENEX,ASOF,"heuristic-recompute after quality writeback")
+ SET OUT("sum","n")=N,OUT("sum","ipp")=IPP,OUT("sum","denom")=DENOM
+ SET OUT("sum","numer")=NUMER,OUT("sum","denex")=DENEX
+ SET OUT("sum","rate")=$SELECT(DENOM>0:$JUSTIFY(NUMER/DENOM*100,0,1)_"%",1:"n/a")
  QUIT
  ;
