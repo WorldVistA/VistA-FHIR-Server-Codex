@@ -204,7 +204,20 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  QUIT
  ;
 CVXDISP(CODE) ; $$ - validator-preferred CVX display overrides
- SET CODE=$GET(CODE)
- IF CODE="197" QUIT "Influenza, high-dose, quadrivalent, PF"
+ SET CODE=$$TRIM^C0FHIR($GET(CODE))
+ IF CODE="197" QUIT "influenza, high-dose, quadrivalent"
+ IF CODE="207" QUIT "COVID-19, mRNA, LNP-S, PF, 100 mcg/0.5mL dose or 50 mcg/0.25mL dose"
+ IF CODE="208" QUIT "COVID-19, mRNA, LNP-S, PF, 30 mcg/0.3 mL dose"
+ IF CODE="210" QUIT "COVID-19 vaccine, vector-nr, rS-Ad26, PF, 0.5 mL"
+ IF CODE="212" QUIT "COVID-19 vaccine, vector-nr, rS-ChAdOx1, PF, 0.5 mL"
+ IF CODE="213" QUIT "SARS-COV-2 (COVID-19) vaccine, UNSPECIFIED"
+ IF CODE="218" QUIT "COVID-19, mRNA, LNP-S, PF, 30 mcg/0.3 mL dose, tris-sucrose"
+ IF CODE="219" QUIT "COVID-19, mRNA, LNP-S, PF, 10 mcg/0.2 mL dose, tris-sucrose"
+ IF CODE="221" QUIT "COVID-19, mRNA, LNP-S, PF, 50 mcg/0.5 mL dose"
+ IF CODE="141" QUIT "Influenza, seasonal, injectable"
+ IF CODE="140" QUIT "Influenza, seasonal, injectable, preservative free"
+ IF CODE="150" QUIT "Influenza, injectable, quadrivalent, preservative free"
+ IF CODE="158" QUIT "influenza, injectable, quadrivalent"
+ IF CODE="88" QUIT "influenza virus vaccine, unspecified formulation"
  QUIT ""
  ;

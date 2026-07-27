@@ -325,17 +325,24 @@ HEXDIG(C) ; $$ - one hex digit to decimal
  QUIT -1
  ;
 READ(FILTER,OUT,ERR) ; Read one cached resource by resource type/id
- N C,ENTRY,IEN,RES,ROOT,SUB
+ N BESTC,BESTIEN,BESTT,C,ENTRY,IEN,RES,ROOT,SUB,T
  K OUT,ERR
  S RES=$$RESTYPE($G(FILTER("resource")))
  I RES="" S ERR="Missing or unsupported FHIR resource type" Q
  S SUB=RES_"/"_$G(FILTER("id"))
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
  I ROOT="" S ERR="FHIR graph root is unavailable" Q
- S IEN=0 F  S IEN=$O(@ROOT@(IEN)) Q:+IEN<1  D  Q:$D(OUT)
- . S C="" F  S C=$O(@ROOT@(IEN,"cache",C)) Q:C=""  D  Q:$D(OUT)
+ ; Prefer the newest cache row when the same id exists in multiple CIDs
+ ; (stale pre-fix bundles otherwise win on $ORDER order).
+ S (BESTC,BESTIEN,BESTT)=""
+ S IEN=0 F  S IEN=$O(@ROOT@(IEN)) Q:+IEN<1  D
+ . S C="" F  S C=$O(@ROOT@(IEN,"cache",C)) Q:C=""  D
  . . S ENTRY=+$O(@ROOT@(IEN,"cache",C,"SPO",SUB,"entry","")) Q:ENTRY<1
- . . M OUT=@ROOT@(IEN,"cache",C,"bundle","entry",ENTRY,"resource")
+ . . S T=+$G(@ROOT@(IEN,"cache",C,"meta","createdAt"))
+ . . I BESTIEN=""!(T'<BESTT) S BESTIEN=IEN,BESTC=C,BESTT=T
+ I BESTIEN'="" D
+ . S ENTRY=+$O(@ROOT@(BESTIEN,"cache",BESTC,"SPO",SUB,"entry",""))
+ . M OUT=@ROOT@(BESTIEN,"cache",BESTC,"bundle","entry",ENTRY,"resource")
  I '$D(OUT) S ERR=RES_"/"_$G(FILTER("id"))_" not found in cache"
  Q
  ;

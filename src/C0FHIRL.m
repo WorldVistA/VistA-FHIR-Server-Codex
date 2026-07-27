@@ -119,13 +119,16 @@ SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
  SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
  SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET RTN("entry",IDX,"resource","effectiveDateTime")=$$LABDT($PIECE(ID,";",2))
- SET RES=$PIECE($GET(LINE),"^",3),UNIT=$PIECE($GET(LINE),"^",5)
+ SET RES=$$TRIM^C0FHIR($PIECE($GET(LINE),"^",3)),UNIT=$$TRIM^C0FHIR($PIECE($GET(LINE),"^",5))
  IF $$ISNUM^C0FHIRD(RES) DO  QUIT RID
  . SET RTN("entry",IDX,"resource","valueQuantity","value")=+RES
- . IF UNIT'="" SET RTN("entry",IDX,"resource","valueQuantity","unit")=UNIT
+ . ; Set UCUM on RTN directly (avoid $NAME indirection across routines).
+ . DO LABQTY(.RTN,IDX,UNIT)
  . DO LABMETA(.RTN,IDX,LINE,ORD)
  . DO LABNOTE(.RTN,IDX,DFN,SUB,ID)
- IF RES'="" SET RTN("entry",IDX,"resource","valueString")=RES
+ IF RES'="" DO
+ . SET RTN("entry",IDX,"resource","valueString")=RES_""
+ . SET RTN("entry",IDX,"resource","valueString","\s")=""
  DO LABMETA(.RTN,IDX,LINE,ORD)
  DO LABNOTE(.RTN,IDX,DFN,SUB,ID)
  QUIT RID
@@ -215,6 +218,16 @@ PANELID(IDT,ACC) ; Build stable FHIR id for one lab panel DiagnosticReport
  SET ID="DRL-"_$TRANSLATE($GET(IDT)," ;#/:^","------")_"-"_$TRANSLATE($GET(ACC)," ;#/:^","------")
  IF $LENGTH(ID)>64 SET ID=$EXTRACT(ID,1,64)
  QUIT ID
+ ;
+LABQTY(RTN,IDX,UNIT) ; Attach UCUM system/code/unit on lab valueQuantity
+ NEW CODE,U
+ SET U=$$TRIM^C0FHIR($GET(UNIT)) QUIT:U=""
+ SET CODE=$$UCUM^C0FHIRD(U)
+ IF CODE="" SET CODE=U
+ SET RTN("entry",IDX,"resource","valueQuantity","unit")=CODE
+ SET RTN("entry",IDX,"resource","valueQuantity","system")="http://unitsofmeasure.org"
+ SET RTN("entry",IDX,"resource","valueQuantity","code")=CODE
+ QUIT
  ;
 LABMETA(RTN,IDX,LINE,ORD) ; Add lab interpretation/range/order metadata
  NEW HI,INT,LOW,PERF

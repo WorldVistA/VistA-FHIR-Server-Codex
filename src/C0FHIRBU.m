@@ -341,12 +341,13 @@ TOJSON(IN,OUT,ERR) ; Encode a local M structure with ENCODE^XLFJSON
  DO FORCESTR(.OUT)
  QUIT
  ;
-FORCESTR(OUT) ; Ensure id/code numeric JSON literals are emitted as strings
+FORCESTR(OUT) ; Ensure id/code/valueString numeric JSON literals are emitted as strings
  NEW I
  SET I=""
  FOR  SET I=$ORDER(OUT(I)) Q:I=""  DO
  . SET OUT(I)=$$QKEY($GET(OUT(I)),"id")
  . SET OUT(I)=$$QKEY($GET(OUT(I)),"code")
+ . SET OUT(I)=$$QKEY($GET(OUT(I)),"valueString")
  QUIT
  ;
 QKEY(LINE,KEY) ; Quote numeric JSON literal for named key

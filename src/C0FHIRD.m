@@ -124,7 +124,7 @@ XMLESC(X) ; Escape XML special characters for narrative text
  QUIT Y
  ;
 SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
- NEW ADT,CODESYS,ID,IDX,STATUS,TXT
+ NEW ADT,CODESYS,ID,IDX,SCT,STATUS,TXT
  SET ID=+$GET(PROB("id"))
  IF ID<1 QUIT
  DO ADDRES^C0FHIRBU(.RTN,"Condition","C"_ID,.IDX)
@@ -165,16 +165,26 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  SET RTN("entry",IDX,"resource","severity","text")="Moderate"
  SET TXT=$GET(PROB("name"))
  IF TXT'="" SET RTN("entry",IDX,"resource","code","text")=TXT
- IF $GET(PROB("sctc"))'="" DO
- . SET CODESYS=$$CONDSYS($GET(PROB("sctc")))
- . SET RTN("entry",IDX,"resource","code","coding",1,"system")=CODESYS
- . SET RTN("entry",IDX,"resource","code","coding",1,"code")=$GET(PROB("sctc"))
+ ; Prefer numeric SNOMED ids. VPR may park ICD codes in sctc — only pure
+ ; numerics are SCT. Never run CONDSYS on the code value ("10" substring bug).
+ SET SCT=$GET(PROB("sctc"))
+ IF SCT'="",SCT'?1.N SET SCT=""
+ IF SCT="" SET SCT=$$SCTFROM($GET(PROB("icd")),TXT)
+ IF SCT'="" DO
+ . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://snomed.info/sct"
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code")=SCT
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
  . IF $GET(PROB("sctt"))'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$GET(PROB("sctt"))
- IF $GET(PROB("sctc"))="",($GET(PROB("icd"))'="") DO
- . SET CODESYS=$$CONDSYS($GET(PROB("codingSystem")))
+ . E  IF $GET(PROB("icdd"))'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$GET(PROB("icdd"))
+ IF SCT="" DO
+ . SET SCT=$SELECT($GET(PROB("icd"))'="":$GET(PROB("icd")),$GET(PROB("sctc"))'="":$GET(PROB("sctc")),1:"")
+ . IF SCT="" QUIT
+ . SET CODESYS=$$CODESYS(SCT,$GET(PROB("codingSystem")))
  . SET RTN("entry",IDX,"resource","code","coding",1,"system")=CODESYS
- . SET RTN("entry",IDX,"resource","code","coding",1,"code")=$GET(PROB("icd"))
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code")=SCT
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
  . IF $GET(PROB("icdd"))'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$GET(PROB("icdd"))
+ . E  IF $GET(PROB("sctt"))'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$GET(PROB("sctt"))
  IF +$GET(PROB("onset"))>0 SET RTN("entry",IDX,"resource","onsetDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("onset")))
  IF +$GET(PROB("entered"))>0 SET RTN("entry",IDX,"resource","recordedDate")=$$FM2FHIR^C0FHIRBU($GET(PROB("entered")))
  IF +$GET(PROB("resolved"))>0 SET RTN("entry",IDX,"resource","abatementDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("resolved")))
@@ -187,13 +197,32 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  DO CONDNOTE(.RTN,.PROB,IDX)
  QUIT
  ;
-CONDSYS(X) ; Map VPR coding system token to FHIR system URL
- NEW Y
- SET Y=$$UPCASE^C0FHIR($GET(X))
- IF Y?1U2N.E QUIT "http://hl7.org/fhir/sid/icd-10-cm"
- IF Y["10" QUIT "http://hl7.org/fhir/sid/icd-10-cm"
- IF Y["SNOMED" QUIT "http://snomed.info/sct"
+CODESYS(CODE,TOKEN) ; $$ - FHIR Coding.system from code shape + optional VPR token
+ NEW C,Y
+ SET C=$$TRIM^C0FHIR($GET(CODE)),Y=$$UPCASE^C0FHIR($GET(TOKEN))
+ IF C?.N QUIT "http://snomed.info/sct"
+ IF Y["SNOMED"!(Y="SCT")!(Y["SNM") QUIT "http://snomed.info/sct"
+ ; ICD-10-CM style: starts with a letter (F45.22, R97.20, I10)
+ IF C?1U.E QUIT "http://hl7.org/fhir/sid/icd-10-cm"
+ IF Y["ICD-10"!(Y["ICD10")!(Y["10-CM")!(Y="I10") QUIT "http://hl7.org/fhir/sid/icd-10-cm"
+ IF Y["ICD" QUIT "http://hl7.org/fhir/sid/icd-9-cm"
+ IF C?1.N1"."1.N QUIT "http://hl7.org/fhir/sid/icd-9-cm"
  QUIT "http://hl7.org/fhir/sid/icd-9-cm"
+ ;
+CONDSYS(X) ; Map VPR coding system token to FHIR system URL
+ QUIT $$CODESYS("",$GET(X))
+ ;
+SCTFROM(CODE,TXT) ; $$ - SNOMED code from misfiled ICD field or "(SCT n)" text
+ NEW P,X
+ SET X=$$TRIM^C0FHIR($GET(CODE))
+ IF X?1.N,$LENGTH(X)>5 QUIT X
+ SET P=$FIND($$UPCASE^C0FHIR($GET(TXT)),"(SCT ")
+ IF P<1 QUIT ""
+ SET X=$EXTRACT($GET(TXT),P,P+31)
+ SET X=$PIECE($PIECE(X,")",1)," ",1)
+ SET X=$$TRIM^C0FHIR(X)
+ IF X?1.N,$LENGTH(X)>5 QUIT X
+ QUIT ""
  ;
 GETOBS(RTN,DFN,BEG,END,MAX) ; Add Observation resources (vitals) for patient/date range
  NEW CNT,GMRVSTR,IDT,IEN,TYPE,VIT
@@ -249,13 +278,17 @@ SETOBS(RTN,VIT,DFN) ; Map one VPR vital entry to a FHIR Observation resource
  SET RES=$PIECE(M0,"^",4),UNIT=$PIECE(M0,"^",5),MRES=$PIECE(M0,"^",6),MUNT=$PIECE(M0,"^",7)
  DO BPCOMP(.RTN,IDX,NAME,RES,MRES,UNIT,MUNT)
  IF $$ISBP($GET(NAME)) QUIT
+ IF UNIT="" SET UNIT=$$VDEFU(NAME)
+ IF MUNT="" SET MUNT=$$VDEFU(NAME)
  IF $$ISNUM(MRES) DO  QUIT
  . SET RTN("entry",IDX,"resource","valueQuantity","value")=+MRES
  . DO QTYUNIT(.RTN,$NAME(RTN("entry",IDX,"resource","valueQuantity")),MUNT)
  IF $$ISNUM(RES) DO  QUIT
  . SET RTN("entry",IDX,"resource","valueQuantity","value")=+RES
  . DO QTYUNIT(.RTN,$NAME(RTN("entry",IDX,"resource","valueQuantity")),UNIT)
- IF RES'="" SET RTN("entry",IDX,"resource","valueString")=RES
+ IF RES'="" DO
+ . SET RTN("entry",IDX,"resource","valueString")=RES_""
+ . SET RTN("entry",IDX,"resource","valueString","\s")=""
  QUIT
  ;
 VPROFILE(RTN,IDX,NAME) ; Add US Core vital profile when known
@@ -323,27 +356,54 @@ BPCOMP(RTN,IDX,NAME,RES,MRES,UNIT,MUNT) ; Add systolic/diastolic components for 
  DO QTYUNIT(.RTN,$NAME(RTN("entry",IDX,"resource","component",2,"valueQuantity")),U)
  QUIT
  ;
-QTYUNIT(RTN,NODE,UNIT) ; Populate UCUM unit fields for vital Quantity
+QTYUNIT(RTN,NODE,UNIT) ; Populate UCUM unit fields for Quantity
  NEW CODE,U
- SET U=$GET(UNIT) QUIT:U=""
+ SET U=$$TRIM^C0FHIR($GET(UNIT)) QUIT:U=""
  SET CODE=$$UCUM(U)
- SET @NODE@("unit")=U
+ SET @NODE@("unit")=$S(CODE'="":CODE,1:U)
  IF CODE'="" SET @NODE@("system")="http://unitsofmeasure.org",@NODE@("code")=CODE
  QUIT
  ;
-UCUM(UNIT) ; $$ - normalize common VistA/RPMS vital units to UCUM code
+VDEFU(NAME) ; $$ - default UCUM unit when VistA vital unit is blank
+ NEW X
+ SET X=$$UPCASE^C0FHIR($GET(NAME))
+ IF X["PAIN" QUIT "{score}"
+ IF X["PULSE OX"!(X["OXIM")!(X["O2 SAT") QUIT "%"
+ IF X["TEMP" QUIT "[degF]"
+ IF X["PULSE"!(X["HEART RATE")!(X["RESP") QUIT "/min"
+ IF X["HEIGHT" QUIT "cm"
+ IF X["WEIGHT" QUIT "kg"
+ QUIT ""
+ ;
+UCUM(UNIT) ; $$ - normalize common VistA/RPMS vital/lab units to UCUM code
  NEW U
- SET U=$$UPCASE^C0FHIR($GET(UNIT))
+ SET U=$$UPCASE^C0FHIR($$TRIM^C0FHIR($GET(UNIT)))
  IF U="KG" QUIT "kg"
  IF U="CM" QUIT "cm"
  IF U="LB"!(U="LBS") QUIT "[lb_av]"
  IF U="IN"!(U="INCH")!(U="INCHES") QUIT "[in_i]"
  IF U="MM[HG]"!(U="MMHG") QUIT "mm[Hg]"
- IF U="DEGF" QUIT "[degF]"
+ IF U="DEGF"!(U="F") QUIT "[degF]"
  IF U="DEGC"!(U="CEL")!(U="C") QUIT "Cel"
- IF U="%" QUIT "%"
- IF U="{SCORE}" QUIT "{score}"
- QUIT $GET(UNIT)
+ IF U="%"!(U="PERCENT")!(U="PCT") QUIT "%"
+ IF U="{SCORE}"!(U="SCORE") QUIT "{score}"
+ IF U="/MIN"!(U="BPM")!(U="/MIN.") QUIT "/min"
+ IF U="MG/DL"!(U="MG/DL.") QUIT "mg/dL"
+ IF U="MMOL/L" QUIT "mmol/L"
+ IF U="G/DL" QUIT "g/dL"
+ IF U="MEQ/L"!(U="MEQ/L.") QUIT "meq/L"
+ IF U="U/L" QUIT "U/L"
+ IF U="IU/L" QUIT "[IU]/L"
+ IF U="NG/ML" QUIT "ng/mL"
+ IF U="UG/ML" QUIT "ug/mL"
+ IF U="ML/MIN"!(U="ML/MIN/1.73M2")!(U="ML/MIN/1.73 M2") QUIT "mL/min"
+ IF U="10*3/UL"!(U="K/UL")!(U="X10 3/UL")!(U="X10*3/UL") QUIT "10*3/uL"
+ IF U="10*6/UL"!(U="M/UL")!(U="X10*6/UL") QUIT "10*6/uL"
+ IF U="FL" QUIT "fL"
+ IF U="PG" QUIT "pg"
+ IF U="SECONDS"!(U="SEC")!(U="S") QUIT "s"
+ ; Fall through: return trimmed original so callers can still bind UCUM system.
+ QUIT $$TRIM^C0FHIR($GET(UNIT))
  ;
 ISBP(NAME) ; $$ - true for blood pressure vital names
  NEW X
@@ -352,11 +412,13 @@ ISBP(NAME) ; $$ - true for blood pressure vital names
  ;
 ISNUM(X) ; True if X is numeric
  NEW Y
- SET Y=$GET(X)
+ SET Y=$$TRIM^C0FHIR($GET(X))
  IF Y="" QUIT 0
  IF Y?1.N QUIT 1
+ IF Y?1"."1.N QUIT 1
  IF Y?1.N1"."1.N QUIT 1
  IF Y?1"-".N QUIT 1
+ IF Y?1"-"1"."1.N QUIT 1
  IF Y?1"-".N1"."1.N QUIT 1
  QUIT 0
  ;

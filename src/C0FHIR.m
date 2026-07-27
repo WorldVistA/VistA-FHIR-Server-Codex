@@ -284,6 +284,7 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  IF '$DATA(RTN("entry",IDX,"resource","type",1,"coding")) DO
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://snomed.info/sct"
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code")="185349003"
+ . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code","\s")=""
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"display")="Encounter for check up"
  . IF $GET(RTN("entry",IDX,"resource","type",1,"text"))="" SET RTN("entry",IDX,"resource","type",1,"text")="Encounter for check up"
  DO SETEPRV(.RTN,IDX,.ENC,+$GET(DFN),ENDDT)
@@ -315,6 +316,7 @@ SETETYP(RTN,IDX,ENC) ; Populate Encounter.type from encounter CPT/OS5 when avail
  IF CODE'="" DO
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://www.ama-assn.org/go/cpt"
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code")=CODE
+ . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code","\s")=""
  . IF TXT'="" SET RTN("entry",IDX,"resource","type",1,"coding",1,"display")=TXT
  IF TXT'="" SET RTN("entry",IDX,"resource","type",1,"text")=TXT
  QUIT
@@ -341,13 +343,16 @@ ENCCOD(CODE,NAME,TYPE) ; Add encounter coding from OS5/CPT and recovered SNOMED
  IF SCT'="" DO
  . SET TYPE("coding",1,"system")="http://snomed.info/sct"
  . SET TYPE("coding",1,"code")=SCT
+ . SET TYPE("coding",1,"code","\s")=""
  . IF SDISP'="" SET TYPE("coding",1,"display")=SDISP
  . SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
  . SET TYPE("coding",2,"code")=CODE
+ . SET TYPE("coding",2,"code","\s")=""
  . IF NAME'="" SET TYPE("coding",2,"display")=NAME
  ELSE  DO
  . SET TYPE("coding",1,"system")="http://www.ama-assn.org/go/cpt"
  . SET TYPE("coding",1,"code")=CODE
+ . SET TYPE("coding",1,"code","\s")=""
  . IF NAME'="" SET TYPE("coding",1,"display")=NAME
  IF NAME="" SET NAME=SDISP
  IF NAME'="" SET TYPE("text")=NAME
