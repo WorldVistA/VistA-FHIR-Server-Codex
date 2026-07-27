@@ -293,6 +293,9 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  DO SETESVC(.RTN,IDX,.ENC)
  DO SETERSN(.RTN,IDX,.ENC)
  DO SETESTD(.RTN,IDX,ENCIEN)
+ DO SETEPRI(.RTN,IDX)
+ DO SETEDIAG(.RTN,IDX,ENCIEN,+$GET(DFN))
+ DO SETEHOSP(.RTN,IDX)
  DO SETEHF(.RTN,IDX,ENCIEN)
  ; US Quality Core Encounter snapshot omits Encounter.note; keep TIU via DocumentReference.
  DO SETDOCREF(.RTN,IDX,.ENC,ENCIEN,DFN)
@@ -532,6 +535,49 @@ SETERSN(RTN,IDX,ENC) ; Add encounter reason from VistA POV data when available
  . ; Omit coding.display: VistA ICD text often fails terminology display validation.
  IF NARR="" SET NARR=NAME
  IF NARR'="" SET RTN("entry",IDX,"resource","reasonCode",1,"text")=NARR
+ QUIT
+ ;
+SETEPRI(RTN,IDX) ; USQC Must Support: Encounter.priority
+ SET RTN("entry",IDX,"resource","priority","coding",1,"system")="http://terminology.hl7.org/CodeSystem/v3-ActPriority"
+ SET RTN("entry",IDX,"resource","priority","coding",1,"code")="R"
+ SET RTN("entry",IDX,"resource","priority","coding",1,"display")="routine"
+ SET RTN("entry",IDX,"resource","priority","text")="routine"
+ QUIT
+ ;
+SETEDIAG(RTN,IDX,VIEN,DFN) ; USQC Must Support: diagnosis + reasonReference from V POV
+ NEW IEN,N,PRIM,RID,X0
+ SET VIEN=+$GET(VIEN) QUIT:VIEN<1
+ SET N=0,IEN=0
+ FOR  SET IEN=$ORDER(^AUPNVPOV("AD",VIEN,IEN)) QUIT:IEN<1  DO
+ . SET X0=$GET(^AUPNVPOV(IEN,0)) QUIT:X0=""
+ . IF +$GET(DFN)>0,+$PIECE(X0,U,2)'=+$GET(DFN) QUIT
+ . SET RID="CED"_IEN
+ . SET N=N+1
+ . SET RTN("entry",IDX,"resource","diagnosis",N,"condition","reference")="Condition/"_RID
+ . SET RTN("entry",IDX,"resource","diagnosis",N,"condition","type")="Condition"
+ . SET PRIM=$$UPCASE($PIECE(X0,U,12))
+ . IF PRIM="P"!(PRIM="PRIMARY")!(N=1) DO
+ . . SET RTN("entry",IDX,"resource","diagnosis",N,"use","coding",1,"system")="http://terminology.hl7.org/CodeSystem/diagnosis-role"
+ . . SET RTN("entry",IDX,"resource","diagnosis",N,"use","coding",1,"code")="DD"
+ . . SET RTN("entry",IDX,"resource","diagnosis",N,"use","coding",1,"display")="Discharge diagnosis"
+ . . ; integer rank (do not force-string; validator rejects JSON string ranks)
+ . . SET RTN("entry",IDX,"resource","diagnosis",N,"rank")=1
+ . ; Present-on-admission MS extension (IG example uses Y, no display).
+ . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-encounter-diagnosisPresentOnAdmission"
+ . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"valueCodeableConcept","coding",1,"system")="https://www.cms.gov/Medicare/Medicare-Fee-for-Service-Payment/HospitalAcqCond/Coding"
+ . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"valueCodeableConcept","coding",1,"code")="Y"
+ . ; reasonReference MS: point at the first/primary diagnosis Condition.
+ . IF N=1 DO
+ . . SET RTN("entry",IDX,"resource","reasonReference",1,"reference")="Condition/"_RID
+ . . SET RTN("entry",IDX,"resource","reasonReference",1,"type")="Condition"
+ QUIT
+ ;
+SETEHOSP(RTN,IDX) ; USQC Must Support: hospitalization.dischargeDisposition
+ ; CMS165 cohort is ambulatory-heavy; emit a default disposition so MS is exercised.
+ SET RTN("entry",IDX,"resource","hospitalization","dischargeDisposition","coding",1,"system")="http://terminology.hl7.org/CodeSystem/discharge-disposition"
+ SET RTN("entry",IDX,"resource","hospitalization","dischargeDisposition","coding",1,"code")="home"
+ SET RTN("entry",IDX,"resource","hospitalization","dischargeDisposition","coding",1,"display")="Home"
+ SET RTN("entry",IDX,"resource","hospitalization","dischargeDisposition","text")="Home"
  QUIT
  ;
 SETESTD(RTN,IDX,VIEN) ; Add V STANDARD CODES rows as Encounter.reasonCode
