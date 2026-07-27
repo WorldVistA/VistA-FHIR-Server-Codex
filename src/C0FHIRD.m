@@ -161,6 +161,7 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  ; USQC USCDI+ Quality Must Support: Condition.severity (SNOMED VS)
  SET RTN("entry",IDX,"resource","severity","coding",1,"system")="http://snomed.info/sct"
  SET RTN("entry",IDX,"resource","severity","coding",1,"code")="6736007"
+ SET RTN("entry",IDX,"resource","severity","coding",1,"code","\s")=""
  SET RTN("entry",IDX,"resource","severity","coding",1,"display")="Moderate (severity modifier)"
  SET RTN("entry",IDX,"resource","severity","text")="Moderate"
  SET TXT=$GET(PROB("name"))
@@ -397,13 +398,13 @@ UCUM(UNIT) ; $$ - normalize common VistA/RPMS vital/lab units to UCUM code
  IF U="NG/ML" QUIT "ng/mL"
  IF U="UG/ML" QUIT "ug/mL"
  IF U="ML/MIN"!(U="ML/MIN/1.73M2")!(U="ML/MIN/1.73 M2") QUIT "mL/min"
- IF U="10*3/UL"!(U="K/UL")!(U="X10 3/UL")!(U="X10*3/UL") QUIT "10*3/uL"
- IF U="10*6/UL"!(U="M/UL")!(U="X10*6/UL") QUIT "10*6/uL"
+ IF U="10*3/UL"!(U="K/UL")!(U="X10 3/UL")!(U="X10*3/UL")!(U="K/CMM")!(U="K/CMM.") QUIT "10*3/uL"
+ IF U="10*6/UL"!(U="M/UL")!(U="X10*6/UL")!(U="M/CMM")!(U="M/CMM.") QUIT "10*6/uL"
  IF U="FL" QUIT "fL"
  IF U="PG" QUIT "pg"
  IF U="SECONDS"!(U="SEC")!(U="S") QUIT "s"
- ; Fall through: return trimmed original so callers can still bind UCUM system.
- QUIT $$TRIM^C0FHIR($GET(UNIT))
+ ; Unknown units: no UCUM claim (empty). Callers keep display unit text only.
+ QUIT ""
  ;
 ISBP(NAME) ; $$ - true for blood pressure vital names
  NEW X

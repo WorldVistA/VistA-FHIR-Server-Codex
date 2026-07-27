@@ -526,7 +526,9 @@ SETERSN(RTN,IDX,ENC) ; Add encounter reason from VistA POV data when available
  IF CODE=""&(NARR="")&(NAME="") QUIT
  IF CODE'="" DO
  . SET RTN("entry",IDX,"resource","reasonCode",1,"coding",1,"code")=CODE
- . SET RTN("entry",IDX,"resource","reasonCode",1,"coding",1,"system")=$$CONDSYS($GET(SYS))
+ . SET RTN("entry",IDX,"resource","reasonCode",1,"coding",1,"code","\s")=""
+ . ; Prefer code shape over VPR system token (ICD codes often tagged SCT).
+ . SET RTN("entry",IDX,"resource","reasonCode",1,"coding",1,"system")=$$CODESYS^C0FHIRD(CODE,$GET(SYS))
  . ; Omit coding.display: VistA ICD text often fails terminology display validation.
  IF NARR="" SET NARR=NAME
  IF NARR'="" SET RTN("entry",IDX,"resource","reasonCode",1,"text")=NARR
@@ -540,11 +542,11 @@ SETESTD(RTN,IDX,VIEN) ; Add V STANDARD CODES rows as Encounter.reasonCode
  . SET X0=$GET(^AUPNVSC(IEN,0))
  . SET CODE=$PIECE(X0,U) QUIT:CODE=""
  . SET SYS=$PIECE(X0,U,5)
- . IF $$HASRC(.RTN,IDX,CODE,$$STDSYS(SYS)) QUIT
+ . IF $$HASRC(.RTN,IDX,CODE,$$STDSYS(SYS,CODE)) QUIT
  . SET SUP=$PIECE($GET(^AUPNVSC(IEN,811)),U)
  . SET DISP=$$STDDISP(SUP,CODE)
  . SET N=$ORDER(RTN("entry",IDX,"resource","reasonCode",""),-1)+1
- . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"system")=$$STDSYS(SYS)
+ . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"system")=$$STDSYS(SYS,CODE)
  . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"code")=CODE
  . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"code","\s")=""
  . IF DISP'="" SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=DISP
@@ -595,10 +597,9 @@ HASRC(RTN,IDX,CODE,SYS) ; $$ - true if Encounter.reasonCode already has this cod
  . . SET FOUND=1
  QUIT FOUND
  ;
-STDSYS(SYS) ; Map V STANDARD CODES coding system to FHIR system URL
- SET SYS=$$UPCASE($GET(SYS))
- IF SYS="SCT"!(SYS["SNOMED") QUIT "http://snomed.info/sct"
- QUIT $$CONDSYS(SYS)
+STDSYS(SYS,CODE) ; Map V STANDARD CODES coding system to FHIR system URL
+ ; Prefer code shape so ICD tokens tagged SCT do not emit under snomed.info/sct.
+ QUIT $$CODESYS^C0FHIRD($GET(CODE),$GET(SYS))
  ;
 RCSUPURL() ; Canonical reasonCode support extension URL
  QUIT "http://vistaplex.org/fhir/StructureDefinition/vista-reason-support"

@@ -223,10 +223,11 @@ LABQTY(RTN,IDX,UNIT) ; Attach UCUM system/code/unit on lab valueQuantity
  NEW CODE,U
  SET U=$$TRIM^C0FHIR($GET(UNIT)) QUIT:U=""
  SET CODE=$$UCUM^C0FHIRD(U)
- IF CODE="" SET CODE=U
- SET RTN("entry",IDX,"resource","valueQuantity","unit")=CODE
- SET RTN("entry",IDX,"resource","valueQuantity","system")="http://unitsofmeasure.org"
- SET RTN("entry",IDX,"resource","valueQuantity","code")=CODE
+ SET RTN("entry",IDX,"resource","valueQuantity","unit")=$S(CODE'="":CODE,1:U)
+ ; Only claim unitsofmeasure.org when UCUM() recognized the unit.
+ IF CODE'="" DO
+ . SET RTN("entry",IDX,"resource","valueQuantity","system")="http://unitsofmeasure.org"
+ . SET RTN("entry",IDX,"resource","valueQuantity","code")=CODE
  QUIT
  ;
 LABMETA(RTN,IDX,LINE,ORD) ; Add lab interpretation/range/order metadata
