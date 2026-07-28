@@ -237,7 +237,9 @@ GETOBS(RTN,DFN,BEG,END,MAX) ; Add Observation resources (vitals) for patient/dat
  IF END'["." SET END=END_".24"
  SET MAX=+$GET(MAX)
  IF MAX<1 SET MAX=200
- IF $$RPMS^C0FWVIT() DO GETRMSR^C0FWVIT(.RTN,DFN,BEG,END,MAX) QUIT
+ IF $$RPMS^C0FWVIT() DO  QUIT
+ . DO GETRMSR^C0FWVIT(.RTN,DFN,BEG,END,MAX)
+ . DO GETSMOK(.RTN,DFN,BEG,END)
  SET GMRVSTR="BP;T;R;P;HT;WT;CVP;CG;PO2;PN",GMRVSTR(0)=BEG_"^"_END_"^"_MAX_"^1"
  KILL ^UTILITY($J,"GMRVD")
  DO EN1^GMRVUT0
@@ -253,6 +255,67 @@ GETOBS(RTN,DFN,BEG,END,MAX) ; Add Observation resources (vitals) for patient/dat
  .. DO SETOBS(.RTN,.VIT,DFN)
  .. SET CNT=CNT+1
  KILL ^UTILITY($J,"GMRVD")
+ DO GETSMOK(.RTN,DFN,BEG,END)
+ QUIT
+ ;
+GETSMOK(RTN,DFN,BEG,END) ; Emit US Core smoking-status Observation from V Health Factors
+ NEW BEST,CMT,DT,HFIEN,IEN,NAME,VID,X0
+ SET DFN=+$GET(DFN) QUIT:DFN<1
+ SET BEG=+$GET(BEG) IF BEG<1 SET BEG=1410101
+ SET END=$GET(END) IF END="" SET END=4141015 IF END'["." SET END=END_".24"
+ SET (BEST,IEN)=""
+ FOR  SET IEN=$ORDER(^AUPNVHF("C",DFN,IEN)) QUIT:IEN<1  DO
+ . SET X0=$GET(^AUPNVHF(IEN,0)) QUIT:X0=""
+ . SET HFIEN=+X0,VID=+$PIECE(X0,U,3)
+ . SET NAME=$PIECE($GET(^AUTTHF(HFIEN,0)),U) QUIT:NAME=""
+ . QUIT:$$SMOKMAP(NAME)=""
+ . SET DT=0 IF VID>0 SET DT=+$PIECE($GET(^AUPNVSIT(VID,0)),U)
+ . IF DT>0,(DT<BEG!(DT>END)) QUIT
+ . IF BEST'="",DT'>+$PIECE(BEST,U) QUIT
+ . SET CMT=$PIECE($GET(^AUPNVHF(IEN,811)),U)
+ . SET BEST=DT_U_IEN_U_NAME_U_VID_U_CMT
+ QUIT:BEST=""
+ DO SETSMOK(.RTN,DFN,BEST)
+ QUIT
+ ;
+SMOKMAP(NAME) ; $$ - SNOMED smoking-status code^display for HF name
+ SET NAME=$$UPCASE^C0FHIR($$TRIM^C0FHIR($GET(NAME)))
+ ; Displays must match SCT preferred terms for US Core smokingstatus validation.
+ IF NAME="LCS CURRENT SMOKER"!(NAME="CURRENT SMOKER")!(NAME="ONS TOBACCO USE CURRENT") QUIT "449868002^Smokes tobacco daily"
+ IF NAME="LCS FORMER SMOKER"!(NAME="PREVIOUS SMOKER")!(NAME="FORMER SMOKER - <100 LIFETIME CIGARETTES") QUIT "8517006^Ex-smoker"
+ IF NAME="LCS LIFETIME NON-SMOKER"!(NAME="LIFETIME NON-SMOKER")!(NAME="LIFETIME NON-TOBACCO USER")!(NAME="ONS TOBACCO LIFETIME NON-USER") QUIT "266919005^Never smoked tobacco"
+ QUIT ""
+ ;
+SETSMOK(RTN,DFN,BEST) ; Build one smoking-status Observation; BEST=DT^IEN^NAME^VID^CMT
+ NEW CMT,CODE,DISP,DT,IDX,MAP,NAME,RID,VID
+ SET DFN=+$GET(DFN) QUIT:DFN<1
+ SET DT=$PIECE($GET(BEST),U),RID="SMK-"_+$PIECE(BEST,U,2)
+ SET NAME=$PIECE(BEST,U,3),VID=+$PIECE(BEST,U,4),CMT=$PIECE(BEST,U,5)
+ SET MAP=$$SMOKMAP(NAME),CODE=$PIECE(MAP,U),DISP=$PIECE(MAP,U,2)
+ QUIT:CODE=""
+ IF $DATA(RTN("index","Observation|"_RID)) QUIT
+ DO ADDRES^C0FHIRBU(.RTN,"Observation",RID,.IDX) QUIT:IDX=""
+ SET RTN("entry",IDX,"resource","resourceType")="Observation"
+ SET RTN("entry",IDX,"resource","id")=RID
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus"
+ SET RTN("entry",IDX,"resource","status")="final"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="social-history"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code","\s")=""
+ SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
+ SET RTN("entry",IDX,"resource","code","coding",1,"code")="72166-2"
+ SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
+ SET RTN("entry",IDX,"resource","code","coding",1,"display")="Tobacco smoking status NHIS"
+ SET RTN("entry",IDX,"resource","code","text")="Tobacco smoking status"
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_DFN
+ IF DT>0 SET RTN("entry",IDX,"resource","effectiveDateTime")=$$FM2FHIR^C0FHIRBU(DT)
+ IF VID>0 SET RTN("entry",IDX,"resource","encounter","reference")="Encounter/E"_VID
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"system")="http://snomed.info/sct"
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"code")=CODE
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"code","\s")=""
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"display")=DISP
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","text")=DISP
+ IF CMT'="" SET RTN("entry",IDX,"resource","note",1,"text")=NAME_": "_CMT
  QUIT
  ;
 SETOBS(RTN,VIT,DFN) ; Map one VPR vital entry to a FHIR Observation resource
