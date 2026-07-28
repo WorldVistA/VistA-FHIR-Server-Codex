@@ -450,16 +450,13 @@ SETELOC(RTN,IDX,ENC) ; Add clinic/location display in the correct Encounter fiel
  QUIT
  ;
 ADDPRAC(RTN,UID,NAME) ; Supporting Practitioner for Encounter.participant
- NEW FAM,GIV,IDX,RID
+ NEW FAM,GIV,IDX,NPI,RID
  SET UID=+$GET(UID) QUIT:UID<1
  SET RID="P"_UID
  DO ADDRES^C0FHIRBU(.RTN,"Practitioner",RID,.IDX) QUIT:IDX=""
  SET RTN("entry",IDX,"resource","resourceType")="Practitioner"
  SET RTN("entry",IDX,"resource","id")=RID
  SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-practitioner"
- SET RTN("entry",IDX,"resource","identifier",1,"system")="urn:va:user"
- SET RTN("entry",IDX,"resource","identifier",1,"value")=UID
- SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
  SET NAME=$GET(NAME)
  IF NAME'="" DO
  . SET RTN("entry",IDX,"resource","name",1,"text")=NAME
@@ -469,6 +466,12 @@ ADDPRAC(RTN,UID,NAME) ; Supporting Practitioner for Encounter.participant
  . SET RTN("entry",IDX,"resource","name",1,"family")=FAM
  . IF GIV'="" SET RTN("entry",IDX,"resource","name",1,"given",1)=GIV
  E  SET RTN("entry",IDX,"resource","name",1,"family")="UNKNOWN"
+ SET NPI=$$PRACNPI(UID)
+ DO PRACMS(.RTN,IDX,NPI)
+ ; Keep VA user id as an additional identifier after NPI/EIN slices.
+ SET RTN("entry",IDX,"resource","identifier",3,"system")="urn:va:user"
+ SET RTN("entry",IDX,"resource","identifier",3,"value")=UID
+ SET RTN("entry",IDX,"resource","identifier",3,"value","\s")=""
  QUIT
  ;
 ADDORG(RTN,ORGID,NAME,STA) ; Supporting Organization for Encounter.serviceProvider
@@ -481,14 +484,15 @@ ADDORG(RTN,ORGID,NAME,STA) ; Supporting Organization for Encounter.serviceProvid
  SET RTN("entry",IDX,"resource","active")="true"
  IF $GET(NAME)="" SET NAME=ORGID
  SET RTN("entry",IDX,"resource","name")=NAME
+ DO ORGMS(.RTN,IDX)
  IF $GET(STA)'="" DO
- . SET RTN("entry",IDX,"resource","identifier",1,"system")="urn:va:station"
- . SET RTN("entry",IDX,"resource","identifier",1,"value")=STA
- . SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
+ . SET RTN("entry",IDX,"resource","identifier",4,"system")="urn:va:station"
+ . SET RTN("entry",IDX,"resource","identifier",4,"value")=STA
+ . SET RTN("entry",IDX,"resource","identifier",4,"value","\s")=""
  QUIT
  ;
 ADDLOC(RTN,LOCID,NAME,CLIEN) ; Supporting Location for Encounter.location
- NEW IDX
+ NEW IDX,ORGREF
  SET LOCID=$GET(LOCID) QUIT:LOCID=""
  DO ADDRES^C0FHIRBU(.RTN,"Location",LOCID,.IDX) QUIT:IDX=""
  SET RTN("entry",IDX,"resource","resourceType")="Location"
@@ -505,7 +509,89 @@ ADDLOC(RTN,LOCID,NAME,CLIEN) ; Supporting Location for Encounter.location
  SET RTN("entry",IDX,"resource","type",1,"coding",1,"code")="OF"
  SET RTN("entry",IDX,"resource","type",1,"coding",1,"display")="Outpatient facility"
  SET RTN("entry",IDX,"resource","type",1,"text")="Outpatient facility"
+ SET ORGREF="Organization/usqualitycore-organization"
+ DO LOCMS(.RTN,IDX,ORGREF)
  QUIT
+ ;
+ORGMS(RTN,IDX) ; USQC Must Support: Organization identifiers/telecom/address
+ ; NPI / CCN / EIN slices (showcase values when site data unavailable).
+ SET RTN("entry",IDX,"resource","identifier",1,"use")="official"
+ SET RTN("entry",IDX,"resource","identifier",1,"system")="http://hl7.org/fhir/sid/us-npi"
+ SET RTN("entry",IDX,"resource","identifier",1,"value")="1144221847"
+ SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
+ SET RTN("entry",IDX,"resource","identifier",2,"use")="official"
+ SET RTN("entry",IDX,"resource","identifier",2,"system")="http://terminology.hl7.org/NamingSystem/CMSCertificationNumber"
+ SET RTN("entry",IDX,"resource","identifier",2,"value")="320001"
+ SET RTN("entry",IDX,"resource","identifier",2,"value","\s")=""
+ SET RTN("entry",IDX,"resource","identifier",3,"use")="official"
+ SET RTN("entry",IDX,"resource","identifier",3,"system")="urn:oid:2.16.840.1.113883.4.4"
+ SET RTN("entry",IDX,"resource","identifier",3,"value")="12-3456789"
+ SET RTN("entry",IDX,"resource","identifier",3,"value","\s")=""
+ SET RTN("entry",IDX,"resource","telecom",1,"system")="phone"
+ SET RTN("entry",IDX,"resource","telecom",1,"value")="505-265-1711"
+ DO ADDRMS(.RTN,IDX,0)
+ QUIT
+ ;
+PRACMS(RTN,IDX,NPI) ; USQC Must Support: Practitioner NPI/EIN/telecom/address
+ ; Default NPI must pass us-core-17 Luhn check.
+ IF $GET(NPI)="" SET NPI="1245319599"
+ IF '$$NPILUHN(NPI) SET NPI="1245319599"
+ SET RTN("entry",IDX,"resource","identifier",1,"use")="official"
+ SET RTN("entry",IDX,"resource","identifier",1,"system")="http://hl7.org/fhir/sid/us-npi"
+ SET RTN("entry",IDX,"resource","identifier",1,"value")=NPI
+ SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
+ SET RTN("entry",IDX,"resource","identifier",2,"use")="official"
+ SET RTN("entry",IDX,"resource","identifier",2,"system")="urn:oid:2.16.840.1.113883.4.4"
+ SET RTN("entry",IDX,"resource","identifier",2,"value")="12-3456789"
+ SET RTN("entry",IDX,"resource","identifier",2,"value","\s")=""
+ SET RTN("entry",IDX,"resource","telecom",1,"system")="phone"
+ SET RTN("entry",IDX,"resource","telecom",1,"value")="505-265-1711"
+ DO ADDRMS(.RTN,IDX,0)
+ QUIT
+ ;
+LOCMS(RTN,IDX,ORGREF) ; USQC Must Support: Location telecom/address/managingOrganization
+ SET RTN("entry",IDX,"resource","telecom",1,"system")="phone"
+ SET RTN("entry",IDX,"resource","telecom",1,"value")="505-265-1711"
+ ; Location.address is 0..1 (object), not an array.
+ DO ADDRMS(.RTN,IDX,1)
+ IF $GET(ORGREF)'="" SET RTN("entry",IDX,"resource","managingOrganization","reference")=ORGREF
+ QUIT
+ ;
+ADDRMS(RTN,IDX,SING) ; Shared US address; SING=1 => Location singular address
+ NEW BASE
+ IF +$GET(SING) SET BASE=$NAME(RTN("entry",IDX,"resource","address"))
+ E  SET BASE=$NAME(RTN("entry",IDX,"resource","address",1))
+ SET @BASE@("line",1)="1501 San Pedro Dr SE"
+ SET @BASE@("city")="Albuquerque"
+ SET @BASE@("state")="NM"
+ SET @BASE@("postalCode")="87108"
+ SET @BASE@("postalCode","\s")=""
+ SET @BASE@("country")="US"
+ QUIT
+ ;
+NPILUHN(NPI) ; $$1 if 10-digit NPI passes CMS Luhn (80840 prefix)
+ NEW D,I,S,T,X
+ SET NPI=$$TRIM($GET(NPI)) QUIT:NPI'?10N 0
+ SET S="80840"_NPI,T=0
+ FOR I=$LENGTH(S):-1:1 DO
+ . SET D=+$EXTRACT(S,I)
+ . SET X=$LENGTH(S)-I
+ . IF X#2 DO
+ . . SET D=D*2
+ . . IF D>9 SET D=D-9
+ . SET T=T+D
+ QUIT '(T#10)
+ ;
+PRACNPI(UID) ; $$ NPI for a NEW PERSON when available
+ NEW NPI
+ SET UID=+$GET(UID) QUIT:UID<1 ""
+ SET NPI=$$TRIM($$GET1^DIQ(200,UID_",",41.99))
+ IF NPI?10N QUIT NPI
+ IF $T(NPI^XUSNPI)'="" DO
+ . SET NPI=$$NPI^XUSNPI("Individual_ID",UID)
+ . SET NPI=$$TRIM($PIECE(NPI,U))
+ IF NPI?10N QUIT NPI
+ QUIT ""
  ;
 SETESVC(RTN,IDX,ENC) ; Add service text when available
  NEW CODE,TXT

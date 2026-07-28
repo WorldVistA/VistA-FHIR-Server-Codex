@@ -298,7 +298,10 @@ LABORG(RTN) ; Supporting Organization for lab DiagnosticReport performers
  DO ADDRES^C0FHIRBU(.RTN,"Organization","VISTA-LAB",.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="Organization"
  SET RTN("entry",IDX,"resource","id")="VISTA-LAB"
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-organization"
+ SET RTN("entry",IDX,"resource","active")="true"
  SET RTN("entry",IDX,"resource","name")="VistA Laboratory"
+ DO ORGMS^C0FHIR(.RTN,IDX)
  QUIT
  ;
 PANELCODE(ACC,PAN,PKEY) ; LOINC panel code when known

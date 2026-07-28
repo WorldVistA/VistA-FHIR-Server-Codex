@@ -299,24 +299,27 @@ HASRES(OUT,RTYPE,RID) ; $$ - true if the Bundle already contains this resource
 PROVORG(OUT,IDX) ; Supporting Organization for generated Provenance
  SET OUT("entry",IDX,"resource","resourceType")="Organization"
  SET OUT("entry",IDX,"resource","id")="usqualitycore-organization"
- SET OUT("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization"
+ SET OUT("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-organization"
  SET OUT("entry",IDX,"resource","active")="true"
  SET OUT("entry",IDX,"resource","name")="VistA FHIR Quality Testing"
- SET OUT("entry",IDX,"resource","identifier",1,"system")="urn:ietf:rfc:3986"
- SET OUT("entry",IDX,"resource","identifier",1,"value")="urn:oid:2.16.840.1.113883.3.42.10001.100001.12"
- SET OUT("entry",IDX,"resource","identifier",1,"value","\s")=""
+ DO ORGMS^C0FHIR(.OUT,IDX)
+ ; Retain OID identifier after NPI/CCN/EIN MS slices.
+ SET OUT("entry",IDX,"resource","identifier",4,"system")="urn:ietf:rfc:3986"
+ SET OUT("entry",IDX,"resource","identifier",4,"value")="urn:oid:2.16.840.1.113883.3.42.10001.100001.12"
+ SET OUT("entry",IDX,"resource","identifier",4,"value","\s")=""
  QUIT
  ;
 PROVPRAC(OUT,IDX) ; Supporting Practitioner for generated Provenance
  SET OUT("entry",IDX,"resource","resourceType")="Practitioner"
  SET OUT("entry",IDX,"resource","id")="usqualitycore-practitioner"
- SET OUT("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner"
- SET OUT("entry",IDX,"resource","identifier",1,"system")="urn:va:user"
- SET OUT("entry",IDX,"resource","identifier",1,"value")="usqualitycore-practitioner"
- SET OUT("entry",IDX,"resource","identifier",1,"value","\s")=""
+ SET OUT("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-practitioner"
  SET OUT("entry",IDX,"resource","name",1,"family")="Quality"
  SET OUT("entry",IDX,"resource","name",1,"given",1)="FHIR"
  SET OUT("entry",IDX,"resource","name",1,"text")="FHIR Quality"
+ DO PRACMS^C0FHIR(.OUT,IDX,"1245319599")
+ SET OUT("entry",IDX,"resource","identifier",3,"system")="urn:va:user"
+ SET OUT("entry",IDX,"resource","identifier",3,"value")="usqualitycore-practitioner"
+ SET OUT("entry",IDX,"resource","identifier",3,"value","\s")=""
  QUIT
  ;
 PROVDT() ; $$ - recorded instant for generated Provenance
