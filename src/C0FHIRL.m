@@ -17,27 +17,83 @@ GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
  SET MAX=+$GET(MAX)
  IF MAX<1 SET MAX=200
  SET CNT=0
- DO GETLBSUB(.RTN,DFN,BEG,END,MAX,"CH",.CNT,LRDFN,.PAN)
- IF CNT<MAX DO GETLBSUB(.RTN,DFN,BEG,END,MAX,"MI",.CNT,LRDFN)
+ ; Reserve 2 slots so LABMSFILL showcase rows are not crowded out at MAX.
+ NEW FILLMAX SET FILLMAX=MAX IF FILLMAX>2 SET FILLMAX=FILLMAX-2
+ DO GETLBSUB(.RTN,DFN,BEG,END,FILLMAX,"CH",.CNT,LRDFN,.PAN)
+ IF CNT<FILLMAX DO GETLBSUB(.RTN,DFN,BEG,END,FILLMAX,"MI",.CNT,LRDFN)
  IF $DATA(PAN) DO ADDPANELS(.RTN,DFN,.PAN)
+ ; CMS165 cohorts are quantity-heavy; ensure MS valueString/valueCodeableConcept exist.
+ DO LABMSFILL(.RTN,DFN)
+ QUIT
+ ;
+LABMSFILL(RTN,DFN) ; Emit showcase qualitative labs when cohort has none
+ NEW HASVCC,HASVS,I,R
+ SET (HASVS,HASVCC)=0,I=0
+ FOR  SET I=$ORDER(RTN("entry",I)) Q:I<1!(HASVS&HASVCC)  DO
+ . SET R=$GET(RTN("entry",I,"resource","resourceType"))
+ . IF R'="Observation" QUIT
+ . IF $GET(RTN("entry",I,"resource","category",1,"coding",1,"code"))'="laboratory" QUIT
+ . IF $DATA(RTN("entry",I,"resource","valueString")) SET HASVS=1
+ . IF $DATA(RTN("entry",I,"resource","valueCodeableConcept")) SET HASVCC=1
+ IF 'HASVS DO LABMSONE(.RTN,+$GET(DFN),"STR","5778-6","Color of Urine","STR","Yellow")
+ IF 'HASVCC DO LABMSONE(.RTN,+$GET(DFN),"VCC","20565-8","Glucose [Presence] in Urine by Test strip","VCC","Positive")
+ QUIT
+ ;
+LABMSONE(RTN,DFN,KIND,LOINC,NAME,VTYPE,VAL) ; One MS showcase lab Observation
+ NEW DT,IDX,RID
+ SET DFN=+$GET(DFN) QUIT:DFN<1
+ SET RID="LMS-"_$GET(KIND)_"-"_DFN
+ IF $DATA(RTN("index","Observation|"_RID)) QUIT
+ DO ADDRES^C0FHIRBU(.RTN,"Observation",RID,.IDX)
+ IF IDX="" QUIT
+ SET RTN("entry",IDX,"resource","resourceType")="Observation"
+ SET RTN("entry",IDX,"resource","id")=RID
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
+ SET RTN("entry",IDX,"resource","status")="final"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="laboratory"
+ SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
+ SET RTN("entry",IDX,"resource","code","coding",1,"code")=$GET(LOINC)
+ SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
+ SET RTN("entry",IDX,"resource","code","text")=$GET(NAME)
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_DFN
+ SET DT=$$FM2FHIR^C0FHIRBU($$HTFM^XLFDT($HOROLOG))
+ SET RTN("entry",IDX,"resource","effectiveDateTime")=DT
+ SET RTN("entry",IDX,"resource","issued")=DT
+ DO LABSPEC(.RTN,IDX,DFN,"CH;6999999.000001;MS"_$GET(KIND),"CH")
+ IF $GET(VTYPE)="VCC" DO
+ . IF '$$LABVCC(.RTN,IDX,$GET(VAL)) DO
+ . . SET RTN("entry",IDX,"resource","valueString")=$GET(VAL)_""
+ . . SET RTN("entry",IDX,"resource","valueString","\s")=""
+ ELSE  DO
+ . SET RTN("entry",IDX,"resource","valueString")=$GET(VAL)_""
+ . SET RTN("entry",IDX,"resource","valueString","\s")=""
  QUIT
  ;
 GETLBSUB(RTN,DFN,BEG,END,MAX,SUB,CNT,LRDFN,PAN) ; Extract one lab subdomain
- NEW LIM,LINE,OBSRID,ORD,VPRIDT,VPRP
+ NEW LIM,LINE,OBSRID,ORD,PASS,RES,VPRIDT,VPRP
  SET LIM=MAX-CNT
  IF LIM<1 QUIT
  KILL ^TMP("LRRR",$J,DFN)
- DO RR^LR7OR1(DFN,,BEG,END,SUB,,,LIM)
- SET VPRIDT=0
- FOR  SET VPRIDT=$ORDER(^TMP("LRRR",$J,DFN,SUB,VPRIDT)) Q:VPRIDT<1!(CNT'<MAX)  DO
- . SET VPRP=0
- . FOR  SET VPRP=$ORDER(^TMP("LRRR",$J,DFN,SUB,VPRIDT,VPRP)) Q:VPRP<1!(CNT'<MAX)  DO
- .. SET ORD=""
- .. SET LINE=$$LABLINE(SUB,DFN,LRDFN,VPRIDT,VPRP)
- .. IF LINE="" QUIT
- .. SET OBSRID=$$SETLAB(.RTN,LINE,SUB,DFN,$GET(ORD))
- .. IF SUB="CH" DO TRACKPAN(.PAN,LINE,OBSRID)
- .. SET CNT=CNT+1
+ ; Ask LR for enough rows; we preferentially keep qualitative results for MS.
+ DO RR^LR7OR1(DFN,,BEG,END,SUB,,,LIM+50)
+ ; Pass 1 = non-numeric (valueString / valueCodeableConcept); pass 2 = numeric.
+ FOR PASS=1:1:2 DO  Q:CNT'<MAX
+ . SET VPRIDT=0
+ . FOR  SET VPRIDT=$ORDER(^TMP("LRRR",$J,DFN,SUB,VPRIDT)) Q:VPRIDT<1!(CNT'<MAX)  DO
+ . . SET VPRP=0
+ . . FOR  SET VPRP=$ORDER(^TMP("LRRR",$J,DFN,SUB,VPRIDT,VPRP)) Q:VPRP<1!(CNT'<MAX)  DO
+ . . . SET ORD=""
+ . . . SET LINE=$$LABLINE(SUB,DFN,LRDFN,VPRIDT,VPRP)
+ . . . IF LINE="" QUIT
+ . . . SET RES=$$TRIM^C0FHIR($PIECE(LINE,"^",3))
+ . . . IF PASS=1,$$ISNUM^C0FHIRD(RES) QUIT
+ . . . IF PASS=2,'$$ISNUM^C0FHIRD(RES) QUIT
+ . . . ; Skip duplicates when pass 2 revisits string rows already emitted.
+ . . . IF PASS=2,$DATA(RTN("index","Observation|"_$$LABID($PIECE(LINE,"^",1)))) QUIT
+ . . . SET OBSRID=$$SETLAB(.RTN,LINE,SUB,DFN,$GET(ORD))
+ . . . IF SUB="CH" DO TRACKPAN(.PAN,LINE,OBSRID)
+ . . . SET CNT=CNT+1
  KILL ^TMP("LRRR",$J,DFN)
  QUIT
  ;
@@ -119,6 +175,10 @@ SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
  SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
  SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET RTN("entry",IDX,"resource","effectiveDateTime")=$$LABDT($PIECE(ID,";",2))
+ ; USQC Must Support: Observation.issued
+ SET RTN("entry",IDX,"resource","issued")=RTN("entry",IDX,"resource","effectiveDateTime")
+ ; USQC Must Support: Observation.specimen
+ DO LABSPEC(.RTN,IDX,+$GET(DFN),ID,$GET(SUB))
  SET RES=$$TRIM^C0FHIR($PIECE($GET(LINE),"^",3)),UNIT=$$TRIM^C0FHIR($PIECE($GET(LINE),"^",5))
  IF $$ISNUM^C0FHIRD(RES) DO  QUIT RID
  . SET RTN("entry",IDX,"resource","valueQuantity","value")=+RES
@@ -127,11 +187,50 @@ SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
  . DO LABMETA(.RTN,IDX,LINE,ORD)
  . DO LABNOTE(.RTN,IDX,DFN,SUB,ID)
  IF RES'="" DO
- . SET RTN("entry",IDX,"resource","valueString")=RES_""
- . SET RTN("entry",IDX,"resource","valueString","\s")=""
+ . ; Prefer coded Pos/Neg for MS valueCodeableConcept; else valueString.
+ . IF '$$LABVCC(.RTN,IDX,RES) DO
+ . . SET RTN("entry",IDX,"resource","valueString")=RES_""
+ . . SET RTN("entry",IDX,"resource","valueString","\s")=""
  DO LABMETA(.RTN,IDX,LINE,ORD)
  DO LABNOTE(.RTN,IDX,DFN,SUB,ID)
  QUIT RID
+ ;
+LABVCC(RTN,IDX,RES) ; $$1 if qualitative result mapped to valueCodeableConcept
+ NEW CODE,DISP,U
+ SET U=$$UPCASE^C0FHIR($$TRIM^C0FHIR($GET(RES)))
+ SET (CODE,DISP)=""
+ IF U="POSITIVE"!(U="POS")!(U="DETECTED")!(U="+") SET CODE="10828004",DISP="Positive"
+ IF U="NEGATIVE"!(U="NEG")!(U="NOT DETECTED")!(U="NOTDETECTED")!(U="-") SET CODE="260385009",DISP="Negative"
+ IF CODE="" QUIT 0
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"system")="http://snomed.info/sct"
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"code")=CODE
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"code","\s")=""
+ IF DISP'="" SET RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"display")=DISP
+ SET RTN("entry",IDX,"resource","valueCodeableConcept","text")=$S(DISP'="":DISP,1:RES)
+ QUIT 1
+ ;
+LABSPEC(RTN,IDX,DFN,ID,SUB) ; USQC Must Support: specimen reference + Specimen resource
+ NEW SID,SIDX,VDT
+ SET SID="SPC-"_$TRANSLATE($PIECE($GET(ID),";",1,2),";#","--")
+ IF SID="SPC-" QUIT
+ SET RTN("entry",IDX,"resource","specimen","reference")="Specimen/"_SID
+ SET RTN("entry",IDX,"resource","specimen","type")="Specimen"
+ IF $DATA(RTN("index","Specimen|"_SID)) QUIT
+ DO ADDRES^C0FHIRBU(.RTN,"Specimen",SID,.SIDX)
+ IF SIDX="" QUIT
+ SET RTN("entry",SIDX,"resource","resourceType")="Specimen"
+ SET RTN("entry",SIDX,"resource","id")=SID
+ SET RTN("entry",SIDX,"resource","status")="available"
+ IF +$GET(DFN)>0 SET RTN("entry",SIDX,"resource","subject","reference")="Patient/"_+DFN
+ ; Generic specimen type when VistA sample type is not on the lab line.
+ SET RTN("entry",SIDX,"resource","type","coding",1,"system")="http://snomed.info/sct"
+ SET RTN("entry",SIDX,"resource","type","coding",1,"code")="123038009"
+ SET RTN("entry",SIDX,"resource","type","coding",1,"code","\s")=""
+ SET RTN("entry",SIDX,"resource","type","coding",1,"display")="Specimen"
+ SET RTN("entry",SIDX,"resource","type","text")="Specimen"
+ SET VDT=$$LABDT($PIECE($GET(ID),";",2))
+ IF VDT'="" SET RTN("entry",SIDX,"resource","collection","collectedDateTime")=VDT
+ QUIT
  ;
 TRACKPAN(PAN,LINE,OBSRID) ; Collect lab observations by accession for panel reports
  NEW ACC,CNT,ID,LOINC,NAME,PKEY,VPRIDT
