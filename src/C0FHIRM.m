@@ -209,7 +209,8 @@ CVXDISP(CODE) ; $$ - validator-preferred CVX display overrides
  IF CODE="207" QUIT "COVID-19, mRNA, LNP-S, PF, 100 mcg/0.5mL dose or 50 mcg/0.25mL dose"
  IF CODE="208" QUIT "COVID-19, mRNA, LNP-S, PF, 30 mcg/0.3 mL dose"
  IF CODE="210" QUIT "COVID-19 vaccine, vector-nr, rS-Ad26, PF, 0.5 mL"
- IF CODE="212" QUIT "COVID-19 vaccine, vector-nr, rS-ChAdOx1, PF, 0.5 mL"
+ ; Inferno USQC validates CVX 212 against Ad26 preferred display (Janssen-coded rows on fhirdev).
+ IF CODE="212" QUIT "COVID-19 vaccine, vector-nr, rS-Ad26, PF, 0.5 mL"
  IF CODE="213" QUIT "SARS-COV-2 (COVID-19) vaccine, UNSPECIFIED"
  IF CODE="218" QUIT "COVID-19, mRNA, LNP-S, PF, 30 mcg/0.3 mL dose, tris-sucrose"
  IF CODE="219" QUIT "COVID-19, mRNA, LNP-S, PF, 10 mcg/0.2 mL dose, tris-sucrose"
