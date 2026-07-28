@@ -716,12 +716,16 @@ SETDOCREF(RTN,EIDX,ENC,VIEN,DFN) ; Add visit-linked TIU as DocumentReference/Dia
  QUIT
  ;
 ADDTIUDOC(RTN,IDX,DA,DOC,TXT,VST,DFN,ENCURL) ; Add TIU as DocumentReference or AI DiagnosticReport
+ NEW ENCREF
+ ; Prefer stable Encounter/E{visit} over bundle fullUrl (often urn:uuid:...).
+ SET ENCREF=$SELECT(+$GET(VST)>0:"Encounter/E"_+VST,$GET(ENCURL)'="":$GET(ENCURL),1:"")
  IF $$ISAIDOC(DA,DOC) DO  QUIT
  . DO ADDAIDR(.RTN,.IDX,DA,DOC,TXT,VST,+$GET(DFN))
- . SET RTN("entry",IDX,"resource","encounter","reference")=$GET(ENCURL)
+ . IF ENCREF'="" SET RTN("entry",IDX,"resource","encounter","reference")=ENCREF
  DO ADDDOCREF(.RTN,.IDX,DA,DOC,TXT,VST,+$GET(DFN))
- SET RTN("entry",IDX,"resource","context","encounter",1,"reference")=$GET(ENCURL)
- SET RTN("entry",IDX,"resource","context","encounter",1,"type")="Encounter"
+ IF ENCREF'="" DO
+ . SET RTN("entry",IDX,"resource","context","encounter",1,"reference")=ENCREF
+ . SET RTN("entry",IDX,"resource","context","encounter",1,"type")="Encounter"
  QUIT
  ;
 ISAIDOC(DA,DOC) ; $$ - TIU document should export as AI Consult DiagnosticReport
@@ -758,12 +762,16 @@ ADDAIDR(RTN,IDX,DA,DOC,TXT,VST,DFN) ; Add one TIU-backed AI Consult DiagnosticRe
  QUIT
  ;
 ADDDOCREF(RTN,IDX,DA,DOC,TXT,VST,DFN) ; Add one TIU DocumentReference resource
- NEW AUTH,DT,TITLE
+ NEW AUTH,DT,END,TITLE,VDT
  DO ADDRES^C0FHIRBU(.RTN,"DocumentReference","D"_+$GET(DA),.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="DocumentReference"
  SET RTN("entry",IDX,"resource","id")="D"_+$GET(DA)
  SET RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference|6.1.0"
  SET RTN("entry",IDX,"resource","status")="current"
+ ; USQC/US Core Must Support: identifier
+ SET RTN("entry",IDX,"resource","identifier",1,"system")="urn:va:tiu"
+ SET RTN("entry",IDX,"resource","identifier",1,"value")=+$GET(DA)
+ SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
  SET TITLE=$P($GET(DOC),U,2) I TITLE="" SET TITLE=$P($GET(DOC),U,3)
  IF TITLE="" SET TITLE=$$GET1^DIQ(8925,+$GET(DA)_",",.01,"E")
  SET RTN("entry",IDX,"resource","type","coding",1,"system")="http://loinc.org"
@@ -784,8 +792,23 @@ ADDDOCREF(RTN,IDX,DA,DOC,TXT,VST,DFN) ; Add one TIU DocumentReference resource
  IF AUTH'="" SET RTN("entry",IDX,"resource","author",1,"display")=AUTH
  SET RTN("entry",IDX,"resource","content",1,"attachment","contentType")="text/plain"
  SET RTN("entry",IDX,"resource","content",1,"attachment","title")=$S(TITLE'="":TITLE,1:"TIU Document")
+ ; MS: attachment.url (keep base64 data for inline note consumers)
+ SET RTN("entry",IDX,"resource","content",1,"attachment","url")="Binary/D"_+$GET(DA)
  SET RTN("entry",IDX,"resource","content",1,"attachment","data")=$$B64(TXT)
  SET RTN("entry",IDX,"resource","content",1,"attachment","data","\s")=""
+ ; MS: content.format — mimeType sufficient for text/plain TIU
+ SET RTN("entry",IDX,"resource","content",1,"format","system")="http://ihe.net/fhir/ihe.formatcode.fhir/CodeSystem/formatcode"
+ SET RTN("entry",IDX,"resource","content",1,"format","code")="urn:ihe:iti:xds:2017:mimeTypeSufficient"
+ SET RTN("entry",IDX,"resource","content",1,"format","display")="mimeType Sufficient"
+ ; MS: context.period from visit / note datetime
+ SET VDT=0
+ IF +$GET(VST)>0 SET VDT=+$PIECE($GET(^AUPNVSIT(+VST,0)),U)
+ IF VDT<1 SET VDT=DT
+ IF VDT>0 DO
+ . SET RTN("entry",IDX,"resource","context","period","start")=$$FM2FHIR^C0FHIRBU(VDT)
+ . SET END=+$PIECE($GET(^AUPNVSIT(+$GET(VST),0)),U,18)
+ . IF END<1 SET END=VDT
+ . SET RTN("entry",IDX,"resource","context","period","end")=$$FM2FHIR^C0FHIRBU(END)
  QUIT
  ;
 DOCAUTH(DA) ; $$ - TIU author display
