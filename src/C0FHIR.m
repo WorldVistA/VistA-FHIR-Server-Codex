@@ -690,30 +690,38 @@ SETESTD(RTN,IDX,VIEN) ; Add V STANDARD CODES rows as Encounter.reasonCode
  . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"system")=$$STDSYS(SYS,CODE)
  . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"code")=CODE
  . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"code","\s")=""
- . ; Never put POV/support text on SCT coding.display (Inferno terminology binding).
+ . ; SCT: omit coding.display unless Lexicon preferred term exists.
+ . ; Never put V STANDARD CODES POV/support text on SCT coding.display.
  . IF $$STDSYS(SYS,CODE)="http://snomed.info/sct" DO
  . . NEW LEX SET LEX=$$SCTDISP(CODE)
- . . IF LEX'="" SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=LEX
- . E  IF DISP'="" SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=DISP
- . IF DISP'="" SET RTN("entry",IDX,"resource","reasonCode",N,"text")=DISP
+ . . IF LEX'="",'$$ISPOVDIS(LEX) SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=LEX
+ . E  IF DISP'="",'$$ISPOVDIS(DISP) SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=DISP
+ . IF DISP'="",'$$ISPOVDIS(DISP) SET RTN("entry",IDX,"resource","reasonCode",N,"text")=DISP
  . IF SUP'="" DO
  . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"url")=$$RCSUPURL()
  . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"valueString")=$$TRIM($$STDSUP(SUP))
  QUIT
  ;
+ISPOVDIS(X) ; $$ - true when text is VistA POV boilerplate, not a term display
+ SET X=$$UPCASE($$TRIM($GET(X)))
+ IF X="" QUIT 0
+ IF X["PURPOSE OF VISIT" QUIT 1
+ IF X="POV"!(X="POV.") QUIT 1
+ QUIT 0
+ ;
 STDDISP(SUP,CODE) ; Best display text for a V STANDARD CODES row
  NEW LINE,TXT
  SET SUP=$GET(SUP),CODE=$GET(CODE),TXT=""
  SET TXT=$$SCTDISP(CODE)
- IF TXT'="" QUIT TXT
+ IF TXT'="",'$$ISPOVDIS(TXT) QUIT TXT
+ SET TXT=""
  IF SUP'="" DO
  . SET LINE=$$TRIM($PIECE(SUP,$CHAR(10),1))
- . IF $EXTRACT(LINE,1,9)="Display: " SET TXT=$PIECE($EXTRACT(LINE,10,$LENGTH(LINE))," | Support: ",1) QUIT
- . IF LINE[" (SCT "_CODE_")" SET TXT=$PIECE(LINE," (SCT "_CODE_")",1) QUIT
- . IF LINE["SCT "_CODE SET TXT=$PIECE(LINE,"SCT "_CODE,1)
- . IF TXT'="" SET TXT=$$TRIM($TRANSLATE(TXT,"()-","   "))
- . ; Avoid POV boilerplate as SCT display source.
- . IF TXT="",$$UPCASE(LINE)'["PURPOSE OF VISIT" SET TXT=LINE
+ . IF $EXTRACT(LINE,1,9)="Display: " SET TXT=$PIECE($EXTRACT(LINE,10,$LENGTH(LINE))," | Support: ",1)
+ . E  IF LINE[" (SCT "_CODE_")" SET TXT=$PIECE(LINE," (SCT "_CODE_")",1)
+ . E  IF LINE["SCT "_CODE SET TXT=$$TRIM($TRANSLATE($PIECE(LINE,"SCT "_CODE,1),"()-","   "))
+ . E  IF '$$ISPOVDIS(LINE) SET TXT=LINE
+ . IF $$ISPOVDIS(TXT) SET TXT=""
  QUIT $$TRIM(TXT)
  ;
 STDSUP(SUP) ; Support text from V STANDARD CODES comment

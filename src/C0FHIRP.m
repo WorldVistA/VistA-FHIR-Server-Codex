@@ -201,7 +201,7 @@ GETCP(RTN,DFN,BEG,END,MAX,CNT) ; Add Clinical Procedure (Medicine) procedures
  QUIT
  ;
 SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resource
- NEW CAT,CODE,CODEDISP,CODETXT,CODEVAL,DATE,ENC,ID,IDX,NAME,PROV,RID,STAT
+ NEW CAT,CODE,CODEDISP,CODEVAL,DATE,ENC,ID,IDX,NAME,PROV,RID,SCT,SDISP,STAT
  SET ID=$$PROCID($GET(PROC("id")))
  IF ID="" QUIT
  SET RID=SRC_"-"_ID
@@ -215,7 +215,16 @@ SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resourc
  SET CODE=$GET(PROC("type"))
  SET CODEVAL=$PIECE(CODE,"^")
  SET CODEDISP=$PIECE(CODE,"^",2)
- IF CODEVAL'="",$$ISCPT(CODEVAL) DO
+ ; Prefer OS5->SNOMED via ^SYN sct2os5; never claim OS5 hybrids as AMA CPT.
+ DO PROCSNOM(CODEVAL,.SCT,.SDISP)
+ IF SCT'="" DO
+ . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://snomed.info/sct"
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code")=SCT
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
+ . IF SDISP'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=SDISP
+ . E  IF CODEDISP'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=CODEDISP
+ . E  IF NAME'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=NAME
+ E  IF CODEVAL'="",$$ISCPT(CODEVAL) DO
  . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://www.ama-assn.org/go/cpt"
  . SET RTN("entry",IDX,"resource","code","coding",1,"code")=CODEVAL
  . SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
@@ -232,8 +241,8 @@ SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resourc
  . SET RTN("entry",IDX,"resource","performer",1,"actor","display")=$PIECE(PROV,"^",2)
  . IF +$PIECE(PROV,"^")>0 DO
  .. SET RTN("entry",IDX,"resource","performer",1,"actor","identifier","system")="urn:va:user"
- .. SET RTN("entry",IDX,"resource","performer",1,"actor","identifier","value")=+$PIECE(PROV,"^")
- .. ; FHIR identifier.value is string; force JSON string type.
+ .. ; Keep digit string (no unary +) and force JSON string type.
+ .. SET RTN("entry",IDX,"resource","performer",1,"actor","identifier","value")=$PIECE(PROV,"^")
  .. SET RTN("entry",IDX,"resource","performer",1,"actor","identifier","value","\s")=""
  SET CAT=$$PCAT($GET(SRC))
  IF CAT'="" SET RTN("entry",IDX,"resource","category","text")=CAT
@@ -241,6 +250,20 @@ SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resourc
  SET RTN("entry",IDX,"resource","identifier",1,"value")=$GET(SRC)_":"_$GET(PROC("id"))
  SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
  DO PROCNOTE(.RTN,.PROC,IDX)
+ QUIT
+ ;
+PROCSNOM(CODE,SCT,SDISP) ; Recover procedure SNOMED from OS5/CPT via sct2os5 inverse
+ NEW HIT,X
+ SET (SCT,SDISP)=""
+ SET CODE=$PIECE($GET(CODE),"^")
+ IF CODE="" QUIT
+ SET (HIT,X)=0
+ FOR  SET X=$ORDER(^SYN("2002.030","sct2os5","inverse",CODE,X)) Q:X=""  DO  Q:HIT
+ . ; Skip encounter-only SNOMEDs; duals may still appear on Procedure.
+ . IF $$ISENCS(X),'$$ISDUALS(X) QUIT
+ . SET SCT=X
+ . SET SDISP=$GET(^SYN("2002.030","sct2os5","inverse",CODE,X))
+ . SET HIT=1
  QUIT
  ;
 ISCPT(CODE) ; $$ - true when code looks like CPT (not Synthea OS5 hybrids like 2870N)
