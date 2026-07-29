@@ -131,6 +131,7 @@ ADDREADS ; Register concrete read routes before broad FHIR search routes
  DO ADDREAD("Procedure")
  DO ADDREAD("MedicationRequest")
  DO ADDREAD("Medication")
+ DO ADDREAD("CarePlan")
  DO ADDREAD("DocumentReference")
  DO ADDREAD("Provenance")
  QUIT

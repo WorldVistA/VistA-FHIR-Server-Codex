@@ -318,6 +318,96 @@ SETSMOK(RTN,DFN,BEST) ; Build one smoking-status Observation; BEST=DT^IEN^NAME^V
  IF CMT'="" SET RTN("entry",IDX,"resource","note",1,"text")=NAME_": "_CMT
  QUIT
  ;
+GETCP(RTN,DFN,BEG,END,MAX) ; Emit US Quality Core CarePlan from SYN CP V Health Factors
+ NEW CNT,CMT,CODE,DISP,DT,HFIEN,IEN,NAME,VID,X0
+ SET DFN=+$GET(DFN) QUIT:DFN<1
+ SET BEG=+$GET(BEG) IF BEG<1 SET BEG=1410101
+ SET END=$GET(END) IF END="" SET END=4141015 IF END'["." SET END=END_".24"
+ SET MAX=+$GET(MAX) IF MAX<1 SET MAX=200
+ SET (CNT,IEN)=0
+ FOR  SET IEN=$ORDER(^AUPNVHF("C",DFN,IEN)) QUIT:IEN<1!(CNT'<MAX)  DO
+ . SET X0=$GET(^AUPNVHF(IEN,0)) QUIT:X0=""
+ . SET HFIEN=+X0,VID=+$PIECE(X0,U,3)
+ . SET NAME=$PIECE($GET(^AUTTHF(HFIEN,0)),U) QUIT:NAME=""
+ . QUIT:'$$ISCPHF(NAME)
+ . SET DT=0 IF VID>0 SET DT=+$PIECE($GET(^AUPNVSIT(VID,0)),U)
+ . IF DT>0,(DT<BEG!(DT>END)) QUIT
+ . SET CMT=$PIECE($GET(^AUPNVHF(IEN,811)),U)
+ . SET CODE=$$CPSCT(NAME),DISP=$$CPDISP(NAME)
+ . DO SETCP(.RTN,DFN,IEN,NAME,VID,DT,CMT,CODE,DISP)
+ . SET CNT=CNT+1
+ QUIT
+ ;
+ISCPHF(NAME) ; $$ - true if AUTTHF name is a SYN CarePlan (not CPCAT/ACT/ADDR/GOAL)
+ SET NAME=$$UPCASE^C0FHIR($$TRIM^C0FHIR($GET(NAME)))
+ IF $EXTRACT(NAME,1,7)="SYN CP " QUIT 1
+ QUIT 0
+ ;
+CPSCT(NAME) ; $$ - numeric SNOMED from "… (SCT:nnn)"; skip ASSESS-PLAN tokens
+ NEW P,C
+ SET NAME=$GET(NAME),P=$FIND(NAME,"(SCT:")
+ IF P<1 QUIT ""
+ SET C=$$TRIM^C0FHIR($PIECE($EXTRACT(NAME,P,$LENGTH(NAME)),")",1))
+ IF C'?1.N QUIT ""
+ QUIT C
+ ;
+CPDISP(NAME) ; $$ - CarePlan display text between "SYN CP " and " (SCT:"
+ NEW T
+ SET NAME=$GET(NAME)
+ SET T=$PIECE($PIECE(NAME,"SYN CP ",2)," (SCT:",1)
+ SET T=$$TRIM^C0FHIR(T)
+ IF T="" SET T="Assessment and Plan of Treatment"
+ QUIT T
+ ;
+CPSTAT(CMT) ; $$ - FHIR CarePlan status from HF comment Status: token
+ NEW S,U
+ SET S=$$TRIM^C0FHIR($PIECE($PIECE($GET(CMT),"Status:",2)," ",1))
+ SET U=$$UPCASE^C0FHIR(S)
+ IF U="DRAFT"!(U="ACTIVE")!(U="ON-HOLD")!(U="REVOKED")!(U="COMPLETED")!(U="ENTERED-IN-ERROR")!(U="UNKNOWN") QUIT $$LOW^XLFSTR(U)
+ IF U="ONHOLD" QUIT "on-hold"
+ IF U="ENTEREDINERROR" QUIT "entered-in-error"
+ QUIT "active"
+ ;
+SETCP(RTN,DFN,IEN,NAME,VID,DT,CMT,CODE,DISP) ; Build one CarePlan; id CP-{AUPNVHF IEN}
+ NEW DIV,EDT,IDX,RID,SDT,STAT,TXT
+ SET DFN=+$GET(DFN),IEN=+$GET(IEN) QUIT:DFN<1!(IEN<1)
+ SET RID="CP-"_IEN
+ IF $DATA(RTN("index","CarePlan|"_RID)) QUIT
+ DO ADDRES^C0FHIRBU(.RTN,"CarePlan",RID,.IDX) QUIT:IDX=""
+ SET DISP=$GET(DISP) IF DISP="" SET DISP=$$CPDISP($GET(NAME))
+ SET STAT=$$CPSTAT($GET(CMT))
+ SET RTN("entry",IDX,"resource","resourceType")="CarePlan"
+ SET RTN("entry",IDX,"resource","id")=RID
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-careplan"
+ SET RTN("entry",IDX,"resource","status")=STAT
+ SET RTN("entry",IDX,"resource","intent")="plan"
+ SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_DFN
+ ; US Core / USQC Must Support AssessPlan category slice
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/careplan-category"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="assess-plan"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code","\s")=""
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Assessment and Plan of Treatment"
+ SET RTN("entry",IDX,"resource","category",1,"text")="Assessment and Plan of Treatment"
+ IF $GET(CODE)'="" DO
+ . SET RTN("entry",IDX,"resource","category",2,"coding",1,"system")="http://snomed.info/sct"
+ . SET RTN("entry",IDX,"resource","category",2,"coding",1,"code")=CODE
+ . SET RTN("entry",IDX,"resource","category",2,"coding",1,"code","\s")=""
+ . SET RTN("entry",IDX,"resource","category",2,"coding",1,"display")=DISP
+ . SET RTN("entry",IDX,"resource","category",2,"text")=DISP
+ IF +$GET(VID)>0 SET RTN("entry",IDX,"resource","encounter","reference")="Encounter/E"_VID
+ SET SDT=$$TRIM^C0FHIR($PIECE($PIECE($GET(CMT),"Start: ",2)," ",1))
+ SET EDT=$$TRIM^C0FHIR($PIECE($PIECE($GET(CMT),"End: ",2)," ",1))
+ IF SDT?5.7N1".".N!(SDT?5.7N) SET RTN("entry",IDX,"resource","period","start")=$$FM2FHIR^C0FHIRBU(+SDT)
+ IF EDT?5.7N1".".N!(EDT?5.7N),+EDT>0 SET RTN("entry",IDX,"resource","period","end")=$$FM2FHIR^C0FHIRBU(+EDT)
+ IF '$DATA(RTN("entry",IDX,"resource","period","start")),+$GET(DT)>0 DO
+ . SET RTN("entry",IDX,"resource","period","start")=$$FM2FHIR^C0FHIRBU(DT)
+ SET TXT=DISP
+ IF $GET(CMT)'="" SET TXT=TXT_" - "_CMT
+ SET DIV="<div xmlns=""http://www.w3.org/1999/xhtml"">"_$$XMLESC(TXT)_"</div>"
+ SET RTN("entry",IDX,"resource","text","status")="generated"
+ SET RTN("entry",IDX,"resource","text","div")=DIV
+ QUIT
+ ;
 SETOBS(RTN,VIT,DFN) ; Map one VPR vital entry to a FHIR Observation resource
  NEW CODE,ID,IDX,M0,MRES,MUNT,NAME,RES,UNIT,VUID
  SET M0=$GET(VIT("measurement",1))

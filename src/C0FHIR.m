@@ -1020,6 +1020,10 @@ GETPROC(RTN,DFN,BEG,END,MAX) ; Add Procedure resources
  DO GETPROC^C0FHIRD(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
  QUIT
  ;
+GETCP(RTN,DFN,BEG,END,MAX) ; Add CarePlan resources from SYN CP health factors
+ DO GETCP^C0FHIRD(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
+ QUIT
+ ;
 GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations (chemistry + micro)
  DO GETLAB^C0FHIRD(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
  QUIT
@@ -1798,6 +1802,7 @@ DOMTOK(X) ; Normalize domain alias to canonical token
  IF Y="PROC"!(Y="PROCS")!(Y="PROCEDURE")!(Y="PROCEDURES") QUIT "PROCEDURE"
  IF Y="LAB"!(Y="LABS")!(Y="LABORATORY")!(Y="LABORATORIES") QUIT "LAB"
  IF Y="REM"!(Y="REMS")!(Y="REMINDER")!(Y="REMINDERS")!(Y="CLINICALREMINDER")!(Y="CLINICALREMINDERS") QUIT "REMINDER"
+ IF Y="CAREPLAN"!(Y="CAREPLANS")!(Y="CP") QUIT "CAREPLAN"
  QUIT
  ;
 REQMODE(REQ) ; Resolve request mode from mapped parameters
