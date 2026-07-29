@@ -131,9 +131,10 @@ ASSETMIME(FILE) ; $$ - HTTP MIME for browser asset
  Q "text/plain"
  ;
 BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhir bundles
- N ALTLBL,ALTRAW,BADGE,D,IEN,LOADURL,RAWLBL,RAWURL,SRC,SRCNOTE,THEME,TOPLINKS
+ N ALTLBL,ALTRAW,BADGE,D,IEN,LOADURL,MEAS,RAWLBL,RAWURL,SRC,SRCNOTE,THEME,TOPLINKS
  S D=+$G(FILTER("dfn"))
  S IEN=+$G(FILTER("ien"))
+ S MEAS=$G(FILTER("measure"))
  S SRC=$$UPCASE^C0FHIR($G(FILTER("source")))
  I SRC="SYNTHEA" S SRC="SHOWFHIR"
  I SRC="" S SRC=$S(IEN>0:"SHOWFHIR",1:"FHIR")
@@ -142,8 +143,19 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  . S BADGE="AI Consult"
  . S SRCNOTE="AI Consult Stage 2 response via /aiconsult"
  . S LOADURL="/aiconsult?dfn="_D_"&format=json&file=1&stage=2"
+ . I MEAS'="" S LOADURL=LOADURL_"&measure="_MEAS
  . S RAWLBL="raw ai consult"
  . S RAWURL="/aiconsult?dfn="_D_"&format=json&file=1"
+ . I MEAS'="" S RAWURL=RAWURL_"&measure="_MEAS
+ . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
+ . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")
+ E  I SRC="ALTFHIR" D
+ . S THEME="theme-light"
+ . S BADGE="altfhir"
+ . S SRCNOTE="Graph-source FHIR via /altfhir"
+ . S LOADURL=$S(IEN>0:"/altfhir?ien="_IEN,1:"/altfhir")
+ . S RAWLBL="raw altfhir"
+ . S RAWURL=LOADURL
  . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
  . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")
  E  I SRC="SHOWFHIR" D
@@ -228,7 +240,7 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  I D>0 S TOPLINKS=TOPLINKS_"<a href=""/vpr?dfn="_D_""">vpr</a>"
  S TOPLINKS=TOPLINKS_"<span class='srcnote'>"_SRCNOTE_"</span>"
  I D>0 S TOPLINKS=TOPLINKS_" | DFN "_D
- I SRC="SHOWFHIR",IEN>0 S TOPLINKS=TOPLINKS_" | IEN "_IEN
+ I (SRC="SHOWFHIR")!(SRC="ALTFHIR"),IEN>0 S TOPLINKS=TOPLINKS_" | IEN "_IEN
  S TOPLINKS=TOPLINKS_"</div></div>"
  D ADDLN(.RTN,TOPLINKS)
  D ADDLN(.RTN,"<div class='wrap'>")
@@ -245,8 +257,8 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"<script>")
  D ADDLN(.RTN,"const dfn="_D_";")
  D ADDLN(.RTN,"const graphIen="_IEN_";")
- D ADDLN(.RTN,"const sourceMode='"_$S(SRC="AICONSULT":"aiconsult",SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
- D ADDLN(.RTN,"const sourceLabel=sourceMode==='aiconsult'?'AI Consult':(sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR');")
+ D ADDLN(.RTN,"const sourceMode='"_$S(SRC="AICONSULT":"aiconsult",SRC="ALTFHIR":"altfhir",SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
+ D ADDLN(.RTN,"const sourceLabel=sourceMode==='aiconsult'?'AI Consult':(sourceMode==='altfhir'?'altfhir graph source':(sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR'));")
  D ADDLN(.RTN,"const bundleUrl='"_LOADURL_"';")
  D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson/web/index.js?v=0.6.5';")
  D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")

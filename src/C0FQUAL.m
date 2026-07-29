@@ -332,8 +332,9 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET BURL="/fhir?dfn="_DFN_"&view=browser"
  . SET SURL=$SELECT(IEN>0:"/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN,1:BURL)
  . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
- . SET AURL="/aiconsult?dfn="_DFN_"&measure="_CMS
+ . SET AURL="/fhir?dfn="_DFN_"&view=browser&source=aiconsult&measure="_CMS
  . SET LURL="/filesystem/quality/measurereports/"_CMS_"/Patient-"_DFN_".json"
+ . SET FURL=$SELECT(IEN>0:"/fhir?dfn="_DFN_"&view=browser&source=altfhir&ien="_IEN,1:"")
  . SET ROW="<tr><td>"_DFN_"</td><td>"_$$HTMLESC^C0FHIR(NAME)_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(IPP)_""">"_IPP_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENOM)_""">"_DENOM_"</td>"
@@ -345,7 +346,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . IF IEN>0 SET ROW=ROW_" · <a href="""_SURL_""">source bundle</a>"
  . SET ROW=ROW_"</td><td><a href="""_RURL_""">rehmp</a></td>"
  . SET ROW=ROW_"<td><a href="""_AURL_""">aiconsult</a></td>"
- . IF IEN>0 SET ROW=ROW_"<td><a href=""/altfhir?ien="_IEN_""">altfhir</a></td></tr>"
+ . IF FURL'="" SET ROW=ROW_"<td><a href="""_FURL_""">altfhir</a></td></tr>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
  IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
@@ -373,8 +374,9 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET BURL="/fhir?dfn="_DFN_"&view=browser"
  . SET SURL="/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN
  . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
- . SET AURL="/aiconsult?dfn="_DFN_"&measure="_CMS
+ . SET AURL="/fhir?dfn="_DFN_"&view=browser&source=aiconsult&measure="_CMS
  . SET LURL="/filesystem/quality/measurereports/"_CMS_"/Patient-"_DFN_".json"
+ . SET FURL="/fhir?dfn="_DFN_"&view=browser&source=altfhir&ien="_IEN
  . SET ROW="<tr><td>"_DFN_"</td><td>"_$$HTMLESC^C0FHIR(NAME)_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(IPP)_""">"_IPP_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENOM)_""">"_DENOM_"</td>"
@@ -387,7 +389,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_" · <a href="""_SURL_""">source bundle</a></td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
  . SET ROW=ROW_"<td><a href="""_AURL_""">aiconsult</a></td>"
- . SET ROW=ROW_"<td><a href=""/altfhir?ien="_IEN_""">altfhir</a></td></tr>"
+ . SET ROW=ROW_"<td><a href="""_FURL_""">altfhir</a></td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
  IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No graph-linked patients found.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
@@ -439,6 +441,23 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  IF DOCS'="" DO ADDLN^C0FHIR(.RTN,"<p><a href="""_$$HTMLESC^C0FHIR(DOCS)_""">Documentation of measure calculation</a></p>")
  ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">No calculation doc link configured.</p>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Per-DFN flags: SETPOP^C0FQUAL. MeasureReports from SETPOP_MANIFEST under <a href=""/filesystem/quality/measurereports/index.html"">/filesystem/quality/measurereports/index.html</a> (directory URLs are not listable).</p>")
+ DO ADDLN^C0FHIR(.RTN,"</div>")
+ ;
+ ; Official CQL re-eval via cds1 /quality/evaluate-cohort (not AI Consult /analyze)
+ DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
+ DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Re-evaluate CQL</h2>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 for this measure's curated POP DFNs, then updates SETPOP/SETSUM. Separate from AI Consult.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p><button type=""button"" class=""btn"" id=""reevalBtn"">Re-evaluate CQL</button> <span id=""reevalStatus"" class=""muted"">"_$$HTMLESC^C0FHIR($PIECE($GET(^C0FQUAL("REEVAL",CMS)),"^",1))_"</span></p>")
+ DO ADDLN^C0FHIR(.RTN,"<script>")
+ DO ADDLN^C0FHIR(.RTN,"(function(){var b=document.getElementById('reevalBtn'),s=document.getElementById('reevalStatus');")
+ DO ADDLN^C0FHIR(.RTN,"if(!b)return;b.addEventListener('click',async function(){")
+ DO ADDLN^C0FHIR(.RTN,"b.disabled=true;s.textContent='running…';")
+ DO ADDLN^C0FHIR(.RTN,"try{var r=await fetch('/fhir-quality-reeval?measure="_CMS_"',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});")
+ DO ADDLN^C0FHIR(.RTN,"var j=await r.json();")
+ DO ADDLN^C0FHIR(.RTN,"if(!r.ok||j.status==='error'){s.textContent='error: '+(j.message||r.status);b.disabled=false;return;}")
+ DO ADDLN^C0FHIR(.RTN,"s.textContent='done';location.reload();")
+ DO ADDLN^C0FHIR(.RTN,"}catch(e){s.textContent='error: '+e;b.disabled=false;}});})();")
+ DO ADDLN^C0FHIR(.RTN,"</script>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  QUIT
  ;
@@ -518,6 +537,75 @@ HDR(RTN,TITLE,SUB) ;
  ;
 FTR(RTN) ;
  DO ADDLN^C0FHIR(.RTN,"</body></html>")
+ QUIT
+ ;
+ ;----- Official CQL re-eval via cds1 quality-eval (not AI Consult) -----
+WSREEVAL(ARGS,BODY,RESULT) ; POST /fhir-quality-reeval?measure=
+ IF '$DATA(RESULT) DO WSREEVAL2(.ARGS,.BODY) QUIT ""
+ DO WSREEVAL2(.RESULT,.BODY)
+ QUIT ""
+ ;
+WSREEVAL2(OUT,BODY) ; Call cds1 /quality/evaluate-cohort and apply SETPOP/SETSUM
+ NEW CMS,DFN,ERR,I,N,PAYLOAD,REQ,RESP,SUM,TMP,URL
+ SET U="^",HTTPRSP("mime")="application/json"
+ KILL OUT
+ DO SEED
+ SET CMS=$$FIND($GET(HTTPARGS("measure")))
+ IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
+ SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT
+ ; Build request: curated POP DFNs + fhir base
+ KILL REQ
+ SET REQ("measureId")=CMS
+ SET REQ("fhirBase")="https://devfhir.vistaplex.org/fhir"
+ SET I=0,DFN=0
+ FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  DO
+ . SET I=I+1,REQ("patients",I)=DFN
+ IF I<1 DO  QUIT
+ . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^no POP rows"
+ . DO OO^C0FWAIS(.OUT,"error","invalid","No curated POP DFNs for "_CMS)
+ DO TOJSON^C0FHIRBU(.REQ,.PAYLOAD,.ERR)
+ IF $DATA(ERR) DO  QUIT
+ . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^encode"
+ . DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode evaluate-cohort request")
+ DO CALLEVAL(.PAYLOAD,.RESP,.ERR)
+ IF $GET(ERR)'="" DO  QUIT
+ . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80)
+ . DO OO^C0FWAIS(.OUT,"error","exception",ERR)
+ ; Apply per-patient results
+ SET I=0
+ FOR  SET I=$ORDER(RESP("patients",I)) QUIT:'I  DO
+ . SET DFN=+$GET(RESP("patients",I,"dfn"))
+ . QUIT:DFN<1
+ . DO SETPOP(CMS,DFN,+$GET(RESP("patients",I,"ipp")),+$GET(RESP("patients",I,"denom")),+$GET(RESP("patients",I,"numer")),+$GET(RESP("patients",I,"denex")),"cds1-quality-eval","official-cql")
+ ; Prefer summary from cds1; fall back to RESUM
+ IF $DATA(RESP("summary")) DO
+ . SET N=+$GET(RESP("summary","n"))
+ . DO SETSUM(CMS,N,+$GET(RESP("summary","ipp")),+$GET(RESP("summary","denom")),+$GET(RESP("summary","numer")),+$GET(RESP("summary","denex")),$PIECE($$FMTE^XLFDT($$NOW^XLFDT,5),"@",1),"cds1 /quality/evaluate-cohort")
+ ELSE  DO RESUM(CMS,.SUM)
+ SET ^C0FQUAL("REEVAL",CMS)="done^"_$$NOW^XLFDT_"^"_+$GET(RESP("summary","ipp"))_"/"_+$GET(RESP("summary","denom"))_"/"_+$GET(RESP("summary","numer"))
+ KILL TMP
+ SET TMP("status")="ok"
+ SET TMP("measure")=CMS
+ MERGE TMP("summary")=RESP("summary")
+ SET TMP("patients")=+$GET(RESP("summary","n"))
+ SET TMP("reeval")=$GET(^C0FQUAL("REEVAL",CMS))
+ DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
+ IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode reeval response") QUIT
+ QUIT
+ ;
+CALLEVAL(JSON,OUT,ERR) ; POST cohort eval request to cds1 quality-eval sidecar
+ NEW HDR,OPT,PAYLOAD,RET,STATUS,URL
+ KILL OUT,ERR,PAYLOAD,RET,HDR
+ DO CHUNK^C0FWAIS(.JSON,.PAYLOAD)
+ SET OPT("header",1)="Expect:"
+ SET URL="https://cds1.vistaplex.org/quality/evaluate-cohort"
+ ; Cohort eval can take several minutes
+ SET STATUS=$$%^%WC(.RET,"POST",URL,.PAYLOAD,"application/json",600,.HDR,.OPT)
+ IF +$GET(STATUS)'=0 SET ERR="cds1 quality-eval curl exit status "_STATUS QUIT
+ IF $GET(HDR("STATUS"))'="",($GET(HDR("STATUS"))<200!($GET(HDR("STATUS"))>299)) SET ERR="cds1 quality-eval HTTP status "_$GET(HDR("STATUS")) QUIT
+ DO DECODE^XLFJSON("RET","OUT","ERR")
+ IF $DATA(ERR) SET ERR="Unable to decode cds1 quality-eval response JSON" QUIT
+ IF $GET(OUT("status"))="error" SET ERR=$GET(OUT("message"),"cds1 quality-eval error") QUIT
  QUIT
  ;
  ;----- Post-writeback heuristic recompute (demo closed-loop) -----

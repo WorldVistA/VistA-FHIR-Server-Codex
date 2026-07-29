@@ -9,6 +9,7 @@ Routes (Codex M HTML):
 | `GET /fhir-quality-dashboards?measure=CMS165v14` | Same as path form |
 | `GET /fhir-quality-dashboards?view=all` | Full catalog (active + inactive) |
 | `GET /fhir-quality-dashboard` | Legacy alias → active summary |
+| `POST /fhir-quality-reeval?measure=` | Official CQL re-eval via cds1 `/quality/evaluate-cohort` → SETPOP/SETSUM |
 
 ## Single-measure page contents
 
@@ -16,8 +17,25 @@ Routes (Codex M HTML):
 2. **Brief IPP criteria**
 3. **Current summary results** — IPP / DENOM / NUMER / DENEX / rate (from curated CQL cohort when available)
 4. **Measure calculation** — CQM tool versions + link to calculation docs
-5. **Patient table** — IPP / DENOM / NUMER / DENEX / evidence, MeasureReport (individual JSON), FHIR browser (live + source bundle), rehmp, AI Consult, altfhir bundle
-6. **MeasureReports** — summary + individual JSON under `/filesystem/quality/measurereports/{measure}/` (built from `SETPOP_MANIFEST.tsv`, not native `/fhir/MeasureReport` yet)
+5. **Re-evaluate CQL** — button calls cds1 official CQL (not AI Consult `/analyze`)
+6. **Patient table** — IPP / DENOM / NUMER / DENEX / evidence, MeasureReport, FHIR browser (live + source), rehmp, AI Consult browser, altfhir browser
+7. **MeasureReports** — summary + individual JSON under `/filesystem/quality/measurereports/{measure}/`
+
+### Patient-table browser links
+
+| Column | Opens |
+|--------|--------|
+| FHIR browser | `/fhir?dfn=&view=browser` (live VistA) + optional `source=showfhir` |
+| AI Consult | `/fhir?dfn=&view=browser&source=aiconsult&measure=` → loads `/aiconsult` (cds1 `/analyze`) |
+| Bundle | `/fhir?dfn=&view=browser&source=altfhir&ien=` → loads `/altfhir?ien=` |
+
+### Official CQL vs AI Consult
+
+| Path | Host / route | Updates SETPOP? |
+|------|----------------|-----------------|
+| **Re-evaluate CQL** | cds1 `POST /quality/evaluate-cohort` (Node sidecar) | Yes |
+| **AI Consult** | cds1 `POST /analyze` (Java Stage 2) | No (advisories / pick-lists) |
+| Heuristic recompute | `POST /fhir-quality-recompute` | Yes (writeback closed-loop only) |
 
 Per-DFN population flags are optional until stored:
 
