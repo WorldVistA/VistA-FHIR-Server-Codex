@@ -16,7 +16,8 @@ Routes (Codex M HTML):
 2. **Brief IPP criteria**
 3. **Current summary results** — IPP / DENOM / NUMER / DENEX / rate (from curated CQL cohort when available)
 4. **Measure calculation** — CQM tool versions + link to calculation docs
-5. **Patient table** — IPP / DENOM / NUMER / DENEX / evidence, FHIR browser (live + source bundle), rehmp, AI Consult, altfhir bundle
+5. **Patient table** — IPP / DENOM / NUMER / DENEX / evidence, MeasureReport (individual JSON), FHIR browser (live + source bundle), rehmp, AI Consult, altfhir bundle
+6. **MeasureReports** — summary + individual JSON under `/filesystem/quality/measurereports/{measure}/` (built from `SETPOP_MANIFEST.tsv`, not native `/fhir/MeasureReport` yet)
 
 Per-DFN population flags are optional until stored:
 

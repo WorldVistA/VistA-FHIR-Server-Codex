@@ -23,13 +23,23 @@ SEED ; Ensure catalog + metadata exist (versioned)
  IF VER<6 DO SEED2
  IF VER<7 DO SEED125
  IF VER<8 DO SEEDC0X
- SET ^C0FQUAL(0)=8
+ IF VER<9 DO SEED138L
+ IF VER<10 DO SEED138A
+ SET ^C0FQUAL(0)=10
  QUIT
  ;
 SEEDC0X ; 2026-07-26 C0X population IPP → CQL SETPOP aggregates
  DO SETSUM("CMS165v14",23,19,16,15,0,"2026-07-26","c0x IPP→CQL (19 IPP / 16 DENOM / 15 NUMER)")
  DO SETSUM("CMS122v14",9,5,4,0,0,"2026-07-26","c0x IPP→CQL")
  DO SETSUM("CMS130v14",17,13,9,1,0,"2026-07-26","c0x IPP→CQL")
+ QUIT
+ ;
+SEED138L ; 2026-07-29 fhirdev live /fhir CQL for CMS138 curated DFNs
+ DO SETSUM("CMS138v14",33,26,0,0,0,"2026-07-29","fhirdev live /fhir CQL (26 IPP / 0 DENOM / 0 NUMER)")
+ QUIT
+ ;
+SEED138A ; 2026-07-29 AssessmentPerformed + Denominator 1 map
+ DO SETSUM("CMS138v14",33,26,26,2,0,"2026-07-29","fhirdev live /fhir CQL (26 IPP / 26 DENOM / 2 NUMER; AssessmentPerformed)")
  QUIT
  ;
 SEED130 ; Activate CMS130 + selected-18 CQL aggregates (2026-07-25)
@@ -53,7 +63,7 @@ SEED138 ; Activate CMS138 + selected-18 CQL aggregates (2026-07-25)
  SET IPP=IPP_" intervention per CMS138v14"
  DO SETMEAS("CMS138v14","Tobacco Use: Screening and Cessation Intervention","Social-history Observation, Procedure/Medication","A","First-wave; CQL/VSAC path ready")
  DO SETMETA("CMS138v14",IPP,"Calendar year 2026",DOCS,TOOLS,"official-cql")
- DO SETSUM("CMS138v14",18,1,0,0,0,"2026-07-25","selected-18 CQL (IPP=1; DENOM/NUMER=0 in this cohort)")
+ DO SETSUM("CMS138v14",33,26,0,0,0,"2026-07-29","fhirdev live /fhir CQL (26 IPP / 0 DENOM / 0 NUMER)")
  QUIT
  ;
 SEED2 ; Activate CMS2 + selected-18 CQL aggregates (2026-07-25)
@@ -300,13 +310,17 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
  SET CURL="/filesystem/c0x/index.html?measure="_CMS
  DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">C0X population IPP</a>")
+ SET CURL="/filesystem/quality/measurereports/"_CMS_"/summary.json"
+ DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">Summary MeasureReport</a>")
+ SET CURL="/filesystem/quality/measurereports/"_CMS_"/index.html"
+ DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">MeasureReport index</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  DO MHEAD(.RTN,CMS,STAT,FOCUS,NOTE)
  ; Curated CQL cohort rows from ^C0FQUAL("POP") — always listed first
  DO ADDLN^C0FHIR(.RTN,"<h2>Curated CQL cohort</h2>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Per-DFN flags from SETPOP^C0FQUAL (selected-18 / showcase CQL).</p>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
- DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>FHIR browser</th><th>rehmp</th><th>AI Consult</th><th>Bundle</th></tr>")
+ DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>AI Consult</th><th>Bundle</th></tr>")
  SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=0
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:+DFN<1  DO
  . SET CNT=CNT+1
@@ -319,12 +333,14 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET SURL=$SELECT(IEN>0:"/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN,1:BURL)
  . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
  . SET AURL="/aiconsult?dfn="_DFN_"&measure="_CMS
+ . SET LURL="/filesystem/quality/measurereports/"_CMS_"/Patient-"_DFN_".json"
  . SET ROW="<tr><td>"_DFN_"</td><td>"_$$HTMLESC^C0FHIR(NAME)_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(IPP)_""">"_IPP_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENOM)_""">"_DENOM_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(NUMER)_""">"_NUMER_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
+ . SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
  . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a>"
  . IF IEN>0 SET ROW=ROW_" · <a href="""_SURL_""">source bundle</a>"
  . SET ROW=ROW_"</td><td><a href="""_RURL_""">rehmp</a></td>"
@@ -332,7 +348,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . IF IEN>0 SET ROW=ROW_"<td><a href=""/altfhir?ien="_IEN_""">altfhir</a></td></tr>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
- IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""11"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
+ IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<h2>Patients (graph source)</h2>")
@@ -340,7 +356,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  IF ROOT="" DO  GOTO MDONE
  . DO ADDLN^C0FHIR(.RTN,"<p>No fhir-intake graph root is available.</p>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
- DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>FHIR browser</th><th>rehmp</th><th>AI Consult</th><th>Bundle</th></tr>")
+ DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>AI Consult</th><th>Bundle</th></tr>")
  SET CNT=0,DFN=0
  FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN)) QUIT:+DFN<1!(CNT>250)  DO
  . SET IEN=$ORDER(@ROOT@("DFN",DFN,""),-1) QUIT:+IEN<1
@@ -358,26 +374,29 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET SURL="/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN
  . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
  . SET AURL="/aiconsult?dfn="_DFN_"&measure="_CMS
+ . SET LURL="/filesystem/quality/measurereports/"_CMS_"/Patient-"_DFN_".json"
  . SET ROW="<tr><td>"_DFN_"</td><td>"_$$HTMLESC^C0FHIR(NAME)_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(IPP)_""">"_IPP_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENOM)_""">"_DENOM_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(NUMER)_""">"_NUMER_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
+ . IF FLAG SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
+ . ELSE  SET ROW=ROW_"<td class=""muted"">—</td>"
  . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a>"
  . SET ROW=ROW_" · <a href="""_SURL_""">source bundle</a></td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
  . SET ROW=ROW_"<td><a href="""_AURL_""">aiconsult</a></td>"
  . SET ROW=ROW_"<td><a href=""/altfhir?ien="_IEN_""">altfhir</a></td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
- IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""11"">No graph-linked patients found.</td></tr>")
+ IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No graph-linked patients found.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
 MDONE ;
  DO FTR(.RTN)
  QUIT
  ;
 MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
- NEW IPP,PERIOD,DOCS,TOOLS,MODE,N,IPPC,DENOMC,NUMERC,DENEXC,ASOF,COHORT,RATE,LINE
+ NEW IPP,PERIOD,DOCS,TOOLS,MODE,N,IPPC,DENOMC,NUMERC,DENEXC,ASOF,COHORT,RATE,LINE,MURL
  SET IPP=$$META(CMS,1),PERIOD=$$META(CMS,2),DOCS=$$META(CMS,3)
  SET TOOLS=$$META(CMS,4),MODE=$$META(CMS,5)
  SET N=+$$SUM(CMS,1),IPPC=+$$SUM(CMS,2),DENOMC=+$$SUM(CMS,3)
@@ -408,6 +427,10 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  . IF ASOF'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">As of "_$$HTMLESC^C0FHIR(ASOF)_"</p>")
  . IF COHORT'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Cohort: "_$$HTMLESC^C0FHIR(COHORT)_"</p>")
  ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">No aggregate CQL/heuristic summary stored yet for this measure.</p>")
+ SET MURL="/filesystem/quality/measurereports/"_CMS_"/summary.json"
+ DO ADDLN^C0FHIR(.RTN,"<p><a href="""_MURL_""">Summary MeasureReport (JSON)</a>")
+ SET MURL="/filesystem/quality/measurereports/"_CMS_"/Bundle-all.json"
+ DO ADDLN^C0FHIR(.RTN," · <a href="""_MURL_""">All MeasureReports (Bundle)</a></p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
@@ -415,7 +438,7 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  DO ADDLN^C0FHIR(.RTN,"<p><strong>CQM tools:</strong> "_$$HTMLESC^C0FHIR(TOOLS)_"</p>")
  IF DOCS'="" DO ADDLN^C0FHIR(.RTN,"<p><a href="""_$$HTMLESC^C0FHIR(DOCS)_""">Documentation of measure calculation</a></p>")
  ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">No calculation doc link configured.</p>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Per-DFN flags: SETPOP^C0FQUAL(cms,dfn,ipp,denom,numer,denex,evidence,mode).</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Per-DFN flags: SETPOP^C0FQUAL. MeasureReports from SETPOP_MANIFEST under <a href=""/filesystem/quality/measurereports/index.html"">/filesystem/quality/measurereports/index.html</a> (directory URLs are not listable).</p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  QUIT
  ;
@@ -423,6 +446,57 @@ PCLS(V) ; CSS class for Yes/No/—
  IF V="Yes" QUIT "yes"
  IF V="No" QUIT "no"
  QUIT "na"
+ ;
+QMRHTML(RTN,FILTER) ; Serve MeasureReport index.html (directory URLs hit FILESYS EISDIR)
+ NEW CMS,DIR,FILE,OK,TMP
+ KILL RTN
+ SET CMS=$$TRIM^C0FHIR($GET(FILTER("measure")))
+ IF CMS="" SET CMS=$$QMRPATH($GET(HTTPREQ("path")))
+ IF $EXTRACT(CMS,$LENGTH(CMS))="/" SET CMS=$EXTRACT(CMS,1,$LENGTH(CMS)-1)
+ IF CMS="index.html"!(CMS="index.json") SET CMS=""
+ SET DIR=$$QMRDIR()
+ IF DIR="" DO  QUIT
+ . SET HTTPERR=404
+ . SET RTN(1)="MeasureReport filesystem root not found"
+ SET FILE=$SELECT(CMS'="":CMS_"/index.html",1:"index.html")
+ SET TMP=$NA(^TMP("C0FQMR",$J))
+ KILL @TMP
+ SET OK=$$FTGOK^C0FHIRWS(DIR,FILE,TMP)
+ IF 'OK DO  QUIT
+ . SET HTTPERR=404
+ . SET RTN(1)="MeasureReport index not found: "_FILE
+ MERGE RTN=@TMP
+ KILL @TMP
+ SET HTTPRSP("mime")="text/html"
+ QUIT
+ ;
+QMRPATH(PATH) ; $$ - measure id from /filesystem/quality/measurereports/{measure}[/]
+ NEW REST
+ SET PATH=$PIECE($GET(PATH),"?",1)
+ IF $EXTRACT(PATH)="/" SET PATH=$EXTRACT(PATH,2,$LENGTH(PATH))
+ IF PATH'["filesystem/quality/measurereports" QUIT ""
+ SET REST=$PIECE(PATH,"filesystem/quality/measurereports",2)
+ IF $EXTRACT(REST)="/" SET REST=$EXTRACT(REST,2,$LENGTH(REST))
+ IF $EXTRACT(REST,$LENGTH(REST))="/" SET REST=$EXTRACT(REST,1,$LENGTH(REST)-1)
+ IF REST="" QUIT ""
+ IF REST["/" QUIT $PIECE(REST,"/") ; measure only; ignore trailing file names
+ QUIT REST
+ ;
+QMRDIR() ; $$ - filesystem root for published MeasureReports
+ NEW DIR,HOME
+ SET HOME=$ZTRNLNM("HOME")
+ IF HOME'="" SET DIR=HOME_"/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
+ SET DIR="/home/vehu/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
+ SET DIR="/home/osehra/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
+ QUIT ""
+ ;
+QMRDIRX(DIR) ; $$ - true when index.html exists in DIR
+ NEW OK,TMP
+ SET TMP=$NA(^TMP("C0FQMRX",$J))
+ KILL @TMP
+ SET OK=$$FTGOK^C0FHIRWS(DIR,"index.html",TMP)
+ KILL @TMP
+ QUIT +OK
  ;
 HDR(RTN,TITLE,SUB) ;
  DO ADDLN^C0FHIR(.RTN,"<!DOCTYPE HTML>")

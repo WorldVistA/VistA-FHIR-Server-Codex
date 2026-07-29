@@ -410,6 +410,7 @@ CINFO(ROOT,IEN,RIEN,RETURN) ; Add source Condition code/text to load log
  N CODE,DISP,NI,SYS,TXT
  Q:$G(ROOT)=""
  S IEN=+$G(IEN),RIEN=+$G(RIEN) Q:IEN<1!(RIEN<1)
+ S (CODE,SYS,DISP)=""
  S TXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","text"))
  S NI=0 F  S NI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI)) Q:+NI=0  D  Q:CODE'=""
  . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",NI,"code"))

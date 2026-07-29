@@ -65,6 +65,14 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . SET QPARAMS(1)="U^measure"
  . DO addService^%webutils("GET","fhir-quality-dashboards/{measure}","QDASHES^C0FHIRWS","","","",.QPARAMS)
  IF $T(WSASSET^C0FHIRWS)'="" DO addService^%webutils("GET","filesystem/{file}","WSASSET^C0FHIRWS")
+ ; MeasureReport indexes: bare/trailing-slash dirs fail in FILESYS^%webapi (EISDIR).
+ IF $T(QMRHTML^C0FQUAL)'="" DO
+ . DO addService^%webutils("GET","filesystem/quality/measurereports","QMRHTML^C0FQUAL")
+ . DO addService^%webutils("GET","filesystem/quality/measurereports/","QMRHTML^C0FQUAL")
+ . NEW MQ
+ . SET MQ(1)="U^measure"
+ . DO addService^%webutils("GET","filesystem/quality/measurereports/{measure}","QMRHTML^C0FQUAL","","","",.MQ)
+ . DO addService^%webutils("GET","filesystem/quality/measurereports/{measure}/","QMRHTML^C0FQUAL","","","",.MQ)
  ; Seed quality-measure catalog when routine is present
  IF $T(SEED^C0FQUAL)'="" DO SEED^C0FQUAL
  IF $T(WS^C0FWAIS)'="" DO addService^%webutils("GET","aiconsult","WS^C0FWAIS")
