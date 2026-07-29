@@ -144,14 +144,17 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  . SET RTN("entry",IDX,"resource","category",2,"coding",1,"display")="SDOH"
  . SET RTN("entry",IDX,"resource","category",2,"text")="SDOH"
  SET STATUS=$PIECE($GET(PROB("status")),"^")
- IF STATUS="A" DO
- . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-clinical"
+ ; con-4: abatement requires clinicalStatus inactive|resolved|remission.
+ ; Prefer resolved when a resolved date exists, even if VPR status is still A.
+ SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-clinical"
+ IF +$GET(PROB("resolved"))>0!(STATUS="R") DO
+ . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="resolved"
+ IF STATUS="I",+$GET(PROB("resolved"))<1 DO
+ . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="inactive"
+ IF STATUS="A",+$GET(PROB("resolved"))<1 DO
  . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="active"
- IF STATUS="I"!(STATUS="R") DO
- . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-clinical"
- . ; VPR reports resolved problems as inactive with a resolved date.
- . IF +$GET(PROB("resolved"))>0!(STATUS="R") SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="resolved"
- . E  SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="inactive"
+ IF '$DATA(RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")) DO
+ . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")=$SELECT(STATUS="I":"inactive",1:"active")
  IF $GET(PROB("unverified"))=1 DO
  . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-ver-status"
  . SET RTN("entry",IDX,"resource","verificationStatus","coding",1,"code")="unconfirmed"
@@ -175,8 +178,9 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://snomed.info/sct"
  . SET RTN("entry",IDX,"resource","code","coding",1,"code")=SCT
  . SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
+ . ; Never attach ICD display text to an SCT coding (Inferno display binding).
  . IF $GET(PROB("sctt"))'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$GET(PROB("sctt"))
- . E  IF $GET(PROB("icdd"))'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$GET(PROB("icdd"))
+ . E  IF $$SCTDISP(TXT)'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$$SCTDISP(TXT)
  IF SCT="" DO
  . SET SCT=$SELECT($GET(PROB("icd"))'="":$GET(PROB("icd")),$GET(PROB("sctc"))'="":$GET(PROB("sctc")),1:"")
  . IF SCT="" QUIT
@@ -188,7 +192,11 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  . E  IF $GET(PROB("sctt"))'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=$GET(PROB("sctt"))
  IF +$GET(PROB("onset"))>0 SET RTN("entry",IDX,"resource","onsetDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("onset")))
  IF +$GET(PROB("entered"))>0 SET RTN("entry",IDX,"resource","recordedDate")=$$FM2FHIR^C0FHIRBU($GET(PROB("entered")))
- IF +$GET(PROB("resolved"))>0 SET RTN("entry",IDX,"resource","abatementDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("resolved")))
+ IF +$GET(PROB("resolved"))>0 DO
+ . SET RTN("entry",IDX,"resource","abatementDateTime")=$$FM2FHIR^C0FHIRBU($GET(PROB("resolved")))
+ . ; Safety net for con-4 if status mapping above missed.
+ . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-clinical"
+ . SET RTN("entry",IDX,"resource","clinicalStatus","coding",1,"code")="resolved"
  ; assertedDate MS extension: prefer entered, else onset.
  SET ADT=+$GET(PROB("entered"))
  IF ADT<1 SET ADT=+$GET(PROB("onset"))
@@ -197,6 +205,13 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  . SET RTN("entry",IDX,"resource","extension",1,"valueDateTime")=$$FM2FHIR^C0FHIRBU(ADT)
  DO CONDNOTE(.RTN,.PROB,IDX)
  QUIT
+ ;
+SCTDISP(TXT) ; $$ - problem name without trailing "(SCT nnn)" for coding.display
+ NEW T
+ SET T=$$TRIM^C0FHIR($GET(TXT))
+ IF T[" (SCT " SET T=$$TRIM^C0FHIR($PIECE(T," (SCT ",1))
+ IF T["(SCT " SET T=$$TRIM^C0FHIR($PIECE(T,"(SCT ",1))
+ QUIT T
  ;
 CODESYS(CODE,TOKEN) ; $$ - FHIR Coding.system from code shape + optional VPR token
  NEW C,Y

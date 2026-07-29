@@ -215,11 +215,13 @@ SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resourc
  SET CODE=$GET(PROC("type"))
  SET CODEVAL=$PIECE(CODE,"^")
  SET CODEDISP=$PIECE(CODE,"^",2)
- IF CODEVAL'="" DO
+ IF CODEVAL'="",$$ISCPT(CODEVAL) DO
  . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://www.ama-assn.org/go/cpt"
  . SET RTN("entry",IDX,"resource","code","coding",1,"code")=CODEVAL
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
  . IF CODEDISP'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=CODEDISP
  IF NAME="" SET NAME=CODEDISP
+ IF NAME="" SET NAME=CODEVAL
  IF NAME'="" SET RTN("entry",IDX,"resource","code","text")=NAME
  SET DATE=+$GET(PROC("dateTime"))
  IF DATE>0 SET RTN("entry",IDX,"resource","performedDateTime")=$$FM2FHIR^C0FHIRBU(DATE)
@@ -231,12 +233,23 @@ SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resourc
  . IF +$PIECE(PROV,"^")>0 DO
  .. SET RTN("entry",IDX,"resource","performer",1,"actor","identifier","system")="urn:va:user"
  .. SET RTN("entry",IDX,"resource","performer",1,"actor","identifier","value")=+$PIECE(PROV,"^")
+ .. ; FHIR identifier.value is string; force JSON string type.
+ .. SET RTN("entry",IDX,"resource","performer",1,"actor","identifier","value","\s")=""
  SET CAT=$$PCAT($GET(SRC))
  IF CAT'="" SET RTN("entry",IDX,"resource","category","text")=CAT
  SET RTN("entry",IDX,"resource","identifier",1,"system")="urn:va:procedure-source-id"
  SET RTN("entry",IDX,"resource","identifier",1,"value")=$GET(SRC)_":"_$GET(PROC("id"))
+ SET RTN("entry",IDX,"resource","identifier",1,"value","\s")=""
  DO PROCNOTE(.RTN,.PROC,IDX)
  QUIT
+ ;
+ISCPT(CODE) ; $$ - true when code looks like CPT (not Synthea OS5 hybrids like 2870N)
+ SET CODE=$$UPCASE^C0FHIR($$TRIM^C0FHIR($GET(CODE)))
+ ; Category I: 5 digits. Optional 1-char modifier. Category III: 4 digits + T.
+ IF CODE?5N QUIT 1
+ IF CODE?5N1U QUIT 1
+ IF CODE?4N1"T" QUIT 1
+ QUIT 0
  ;
 PROCNOTE(RTN,PROC,IDX) ; Add procedure note/interpretation text when available
  NEW I,TXT

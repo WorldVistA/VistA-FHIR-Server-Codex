@@ -105,6 +105,9 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D REF(CROOT,SUB,"encounter",$G(@RES@("context","reference")))
  D CODEABLE(CROOT,SUB,"code",$NA(@RES@("code")))
  D CODEABLE(CROOT,SUB,"category",$NA(@RES@("category")))
+ ; Encounter.type coding tokens. Use "type-code" so it never collides with
+ ; resourceType indexed under POS("type",resourceType,sub).
+ D CODEABLE(CROOT,SUB,"type-code",$NA(@RES@("type")))
  D CODEABLE(CROOT,SUB,"clinical-status",$NA(@RES@("clinicalStatus")))
  D CODEABLE(CROOT,SUB,"status",$NA(@RES@("status")))
  I $G(@RES@("status"))'="" D SET(CROOT,SUB,"status",$G(@RES@("status")))
@@ -384,6 +387,9 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  D APPLY(.CAND,CROOT,"do-not-perform",$G(FILTER("do-not-perform")),"TOKEN")
  D APPLY(.CAND,CROOT,"clinical-status",$G(FILTER("clinical-status")),"TOKEN")
  D APPLY(.CAND,CROOT,"category",$G(FILTER("category")),"TOKEN")
+ ; Encounter.type search -> type-code index. Skip when FILTER("type") is the
+ ; resourceType route token (legacy fhir/{type} or equal to RES).
+ I $$USETYPE($G(FILTER("type")),RES) D APPLY(.CAND,CROOT,"type-code",$G(FILTER("type")),"TOKEN")
  D APPLY(.CAND,CROOT,"gender",$G(FILTER("gender")),"TOKEN")
  D APPLY(.CAND,CROOT,"birthdate",$G(FILTER("birthdate")),"DATE")
  D APPLY(.CAND,CROOT,"date",$G(FILTER("date")),"DATE")
@@ -530,6 +536,18 @@ PATOF(RES) ; $$ - Patient id from resource subject/patient reference
  I X="" S X=$G(@RES@("patient","reference"))
  I X["Patient/" Q +$P(X,"Patient/",2)
  I X?1.N Q +X
+ Q 0
+ ;
+USETYPE(VAL,RES) ; $$ - true when FILTER type is a clinical type token
+ ; Reject resourceType route tokens and MIME types leaked into HTTPARGS("type")
+ ; (e.g. Accept: application/json -> type=application/json).
+ N V
+ S V=$G(VAL) I V="" Q 0
+ I V=$G(RES) Q 0
+ I $$RESTYPE(V)'="" Q 0
+ I V["/" Q 0  ; MIME or URI without code; system|code still allowed via below
+ I V["|" Q 1  ; system|code
+ I V?1.N.E Q 1  ; numeric code (optionally with suffix)
  Q 0
  ;
 RESTYPE(X) ; $$ - normalize supported resource type

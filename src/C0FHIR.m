@@ -280,13 +280,8 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  IF ENDDT<1 SET ENDDT=+$GET(ENC("dateTime"))
  IF ENDDT>0 SET RTN("entry",IDX,"resource","period","end")=$$FM2FHIR^C0FHIRBU(ENDDT)
  DO SETETYP(.RTN,IDX,.ENC)
- ; US Core Encounter.type requires a CodeableConcept coding when possible.
- IF '$DATA(RTN("entry",IDX,"resource","type",1,"coding")) DO
- . SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://snomed.info/sct"
- . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code")="185349003"
- . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code","\s")=""
- . SET RTN("entry",IDX,"resource","type",1,"coding",1,"display")="Encounter for check up"
- . IF $GET(RTN("entry",IDX,"resource","type",1,"text"))="" SET RTN("entry",IDX,"resource","type",1,"text")="Encounter for check up"
+ ; Inferno patient+type search uses SCT 185349003; keep it even when CPT is present.
+ DO ADDCHKUP(.RTN,IDX)
  DO SETEPRV(.RTN,IDX,.ENC,+$GET(DFN),ENDDT)
  DO SETEFAC(.RTN,IDX,.ENC)
  DO SETELOC(.RTN,IDX,.ENC)
@@ -343,22 +338,36 @@ ENCCOD(CODE,NAME,TYPE) ; Add encounter coding from OS5/CPT and recovered SNOMED
  SET NAME=$GET(NAME)
  IF CODE="" QUIT
  DO ENCSNOM(CODE,.SCT,.SDISP)
- IF SCT'="" DO
- . SET TYPE("coding",1,"system")="http://snomed.info/sct"
- . SET TYPE("coding",1,"code")=SCT
- . SET TYPE("coding",1,"code","\s")=""
- . IF SDISP'="" SET TYPE("coding",1,"display")=SDISP
- . SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
- . SET TYPE("coding",2,"code")=CODE
- . SET TYPE("coding",2,"code","\s")=""
- . IF NAME'="" SET TYPE("coding",2,"display")=NAME
- ELSE  DO
- . SET TYPE("coding",1,"system")="http://www.ama-assn.org/go/cpt"
- . SET TYPE("coding",1,"code")=CODE
- . SET TYPE("coding",1,"code","\s")=""
- . IF NAME'="" SET TYPE("coding",1,"display")=NAME
+ IF SCT="" SET SCT="185349003",SDISP="Encounter for check up"
+ SET TYPE("coding",1,"system")="http://snomed.info/sct"
+ SET TYPE("coding",1,"code")=SCT
+ SET TYPE("coding",1,"code","\s")=""
+ IF SDISP'="" SET TYPE("coding",1,"display")=SDISP
+ SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
+ SET TYPE("coding",2,"code")=CODE
+ SET TYPE("coding",2,"code","\s")=""
+ IF NAME'="" SET TYPE("coding",2,"display")=NAME
  IF NAME="" SET NAME=SDISP
  IF NAME'="" SET TYPE("text")=NAME
+ QUIT
+ ;
+ADDCHKUP(RTN,IDX) ; Ensure Encounter.type includes SCT 185349003 for type search
+ NEW CI,HAVE,N,TXT
+ SET HAVE=0,CI=0
+ FOR  SET CI=$ORDER(RTN("entry",IDX,"resource","type",1,"coding",CI)) QUIT:CI<1  DO  QUIT:HAVE
+ . IF $GET(RTN("entry",IDX,"resource","type",1,"coding",CI,"code"))="185349003" SET HAVE=1
+ IF HAVE QUIT
+ ; Shift existing codings up and insert check-up as coding 1.
+ SET N=$ORDER(RTN("entry",IDX,"resource","type",1,"coding",""),-1)
+ FOR CI=N:-1:1 DO
+ . MERGE RTN("entry",IDX,"resource","type",1,"coding",CI+1)=RTN("entry",IDX,"resource","type",1,"coding",CI)
+ . KILL RTN("entry",IDX,"resource","type",1,"coding",CI)
+ SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://snomed.info/sct"
+ SET RTN("entry",IDX,"resource","type",1,"coding",1,"code")="185349003"
+ SET RTN("entry",IDX,"resource","type",1,"coding",1,"code","\s")=""
+ SET RTN("entry",IDX,"resource","type",1,"coding",1,"display")="Encounter for check up"
+ SET TXT=$GET(RTN("entry",IDX,"resource","type",1,"text"))
+ IF TXT="" SET RTN("entry",IDX,"resource","type",1,"text")="Encounter for check up"
  QUIT
  ;
 ENCSNOM(CODE,SCT,SDISP) ; Recover source SNOMED mapping for one encounter OS5/CPT code
@@ -681,11 +690,15 @@ SETESTD(RTN,IDX,VIEN) ; Add V STANDARD CODES rows as Encounter.reasonCode
  . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"system")=$$STDSYS(SYS,CODE)
  . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"code")=CODE
  . SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"code","\s")=""
- . IF DISP'="" SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=DISP
+ . ; Never put POV/support text on SCT coding.display (Inferno terminology binding).
+ . IF $$STDSYS(SYS,CODE)="http://snomed.info/sct" DO
+ . . NEW LEX SET LEX=$$SCTDISP(CODE)
+ . . IF LEX'="" SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=LEX
+ . E  IF DISP'="" SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=DISP
  . IF DISP'="" SET RTN("entry",IDX,"resource","reasonCode",N,"text")=DISP
  . IF SUP'="" DO
  . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"url")=$$RCSUPURL()
- . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"valueString")=$$STDSUP(SUP)
+ . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"valueString")=$$TRIM($$STDSUP(SUP))
  QUIT
  ;
 STDDISP(SUP,CODE) ; Best display text for a V STANDARD CODES row
@@ -694,13 +707,14 @@ STDDISP(SUP,CODE) ; Best display text for a V STANDARD CODES row
  SET TXT=$$SCTDISP(CODE)
  IF TXT'="" QUIT TXT
  IF SUP'="" DO
- . SET LINE=$PIECE(SUP,$CHAR(10),1)
+ . SET LINE=$$TRIM($PIECE(SUP,$CHAR(10),1))
  . IF $EXTRACT(LINE,1,9)="Display: " SET TXT=$PIECE($EXTRACT(LINE,10,$LENGTH(LINE))," | Support: ",1) QUIT
  . IF LINE[" (SCT "_CODE_")" SET TXT=$PIECE(LINE," (SCT "_CODE_")",1) QUIT
  . IF LINE["SCT "_CODE SET TXT=$PIECE(LINE,"SCT "_CODE,1)
  . IF TXT'="" SET TXT=$$TRIM($TRANSLATE(TXT,"()-","   "))
- . IF TXT="" SET TXT=LINE
- QUIT TXT
+ . ; Avoid POV boilerplate as SCT display source.
+ . IF TXT="",$$UPCASE(LINE)'["PURPOSE OF VISIT" SET TXT=LINE
+ QUIT $$TRIM(TXT)
  ;
 STDSUP(SUP) ; Support text from V STANDARD CODES comment
  NEW I,LINE,TXT
