@@ -77,6 +77,7 @@ HFEXT(ROOT,IEN,RIEN) ; $$ - true if Encounter has C0FW Health Factor extensions
  ;
 NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Native C0FW adapter dispatch
  I DOMAIN="Observation" D LOAD^C0FWVIT(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="Smoking" D LOAD^C0FWSMOK(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="AIConsult" D LOAD^C0FWAIC(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Lab" D LOAD^C0FWLAB(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Condition" D LOAD^C0FWCON(ROOT,IEN,RIEN,.RETURN) Q
@@ -85,6 +86,7 @@ NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Native C0FW adapter dispatch
  I DOMAIN="Allergy" D LOAD^C0FWALG(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Medication" D LOAD^C0FWMED(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Procedure" D LOAD^C0FWPRC(ROOT,IEN,RIEN,.RETURN) Q
+ I DOMAIN="ServiceRequest" D LOAD^C0FWSR(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="CarePlan" D LOAD^C0FWCP(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Appointment" D LOAD^C0FWAPT(ROOT,IEN,RIEN,.RETURN) Q
  I DOMAIN="Encounter" D LOAD^C0FWENC(ROOT,IEN,RIEN,.RETURN) Q
@@ -112,7 +114,7 @@ PERSIST(ROOT,IEN,RIEN,DOMAIN,RETURN) ; Persist response-only domain facts needed
  ;
 DOMAIN(ROOT,IEN,RIEN,TYPE) ; $$ - map FHIR resourceType to C0FW domain
  S TYPE=$G(TYPE)
- I TYPE="Observation" Q $S($$ISVITAL^C0FWVIT(ROOT,IEN,RIEN):"Observation",1:"Lab")
+ I TYPE="Observation" Q $S($$ISVITAL^C0FWVIT(ROOT,IEN,RIEN):"Observation",$$ISSMOK^C0FWSMOK(ROOT,IEN,RIEN):"Smoking",1:"Lab")
  I TYPE="DiagnosticReport" Q $S($$ISAIC^C0FWAIC(ROOT,IEN,RIEN):"AIConsult",1:"Lab")
  I TYPE="Encounter" Q "Encounter"
  I TYPE="Condition" Q "Condition"
@@ -122,6 +124,7 @@ DOMAIN(ROOT,IEN,RIEN,TYPE) ; $$ - map FHIR resourceType to C0FW domain
  I TYPE="MedicationRequest" Q "Medication"
  I TYPE="Medication" Q "Medication"
  I TYPE="Procedure" Q "Procedure"
+ I TYPE="ServiceRequest" Q "ServiceRequest"
  I TYPE="CarePlan" Q "CarePlan"
  I TYPE="Appointment" Q "Appointment"
  Q ""

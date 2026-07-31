@@ -131,21 +131,30 @@ ASSETMIME(FILE) ; $$ - HTTP MIME for browser asset
  Q "text/plain"
  ;
 BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhir bundles
- N ALTLBL,ALTRAW,BADGE,D,IEN,LOADURL,MEAS,RAWLBL,RAWURL,SRC,SRCNOTE,THEME,TOPLINKS
+ N ALTLBL,ALTRAW,BADGE,D,IEN,LOADURL,MEAS,MODE,RAWLBL,RAWURL,SRC,SRCNOTE,THEME,TOPLINKS
  S D=+$G(FILTER("dfn"))
  S IEN=+$G(FILTER("ien"))
  S MEAS=$G(FILTER("measure"))
+ S MODE=$$UPCASE^C0FHIR($G(FILTER("mode")))
  S SRC=$$UPCASE^C0FHIR($G(FILTER("source")))
  I SRC="SYNTHEA" S SRC="SHOWFHIR"
  I SRC="" S SRC=$S(IEN>0:"SHOWFHIR",1:"FHIR")
  I SRC="AICONSULT" D
  . S THEME="theme-light"
- . S BADGE="AI Consult"
- . S SRCNOTE="AI Consult Stage 2 response via /aiconsult"
+ . I MODE="QUALITY" D
+ . . S BADGE="Quality AI Consult"
+ . . S SRCNOTE="Quality AI Consult via /aiconsult?mode=quality"
+ . E  D
+ . . S BADGE="AI Consult"
+ . . S SRCNOTE="AI Consult Stage 2 response via /aiconsult"
  . S LOADURL="/aiconsult?dfn="_D_"&format=json&file=1&stage=2"
+ . I MODE="QUALITY" S LOADURL=LOADURL_"&mode=quality"
+ . E  I MODE'="" S LOADURL=LOADURL_"&mode="_MODE
  . I MEAS'="" S LOADURL=LOADURL_"&measure="_MEAS
- . S RAWLBL="raw ai consult"
+ . S RAWLBL=$S(MODE="QUALITY":"raw quality ai consult",1:"raw ai consult")
  . S RAWURL="/aiconsult?dfn="_D_"&format=json&file=1"
+ . I MODE="QUALITY" S RAWURL=RAWURL_"&mode=quality"
+ . E  I MODE'="" S RAWURL=RAWURL_"&mode="_MODE
  . I MEAS'="" S RAWURL=RAWURL_"&measure="_MEAS
  . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
  . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")

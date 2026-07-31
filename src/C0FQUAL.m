@@ -290,7 +290,7 @@ CATALOG(RTN) ;
  ;
 MEASURE(RTN,CMS) ; HTML single-measure dashboard
  NEW CNT,DFN,FOCUS,IEN,NAME,NOTE,ROOT,ROW,STAT,TITLE,RAW
- NEW AURL,BURL,CURL,FURL,LURL,RURL,SURL
+ NEW AURL,BURL,CURL,FURL,LURL,RURL
  NEW IPP,DENOM,NUMER,DENEX,EVID,MODE,FLAG
  DO SEED
  SET RAW=$$NORM($GET(CMS))
@@ -320,7 +320,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<h2>Curated CQL cohort</h2>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Per-DFN flags from SETPOP^C0FQUAL (selected-18 / showcase CQL).</p>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
- DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>AI Consult</th><th>Bundle</th></tr>")
+ DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
  SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=0
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:+DFN<1  DO
  . SET CNT=CNT+1
@@ -330,9 +330,8 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET EVID=$PIECE($GET(^C0FQUAL("POP",CMS,DFN)),"^",5)
  . SET IEN=0 IF ROOT'="" SET IEN=+$ORDER(@ROOT@("DFN",DFN,""),-1)
  . SET BURL="/fhir?dfn="_DFN_"&view=browser"
- . SET SURL=$SELECT(IEN>0:"/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN,1:BURL)
- . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
- . SET AURL="/fhir?dfn="_DFN_"&view=browser&source=aiconsult&measure="_CMS
+ . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp&measure="_CMS
+ . SET AURL="/fhir?dfn="_DFN_"&view=browser&source=aiconsult&mode=quality&measure="_CMS
  . SET LURL="/filesystem/quality/measurereports/"_CMS_"/Patient-"_DFN_".json"
  . SET FURL=$SELECT(IEN>0:"/fhir?dfn="_DFN_"&view=browser&source=altfhir&ien="_IEN,1:"")
  . SET ROW="<tr><td>"_DFN_"</td><td>"_$$HTMLESC^C0FHIR(NAME)_"</td>"
@@ -342,11 +341,10 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
  . SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
- . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a>"
- . IF IEN>0 SET ROW=ROW_" · <a href="""_SURL_""">source bundle</a>"
- . SET ROW=ROW_"</td><td><a href="""_RURL_""">rehmp</a></td>"
- . SET ROW=ROW_"<td><a href="""_AURL_""">aiconsult</a></td>"
- . IF FURL'="" SET ROW=ROW_"<td><a href="""_FURL_""">altfhir</a></td></tr>"
+ . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a></td>"
+ . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
+ . SET ROW=ROW_"<td><a href="""_AURL_""">quality ai</a></td>"
+ . IF FURL'="" SET ROW=ROW_"<td><a href="""_FURL_""">synthea</a></td></tr>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
  IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
@@ -357,7 +355,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  IF ROOT="" DO  GOTO MDONE
  . DO ADDLN^C0FHIR(.RTN,"<p>No fhir-intake graph root is available.</p>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
- DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>AI Consult</th><th>Bundle</th></tr>")
+ DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
  SET CNT=0,DFN=0
  FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN)) QUIT:+DFN<1!(CNT>250)  DO
  . SET IEN=$ORDER(@ROOT@("DFN",DFN,""),-1) QUIT:+IEN<1
@@ -372,9 +370,8 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . . SET EVID=$PIECE($GET(^C0FQUAL("POP",CMS,DFN)),"^",5)
  . ELSE  SET IPP="—",DENOM="—",NUMER="—",DENEX="—",EVID=""
  . SET BURL="/fhir?dfn="_DFN_"&view=browser"
- . SET SURL="/fhir?dfn="_DFN_"&view=browser&source=showfhir&ien="_IEN
- . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp"
- . SET AURL="/fhir?dfn="_DFN_"&view=browser&source=aiconsult&measure="_CMS
+ . SET RURL="/demos/cprs/index.html?dfn="_DFN_"&autoload=dfn&rehmpBase=/rehmp&measure="_CMS
+ . SET AURL="/fhir?dfn="_DFN_"&view=browser&source=aiconsult&mode=quality&measure="_CMS
  . SET LURL="/filesystem/quality/measurereports/"_CMS_"/Patient-"_DFN_".json"
  . SET FURL="/fhir?dfn="_DFN_"&view=browser&source=altfhir&ien="_IEN
  . SET ROW="<tr><td>"_DFN_"</td><td>"_$$HTMLESC^C0FHIR(NAME)_"</td>"
@@ -385,11 +382,10 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
  . IF FLAG SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td>"
- . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a>"
- . SET ROW=ROW_" · <a href="""_SURL_""">source bundle</a></td>"
+ . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a></td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
- . SET ROW=ROW_"<td><a href="""_AURL_""">aiconsult</a></td>"
- . SET ROW=ROW_"<td><a href="""_FURL_""">altfhir</a></td></tr>"
+ . SET ROW=ROW_"<td><a href="""_AURL_""">quality ai</a></td>"
+ . SET ROW=ROW_"<td><a href="""_FURL_""">synthea</a></td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
  IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No graph-linked patients found.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")

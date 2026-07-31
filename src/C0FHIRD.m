@@ -721,6 +721,10 @@ GETPROC(RTN,DFN,BEG,END,MAX) ; Add Procedure resources
  DO GETPROC^C0FHIRP(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
  QUIT
  ;
+GETSRQ(RTN,DFN,BEG,END,MAX) ; Add ServiceRequest resources (radiology orders)
+ DO GETSRQ^C0FHIRQ(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
+ QUIT
+ ;
 GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations (chemistry + micro)
  DO GETLAB^C0FHIRL(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
  QUIT

@@ -56,7 +56,7 @@ evidence acceptance, HTTP hardening) is in progress on this branch.
    medications, labs, and procedures when the first pass could not handle
    them natively. Native C0FW filing is real for encounters, diagnoses
    (POV), health factors, and TIU notes. Lab, Allergy, Medication,
-   Procedure, CarePlan, and Appointment adapters return `not_implemented`
+   CarePlan, and Appointment adapters return `not_implemented` (Procedure files via `PRCADD^SYNDHP65` in `C0FWPRC`)
    or are placeholders (`C0FWCP.m`). The completion target is native C0FW
    coverage for every domain — no SYN or ISI routine anywhere in the
    solution — after which those repos become reference-only. See

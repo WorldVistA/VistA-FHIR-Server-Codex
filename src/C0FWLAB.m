@@ -9,6 +9,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Observation lab result through LABADD
  I TYPE="DiagnosticReport" D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"DiagnosticReport lab panels are not filed by C0FWLAB yet; accept Observation actions for atomic results.",.RETURN) Q
  I TYPE'="Observation" D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"C0FWLAB only files laboratory Observation resources",.RETURN) Q
  I $$ISVITAL^C0FWVIT(ROOT,IEN,RIEN) D SKIP^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Observation is a vital-sign; routed to C0FWVIT instead",.RETURN) Q
+ I $$ISSMOK^C0FWSMOK(ROOT,IEN,RIEN) D SKIP^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Observation is smoking status; routed to C0FWSMOK instead",.RETURN) Q
  S X="LABADD^SYNDHP63"
  I $T(@X)="" D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"SYNDHP63 is not installed; cannot file labs through ISI",.RETURN) Q
  S X="LAB^ISIIMP12"

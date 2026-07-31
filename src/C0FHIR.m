@@ -1042,6 +1042,10 @@ GETPROC(RTN,DFN,BEG,END,MAX) ; Add Procedure resources
  DO GETPROC^C0FHIRD(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
  QUIT
  ;
+GETSRQ(RTN,DFN,BEG,END,MAX) ; Add ServiceRequest resources (radiology orders)
+ DO GETSRQ^C0FHIRD(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
+ QUIT
+ ;
 GETCP(RTN,DFN,BEG,END,MAX) ; Add CarePlan resources from SYN CP health factors
  DO GETCP^C0FHIRD(.RTN,$GET(DFN),$GET(BEG),$GET(END),$GET(MAX))
  QUIT
@@ -1615,6 +1619,11 @@ ALTCAP(OUT) ; Minimal CapabilityStatement for graph-source /altfhir
  SET OUT("rest",1,"resource",9,"type")="DocumentReference"
  SET OUT("rest",1,"resource",9,"interaction",1,"code")="read"
  SET OUT("rest",1,"resource",9,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",10,"type")="ServiceRequest"
+ SET OUT("rest",1,"resource",10,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",10,"interaction",2,"code")="search-type"
+ SET OUT("rest",1,"resource",10,"searchParam",1,"name")="patient"
+ SET OUT("rest",1,"resource",10,"searchParam",1,"type")="reference"
  DO FINAL^C0FHIRBU(.OUT)
  QUIT
  ;

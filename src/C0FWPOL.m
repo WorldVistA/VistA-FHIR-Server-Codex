@@ -19,6 +19,7 @@ DEFAULT(DOMAIN,PROF) ; $$ - conservative default engine
  I DOMAIN="Encounter" Q "native"
  I DOMAIN="HealthFactor" Q "native"
  I DOMAIN="Observation" Q "native"
+ I DOMAIN="Smoking" Q "native"
  I DOMAIN="Condition" Q "native"
  Q "native"
  ;
@@ -59,6 +60,7 @@ RPMSDEF(DOMAIN) ; $$ - RPMS first-pass deferred domains
  I DOMAIN="Lab" Q 1
  I DOMAIN="Medication" Q 1
  I DOMAIN="Procedure" Q 1
+ I DOMAIN="ServiceRequest" Q 1
  I DOMAIN="Appointment" Q 1
  I DOMAIN="CarePlan" Q 1
  Q 0

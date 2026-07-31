@@ -18,23 +18,24 @@ Routes (Codex M HTML):
 3. **Current summary results** — IPP / DENOM / NUMER / DENEX / rate (from curated CQL cohort when available)
 4. **Measure calculation** — CQM tool versions + link to calculation docs
 5. **Re-evaluate CQL** — button calls cds1 official CQL (not AI Consult `/analyze`)
-6. **Patient table** — IPP / DENOM / NUMER / DENEX / evidence, MeasureReport, FHIR browser (live + source), rehmp, AI Consult browser, altfhir browser
+6. **Patient table** — IPP / DENOM / NUMER / DENEX / evidence, MeasureReport, FHIR browser (live), rehmp, Quality AI Consult, Synthea bundle
 7. **MeasureReports** — summary + individual JSON under `/filesystem/quality/measurereports/{measure}/`
 
 ### Patient-table browser links
 
 | Column | Opens |
 |--------|--------|
-| FHIR browser | `/fhir?dfn=&view=browser` (live VistA) + optional `source=showfhir` |
-| AI Consult | `/fhir?dfn=&view=browser&source=aiconsult&measure=` → loads `/aiconsult` (cds1 `/analyze`) |
-| Bundle | `/fhir?dfn=&view=browser&source=altfhir&ien=` → loads `/altfhir?ien=` |
+| FHIR browser | `/fhir?dfn=&view=browser` (live VistA) |
+| rehmp | `/demos/cprs/…&measure=` — Notes **Quality AI Consult** uses that `measure` (else defaults CMS165/CMS122) |
+| Quality AI Consult | `/fhir?dfn=&view=browser&source=aiconsult&mode=quality&measure=` → `/aiconsult?mode=quality` |
+| Synthea bundle | `/fhir?dfn=&view=browser&source=altfhir&ien=` → `/altfhir?ien=` |
 
-### Official CQL vs AI Consult
+### Official CQL vs Quality AI Consult
 
 | Path | Host / route | Updates SETPOP? |
 |------|----------------|-----------------|
 | **Re-evaluate CQL** | cds1 `POST /quality/evaluate-cohort` (Node sidecar) | Yes |
-| **AI Consult** | cds1 `POST /analyze` (Java Stage 2) | No (advisories / pick-lists) |
+| **Quality AI Consult** | cds1 `POST /analyze?mode=quality` (Java Stage 2) | No (gap advisories / pick-lists) |
 | Heuristic recompute | `POST /fhir-quality-recompute` | Yes (writeback closed-loop only) |
 
 Per-DFN population flags are optional until stored:

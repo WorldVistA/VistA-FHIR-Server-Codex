@@ -129,8 +129,8 @@ SETMETA(ROOT,ID,ITEM) ; maintain summary and indexes
  S @ROOT@("items",ID,"meta","reminderId")=REM
  S @ROOT@("items",ID,"meta","reminderLabel")=$G(ITEM("reminder","label"))
  S @ROOT@("items",ID,"meta","httpStatus")=$G(ITEM("post","status"))
- S @ROOT@("items",ID,"meta","accepted")=$S($G(ITEM("post","persisted")):1,1:0)
- S @ROOT@("items",ID,"meta","archived")=$S($G(ITEM("archived")):1,1:0)
+ S @ROOT@("items",ID,"meta","accepted")=$$ACCEPTED(.ITEM)
+ S @ROOT@("items",ID,"meta","archived")=$S($$ISTRUE($G(ITEM("archived"))):1,1:0)
  I DFN'="" S @ROOT@("index","dfn",DFN,ID)=""
  I ICN'="" S @ROOT@("index","icn",ICN,ID)=""
  I REM'="" S @ROOT@("index","reminder",REM,ID)=""
@@ -139,9 +139,35 @@ SETMETA(ROOT,ID,ITEM) ; maintain summary and indexes
  S @ROOT@("index","created",KEY,ID)=""
  Q
  ;
+ACCEPTED(ITEM) ; $$ - 1 if writeback save shows accepted/persisted evidence
+ ; JSON boolean true often decodes as non-truthy in M; also accept response evidence.
+ I $$ISTRUE($G(ITEM("post","persisted"))) Q 1
+ I $G(ITEM("response","status"))="ok" Q 1
+ I $G(ITEM("response","ien"))'="" Q 1
+ I $G(ITEM("response","dfn"))'="" Q 1
+ I $G(ITEM("response","icn"))'="" Q 1
+ I $G(ITEM("response","loadStatus"))'="" Q 1
+ N HS S HS=$$UP($G(ITEM("post","status")))
+ I HS["APPLIED" Q 1
+ I $$ISTRUE($G(ITEM("post","ok"))),+HS,HS'<200,HS'>299 Q 1
+ Q 0
+ ;
+ISTRUE(X) ; $$ - JSON/M truthy helper for booleans and common strings
+ I X=1 Q 1
+ I X="true"!(X="TRUE")!(X="True")!(X="yes")!(X="YES") Q 1
+ Q 0
+ ;
+UP(X) ; $$ - uppercase
+ Q $TR(X,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ ;
 ADDLIST(OUT,ROOT,ID,COUNT,MAX) ; add summary row
+ N ITEM,ACC
  I COUNT'<MAX Q
  I $G(@ROOT@("items",ID,"meta","archived")) Q
+ ; Refresh accepted from artifact so older JSON-boolean saves list correctly.
+ M ITEM=@ROOT@("items",ID,"artifact")
+ S ACC=$$ACCEPTED(.ITEM)
+ I ACC'=$G(@ROOT@("items",ID,"meta","accepted")) S @ROOT@("items",ID,"meta","accepted")=ACC
  S COUNT=COUNT+1
  M OUT("items",COUNT)=@ROOT@("items",ID,"meta")
  Q
