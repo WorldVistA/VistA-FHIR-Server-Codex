@@ -4,12 +4,10 @@ C0FHIRL ; VAMC/JS - Laboratory observation builders
  QUIT  ; No default action
  ;
 GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
- NEW CNT,LRDFN,PAN
+ NEW CNT,FILLMAX,LRDFN,PAN
  DO ENVINIT^C0FHIR
  SET DFN=+$GET(DFN)
  IF DFN<1 QUIT
- SET LRDFN=+$GET(^DPT(DFN,"LR"))
- IF LRDFN<1 QUIT
  SET BEG=+$GET(BEG)
  IF BEG<1 SET BEG=1410101
  SET END=+$GET(END)
@@ -17,13 +15,17 @@ GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
  SET MAX=+$GET(MAX)
  IF MAX<1 SET MAX=200
  SET CNT=0
- ; Reserve 2 slots so LABMSFILL showcase rows are not crowded out at MAX.
- NEW FILLMAX SET FILLMAX=MAX IF FILLMAX>2 SET FILLMAX=FILLMAX-2
- DO GETLBSUB(.RTN,DFN,BEG,END,FILLMAX,"CH",.CNT,LRDFN,.PAN)
- IF CNT<FILLMAX DO GETLBSUB(.RTN,DFN,BEG,END,FILLMAX,"MI",.CNT,LRDFN)
- IF $DATA(PAN) DO ADDPANELS(.RTN,DFN,.PAN)
- ; CMS165 cohorts are quantity-heavy; ensure MS valueString/valueCodeableConcept exist.
- DO LABMSFILL(.RTN,DFN)
+ SET LRDFN=+$GET(^DPT(DFN,"LR"))
+ IF LRDFN>0 DO
+ . ; Reserve 2 slots so LABMSFILL showcase rows are not crowded out at MAX.
+ . SET FILLMAX=MAX IF FILLMAX>2 SET FILLMAX=FILLMAX-2
+ . DO GETLBSUB(.RTN,DFN,BEG,END,FILLMAX,"CH",.CNT,LRDFN,.PAN)
+ . IF CNT<FILLMAX DO GETLBSUB(.RTN,DFN,BEG,END,FILLMAX,"MI",.CNT,LRDFN)
+ . IF $DATA(PAN) DO ADDPANELS(.RTN,DFN,.PAN)
+ . ; CMS165 cohorts are quantity-heavy; ensure MS valueString/valueCodeableConcept exist.
+ . DO LABMSFILL(.RTN,DFN)
+ ; RPMS (and opt-in): intake-graph Observations + panel DiagnosticReports via C0FHIRLG.
+ IF $TEXT(ON^C0FHIRLG)'="",$$ON^C0FHIRLG() DO GETGRPLAB^C0FHIRLG(.RTN,DFN,BEG,END,MAX)
  QUIT
  ;
 LABMSFILL(RTN,DFN) ; Emit showcase qualitative labs when cohort has none
