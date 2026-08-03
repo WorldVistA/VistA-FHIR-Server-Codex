@@ -59,8 +59,8 @@ RPMSDEF(DOMAIN) ; $$ - RPMS first-pass deferred domains
  S DOMAIN=$G(DOMAIN)
  I DOMAIN="Lab" Q 1
  I DOMAIN="Medication" Q 1
- I DOMAIN="Procedure" Q 1
- I DOMAIN="ServiceRequest" Q 1
+ ; Procedure enabled via RPMS/PCE path in C0FWPRC (DATA2PCE / V CPT)
+ ; ServiceRequest enabled via C0FWSR / ORDER^RAMAG02 when RA package present
  I DOMAIN="Appointment" Q 1
  I DOMAIN="CarePlan" Q 1
  Q 0

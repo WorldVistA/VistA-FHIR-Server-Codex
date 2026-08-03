@@ -6,7 +6,7 @@ C0FQUAL ; VAMC/GPL - FHIR quality measure dashboards ; 23-JUL-2026
  ;   GET /fhir-quality-dashboards/{measure}
  ;
  ; ^C0FQUAL("MEAS",CMS)=TITLE^FOCUS^STATUS^NOTE
- ; ^C0FQUAL("META",CMS)=IPP^PERIOD^DOCS^TOOLS^MODE
+ ; ^C0FQUAL("META",CMS)=IPP^PERIOD^DOCS^TOOLS^MODE^DENOM^NUMER
  ; ^C0FQUAL("SUM",CMS)=N^IPP^DENOM^NUMER^DENEX^ASOF^COHORT
  ; ^C0FQUAL("POP",CMS,DFN)=IPP^DENOM^NUMER^DENEX^EVIDENCE^MODE
  ;
@@ -25,7 +25,27 @@ SEED ; Ensure catalog + metadata exist (versioned)
  IF VER<8 DO SEEDC0X
  IF VER<9 DO SEED138L
  IF VER<10 DO SEED138A
- SET ^C0FQUAL(0)=10
+ IF VER<11 DO SEEDCRIT
+ SET ^C0FQUAL(0)=11
+ QUIT
+ ;
+SEEDCRIT ; Brief IPP / DENOM / NUMER criteria (do not mix NUMER into IPP)
+ NEW DOCS,TOOLS
+ SET DOCS="https://github.com/glilly/HL7-FHIR-quality-testing/blob/master/docs/SEPTEMBER_MEASURE_INFERNO_ELEMENT_MAPPING.md"
+ SET TOOLS="cqm-execution 4.4.3 + cql-execution 3.3.2 (Project Tacoma);"
+ SET TOOLS=TOOLS_" VSAC SVS expansions; FHIR→QDM via fhir-to-qdm-patient.js"
+ ; CMS130 — colorectal
+ DO SETMETA("CMS130v14","Adults 46-75 at end of MP with a qualifying outpatient encounter.","Calendar year 2026",DOCS,TOOLS,"official-cql","Same as Initial Population.","Appropriate colorectal screening: FOBT/FIT in MP, FIT-DNA within 3 years, flex sig or CT colonography within 5 years, or colonoscopy within 10 years.")
+ ; CMS125 — breast
+ DO SETMETA("CMS125v14","Female patients 42-74 at end of MP with a qualifying outpatient encounter.","Calendar year 2026",DOCS,TOOLS,"official-cql","Same as Initial Population.","Mammography performed in the lookback window ending at the measurement period.")
+ ; CMS165 — BP control
+ DO SETMETA("CMS165v14","Adults 18-85 with essential hypertension overlapping the first 6 months of the MP and a qualifying outpatient encounter.","Calendar year 2026",DOCS,TOOLS,"official-cql","Same as Initial Population.","Most recent BP in the MP is controlled (systolic <140 and diastolic <90).")
+ ; CMS122 — glycemic (inverse)
+ DO SETMETA("CMS122v14","Adults 18-75 with diabetes overlapping the MP and a qualifying encounter.","Calendar year 2026",DOCS,TOOLS,"official-cql","Same as Initial Population.","Most recent glycemic status is >9%, missing, or without a result (poor control; inverse measure).")
+ ; CMS138 — tobacco (multi-rate; keep brief)
+ DO SETMETA("CMS138v14","Age 12+ at start of MP with qualifying visits (2+ visits or 1 preventive visit).","Calendar year 2026",DOCS,TOOLS,"official-cql","Rate-specific: screened cohort (Denom 1/3) or tobacco users among screened (Denom 2).","Rate-specific: tobacco screening documented (Numer 1), cessation for users (Numer 2), or screening plus cessation when indicated (Numer 3).")
+ ; CMS2 — depression
+ DO SETMETA("CMS2v15","Age 12+ at start of MP with a qualifying encounter during the MP.","Calendar year 2026",DOCS,TOOLS,"official-cql","Same as Initial Population.","Depression screening with negative result, or positive result with documented follow-up/treatment.")
  QUIT
  ;
 SEEDC0X ; 2026-07-26 C0X population IPP → CQL SETPOP aggregates
@@ -157,10 +177,10 @@ SETMEAS(CMS,TITLE,FOCUS,STAT,NOTE) ;
  SET ^C0FQUAL("MEAS",CMS)=$GET(TITLE)_"^"_$GET(FOCUS)_"^"_STAT_"^"_$GET(NOTE)
  QUIT
  ;
-SETMETA(CMS,IPP,PERIOD,DOCS,TOOLS,MODE) ;
+SETMETA(CMS,IPP,PERIOD,DOCS,TOOLS,MODE,DENOM,NUMER) ;
  SET CMS=$$NORM($GET(CMS))
  IF CMS="" QUIT
- SET ^C0FQUAL("META",CMS)=$GET(IPP)_"^"_$GET(PERIOD)_"^"_$GET(DOCS)_"^"_$GET(TOOLS)_"^"_$GET(MODE)
+ SET ^C0FQUAL("META",CMS)=$GET(IPP)_"^"_$GET(PERIOD)_"^"_$GET(DOCS)_"^"_$GET(TOOLS)_"^"_$GET(MODE)_"^"_$GET(DENOM)_"^"_$GET(NUMER)
  QUIT
  ;
 SETSUM(CMS,N,IPP,DENOM,NUMER,DENEX,ASOF,COHORT) ;
@@ -394,9 +414,10 @@ MDONE ;
  QUIT
  ;
 MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
- NEW IPP,PERIOD,DOCS,TOOLS,MODE,N,IPPC,DENOMC,NUMERC,DENEXC,ASOF,COHORT,RATE,LINE,MURL
+ NEW IPP,PERIOD,DOCS,TOOLS,MODE,DENOMB,NUMERB,N,IPPC,DENOMC,NUMERC,DENEXC,ASOF,COHORT,RATE,LINE,MURL
  SET IPP=$$META(CMS,1),PERIOD=$$META(CMS,2),DOCS=$$META(CMS,3)
  SET TOOLS=$$META(CMS,4),MODE=$$META(CMS,5)
+ SET DENOMB=$$META(CMS,6),NUMERB=$$META(CMS,7)
  SET N=+$$SUM(CMS,1),IPPC=+$$SUM(CMS,2),DENOMC=+$$SUM(CMS,3)
  SET NUMERC=+$$SUM(CMS,4),DENEXC=+$$SUM(CMS,5)
  SET ASOF=$$SUM(CMS,6),COHORT=$$SUM(CMS,7)
@@ -409,9 +430,13 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
- DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Initial Population (brief)</h2>")
- IF IPP'="" DO ADDLN^C0FHIR(.RTN,"<p>"_$$HTMLESC^C0FHIR(IPP)_"</p>")
+ DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Population criteria (brief)</h2>")
+ IF IPP'="" DO ADDLN^C0FHIR(.RTN,"<p><strong>Initial Population:</strong> "_$$HTMLESC^C0FHIR(IPP)_"</p>")
  ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">IPP criteria not yet documented for this measure.</p>")
+ IF DENOMB'="" DO ADDLN^C0FHIR(.RTN,"<p><strong>Denominator:</strong> "_$$HTMLESC^C0FHIR(DENOMB)_"</p>")
+ ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted""><strong>Denominator:</strong> not yet documented.</p>")
+ IF NUMERB'="" DO ADDLN^C0FHIR(.RTN,"<p><strong>Numerator:</strong> "_$$HTMLESC^C0FHIR(NUMERB)_"</p>")
+ ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted""><strong>Numerator:</strong> not yet documented.</p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<div class=""card stats"">")
@@ -442,16 +467,16 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  ; Official CQL re-eval via cds1 /quality/evaluate-cohort (not AI Consult /analyze)
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
  DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Re-evaluate CQL</h2>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 for this measure's curated POP DFNs, then updates SETPOP/SETSUM. Separate from AI Consult.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 using this server's curated POP DFNs (local FHIR bundles, not a hardcoded fhirdev base). Updates SETPOP/SETSUM. Separate from AI Consult.</p>")
  DO ADDLN^C0FHIR(.RTN,"<p><button type=""button"" class=""btn"" id=""reevalBtn"">Re-evaluate CQL</button> <span id=""reevalStatus"" class=""muted"">"_$$HTMLESC^C0FHIR($PIECE($GET(^C0FQUAL("REEVAL",CMS)),"^",1))_"</span></p>")
  DO ADDLN^C0FHIR(.RTN,"<script>")
  DO ADDLN^C0FHIR(.RTN,"(function(){var b=document.getElementById('reevalBtn'),s=document.getElementById('reevalStatus');")
  DO ADDLN^C0FHIR(.RTN,"if(!b)return;b.addEventListener('click',async function(){")
  DO ADDLN^C0FHIR(.RTN,"b.disabled=true;s.textContent='running…';")
  DO ADDLN^C0FHIR(.RTN,"try{var r=await fetch('/fhir-quality-reeval?measure="_CMS_"',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});")
- DO ADDLN^C0FHIR(.RTN,"var j=await r.json();")
- DO ADDLN^C0FHIR(.RTN,"if(!r.ok||j.status==='error'){s.textContent='error: '+(j.message||r.status);b.disabled=false;return;}")
- DO ADDLN^C0FHIR(.RTN,"s.textContent='done';location.reload();")
+ DO ADDLN^C0FHIR(.RTN,"var t=await r.text(),j={}; try{j=JSON.parse(t)}catch(e){j={status:'error',message:t.slice(0,200)||('HTTP '+r.status)};}")
+ DO ADDLN^C0FHIR(.RTN,"if(!r.ok||j.status==='error'){s.textContent='error: '+(j.message||('HTTP '+r.status));b.disabled=false;return;}")
+ DO ADDLN^C0FHIR(.RTN,"s.textContent='done ('+((j.summary&&j.summary.ipp)||'?')+'/'+((j.summary&&j.summary.denom)||'?')+'/'+((j.summary&&j.summary.numer)||'?')+')';location.reload();")
  DO ADDLN^C0FHIR(.RTN,"}catch(e){s.textContent='error: '+e;b.disabled=false;}});})();")
  DO ADDLN^C0FHIR(.RTN,"</script>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
@@ -542,21 +567,25 @@ WSREEVAL(ARGS,BODY,RESULT) ; POST /fhir-quality-reeval?measure=
  QUIT ""
  ;
 WSREEVAL2(OUT,BODY) ; Call cds1 /quality/evaluate-cohort and apply SETPOP/SETSUM
- NEW CMS,DFN,ERR,I,N,PAYLOAD,REQ,RESP,SUM,TMP,URL
+ NEW BASE,CMS,DFN,ERR,N,PAYLOAD,REQ,RESP,SLOT,SUM,TMP
  SET U="^",HTTPRSP("mime")="application/json"
  KILL OUT
  DO SEED
  SET CMS=$$FIND($GET(HTTPARGS("measure")))
  IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
  SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT
- ; Build request: curated POP DFNs + fhir base
+ ; Evaluate THIS server's patients: build local FHIR bundles and send inline to cds1.
+ ; cds1 cannot reach localhost, and DFN numbers are not portable across hosts.
  KILL REQ
+ SET BASE=$$FHIRBASE(.BODY)
  SET REQ("measureId")=CMS
- SET REQ("fhirBase")="https://devfhir.vistaplex.org/fhir"
- SET I=0,DFN=0
- FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  DO
- . SET I=I+1,REQ("patients",I)=DFN
- IF I<1 DO  QUIT
+ SET REQ("fhirBase")=BASE
+ SET REQ("inlineBundles")="true"
+ DO LOADBND(.REQ,CMS,.N,.ERR)
+ IF $GET(ERR)'="" DO  QUIT
+ . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80)
+ . DO OO^C0FWAIS(.OUT,"error","exception",ERR)
+ IF +$GET(N)<1 DO  QUIT
  . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^no POP rows"
  . DO OO^C0FWAIS(.OUT,"error","invalid","No curated POP DFNs for "_CMS)
  DO TOJSON^C0FHIRBU(.REQ,.PAYLOAD,.ERR)
@@ -568,26 +597,76 @@ WSREEVAL2(OUT,BODY) ; Call cds1 /quality/evaluate-cohort and apply SETPOP/SETSUM
  . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80)
  . DO OO^C0FWAIS(.OUT,"error","exception",ERR)
  ; Apply per-patient results
- SET I=0
- FOR  SET I=$ORDER(RESP("patients",I)) QUIT:'I  DO
- . SET DFN=+$GET(RESP("patients",I,"dfn"))
+ SET SLOT=0
+ FOR  SET SLOT=$ORDER(RESP("patients",SLOT)) QUIT:'SLOT  DO
+ . SET DFN=+$GET(RESP("patients",SLOT,"dfn"))
  . QUIT:DFN<1
- . DO SETPOP(CMS,DFN,+$GET(RESP("patients",I,"ipp")),+$GET(RESP("patients",I,"denom")),+$GET(RESP("patients",I,"numer")),+$GET(RESP("patients",I,"denex")),"cds1-quality-eval","official-cql")
+ . DO SETPOP(CMS,DFN,+$GET(RESP("patients",SLOT,"ipp")),+$GET(RESP("patients",SLOT,"denom")),+$GET(RESP("patients",SLOT,"numer")),+$GET(RESP("patients",SLOT,"denex")),"cds1-quality-eval","official-cql")
  ; Prefer summary from cds1; fall back to RESUM
  IF $DATA(RESP("summary")) DO
  . SET N=+$GET(RESP("summary","n"))
- . DO SETSUM(CMS,N,+$GET(RESP("summary","ipp")),+$GET(RESP("summary","denom")),+$GET(RESP("summary","numer")),+$GET(RESP("summary","denex")),$PIECE($$FMTE^XLFDT($$NOW^XLFDT,5),"@",1),"cds1 /quality/evaluate-cohort")
+ . DO SETSUM(CMS,N,+$GET(RESP("summary","ipp")),+$GET(RESP("summary","denom")),+$GET(RESP("summary","numer")),+$GET(RESP("summary","denex")),$PIECE($$FMTE^XLFDT($$NOW^XLFDT,5),"@",1),"cds1 /quality/evaluate-cohort ("_BASE_")")
  ELSE  DO RESUM(CMS,.SUM)
- SET ^C0FQUAL("REEVAL",CMS)="done^"_$$NOW^XLFDT_"^"_+$GET(RESP("summary","ipp"))_"/"_+$GET(RESP("summary","denom"))_"/"_+$GET(RESP("summary","numer"))
+ SET ^C0FQUAL("REEVAL",CMS)="done^"_$$NOW^XLFDT_"^"_+$GET(RESP("summary","ipp"))_"/"_+$GET(RESP("summary","denom"))_"/"_+$GET(RESP("summary","numer"))_"^"_BASE
  KILL TMP
  SET TMP("status")="ok"
  SET TMP("measure")=CMS
+ SET TMP("fhirBase")=BASE
+ SET TMP("inlineBundles")=1
  MERGE TMP("summary")=RESP("summary")
  SET TMP("patients")=+$GET(RESP("summary","n"))
  SET TMP("reeval")=$GET(^C0FQUAL("REEVAL",CMS))
  DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
  IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode reeval response") QUIT
  QUIT
+ ;
+FHIRBASE(BODY) ; $$ - FHIR base for THIS host (audit / override; bundles are inline)
+ NEW BASE,HOST,PROTO
+ ; Explicit overrides first
+ SET BASE=$GET(HTTPARGS("fhirBase"))
+ IF BASE="" SET BASE=$GET(HTTPARGS("fhirbase"))
+ IF BASE="",$DATA(BODY) SET BASE=$GET(BODY("fhirBase"))
+ IF BASE="" SET BASE=$GET(^C0FQUAL("FHIRBASE"))
+ IF BASE'="" Q $$TRIMSL(BASE)
+ ; Derive from inbound request host (gateway / Caddy / direct)
+ SET HOST=$GET(HTTPREQ("header","x-forwarded-host"))
+ IF HOST="" SET HOST=$GET(HTTPREQ("header","host"))
+ SET HOST=$P(HOST,",")
+ SET HOST=$$TRIMSP(HOST)
+ SET PROTO=$GET(HTTPREQ("header","x-forwarded-proto"))
+ IF PROTO="" SET PROTO=$S($$LOW^XLFSTR(HOST)["localhost":"http",$$LOW^XLFSTR(HOST)["127.0.0.1":"http",HOST[".vistaplex.org":"https",1:"http")
+ IF HOST'="" Q PROTO_"://"_HOST_"/fhir"
+ ; Last-resort defaults by profile / known public hosts
+ IF $$ISRPMS^C0FWPOL() Q "http://127.0.0.1:9088/fhir"
+ Q "https://devfhir.vistaplex.org/fhir"
+ ;
+LOADBND(REQ,CMS,N,ERR) ; Build patients[] + inline bundles[] for curated POP
+ NEW BND,DFN,FIL,SLOT
+ KILL ERR
+ SET (N,SLOT,DFN)=0
+ FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  DO  QUIT:$GET(ERR)'=""
+ . SET SLOT=SLOT+1,N=SLOT
+ . SET REQ("patients",SLOT)=DFN
+ . KILL BND,FIL
+ . ; Force cache refresh so OS5/SCT map installs are visible to CQL.
+ . SET FIL("dfn")=+DFN,FIL("arrayOnly")=1,FIL("refresh")=1
+ . DO GETFHIR^C0FHIR(.BND,.FIL)
+ . IF '$DATA(BND) SET ERR="Unable to build FHIR bundle for DFN "_DFN QUIT
+ . IF $GET(BND("resourceType"))'="Bundle" SET ERR="GETFHIR did not return a Bundle for DFN "_DFN QUIT
+ . SET REQ("bundles",SLOT,"dfn")=+DFN
+ . MERGE REQ("bundles",SLOT,"bundle")=BND
+ QUIT
+ ;
+TRIMSL(X) ; $$ - trim and strip trailing slash
+ SET X=$$TRIMSP($G(X))
+ FOR  QUIT:$E(X,$L(X))'="/"  SET X=$E(X,1,$L(X)-1)
+ Q X
+ ;
+TRIMSP(X) ; $$ - trim spaces
+ SET X=$G(X)
+ FOR  QUIT:$E(X,1)'=" "  SET X=$E(X,2,$L(X))
+ FOR  QUIT:$E(X,$L(X))'=" "  SET X=$E(X,1,$L(X)-1)
+ Q X
  ;
 CALLEVAL(JSON,OUT,ERR) ; POST cohort eval request to cds1 quality-eval sidecar
  NEW HDR,OPT,PAYLOAD,RET,STATUS,URL

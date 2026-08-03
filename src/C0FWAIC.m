@@ -123,7 +123,7 @@ TEXT(ROOT,IEN,RIEN) ; $$ - note text for TIU
  . S TXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","presentedForm",PF,"data"))
  . I TXT'="" D
  . . S DATA=$TR(TXT,$C(10)_$C(13)_" ","")
- . . I $T(DECODE64^SYNWEBUT)'="" S TXT=$$DECODE64^SYNWEBUT(DATA)
+ . . I $T(+0^SYNWEBUT)'="" S TXT=$$DECODE64^SYNWEBUT(DATA)
  . S TXT=$S(TXT'="":TXT,1:$G(@ROOT@(IEN,"json","entry",RIEN,"resource","presentedForm",PF,"title")))
  . I TXT'="" S OUT=OUT_$C(10)_$C(10)_TXT
  Q $$TRIM(OUT)

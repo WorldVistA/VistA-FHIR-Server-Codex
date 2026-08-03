@@ -83,7 +83,8 @@ DOCTEXT(ROOT,IEN,RIEN) ; $$ - decoded text/plain DocumentReference attachment
  . S DATA=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","content",CI,"attachment","data"))
  I $G(DATA)="" Q ""
  S DATA=$TR(DATA,$C(10)_$C(13)_" ","")
- I $T(DECODE64^SYNWEBUT)'="" Q $$DECODE64^SYNWEBUT(DATA)
+ ; Prefer routine presence (+0). Label $TEXT can be empty when source is CRLF (RPMS).
+ I $T(+0^SYNWEBUT)'="" Q $$DECODE64^SYNWEBUT(DATA)
  Q ""
  ;
 DOCRTTL(ROOT,IEN,RIEN,TXT) ; $$ - title for DocumentReference-origin note

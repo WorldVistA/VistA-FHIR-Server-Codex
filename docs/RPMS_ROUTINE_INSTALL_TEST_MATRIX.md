@@ -51,11 +51,12 @@ Install these from `VistA-FHIR-Server-Codex/src/`.
 | `C0FHIRM` | Medications and immunizations. | `domains=medication`, `domains=immunization`; verify missing package behavior on RPMS. |
 | `C0FHIRL` | Lab observations and lab DiagnosticReports. | `domains=labs`; verify `LR7OR1` and/or RPMS lab fallback. |
 | `C0FHIRP` | Procedures, radiology, surgery, clinical procedures, V CPT. | `domains=procedure`; verify graceful skip of unavailable surgery/radiology/MD packages. |
+| `C0FHIRQ` | ServiceRequest read from Radiology orders file `#75.1`. | `domains=servicerequest`; after `C0FWSR` write, expect `ServiceRequest/RA{raoIfn}` with imaging category. |
 | `C0FHIRR` | Reminders-on-FHIR read path. | `domains=reminder`; validate PXRM path, RPMS/APCH plan, and unavailable-runtime fallback. |
 | `C0FHIRGF` | Broker RPC wrapper for full FHIR bundle. | Register RPC with `C0FHIRSE`; call `C0FHIR GET FULL BUNDLE` through Broker if RPMS Broker path is in scope. |
 | `C0FHIRSE` | RPC/context option setup for Broker use. | `D EN^C0FHIRSE`; inspect file `#8994` and option file `#19`. |
 | `C0RGWEB` | HTTP bridge for `POST /rehmp`. | `POST /rehmp` health, patient search, bundle get, bad request/error mapping. |
-| `C0FWADD`, `C0FWUPD`, `C0FWIDX`, `C0FWLNK`, `C0FWFUTL`, `C0FWDOM`, `C0FWPOL`, `C0FWSTAT`, `C0FWVIT`, `C0FWLAB`, `C0FWENC`, `C0FWHSYN`, `C0FWCON`, `C0FWTIU`, `C0FWIMM`, `C0FWALG`, `C0FWMED`, `C0FWPRC`, `C0FWAPT`, `C0FWCP`, `C0FWGRT`, `C0FWCTX` | Codex-owned `/addpatient` graph intake and native FileMan Patient creation, `/updatepatient` merge, graph indexing/linking, runtime context, C0FW policy dispatch with native defaults, optional SYN Health Factor dictionary wrapper, first vertical C0FW vital-sign writeback slice, TIU import/export for both Encounter.note and DocumentReference, native CVX Immunization filing, and explicit C0FW adapters for remaining domains. | `POST /addpatient` with a FHIR Bundle; verify graph row creation and DFN creation without SYN or ISI routines, including name, sex, DOB, SSN/pseudo-SSN, marital status, patient type, veteran flag, address, phone, and optional ICN. `POST /updatepatient` with `dfn`, `ien`, or `icn`; verify graph merge/index/link response, `Observation` vital filing through `GMVDCSAV`, Encounter Health Factor import/readback as Encounter extensions, DocumentReference text/plain attachment filing to TIU and readback alongside Encounter.note, `Immunization` CVX filing through `DATA2PCE^PXAI` with `^AUPNVIMM("AD",visit,...)` rerun idempotency, and deterministic adapter-specific not-implemented statuses for domains not yet clinically implemented. |
+| `C0FWADD`, `C0FWUPD`, `C0FWIDX`, `C0FWLNK`, `C0FWFUTL`, `C0FWDOM`, `C0FWPOL`, `C0FWSTAT`, `C0FWVIT`, `C0FWLAB`, `C0FWENC`, `C0FWHSYN`, `C0FWCON`, `C0FWTIU`, `C0FWIMM`, `C0FWALG`, `C0FWMED`, `C0FWPRC`, `C0FWSR`, `C0FRABOOT`, `C0FWAPT`, `C0FWCP`, `C0FWGRT`, `C0FWCTX` | Codex-owned `/addpatient` graph intake and native FileMan Patient creation, `/updatepatient` merge, graph indexing/linking, runtime context, C0FW policy dispatch with native defaults, optional SYN Health Factor dictionary wrapper, first vertical C0FW vital-sign writeback slice, TIU import/export for both Encounter.note and DocumentReference, native CVX Immunization filing, and explicit C0FW adapters for remaining domains. **RPMS Procedure:** `C0FWPRC` files V CPT via `DATA2PCE^PXAI` (CPT IEN) with OS5 seed/map for CMS125 mammo SCTs. **RPMS ServiceRequest:** `C0FWSR` files mammo imaging orders via `ORDER^RAMAG02` → `#75.1` when RA is present; `C0FRABOOT` seeds minimal mammo `#79.1`/clinic site params on sparse RPMS images. | `POST /addpatient` with a FHIR Bundle; verify graph row creation and DFN creation without SYN or ISI routines, including name, sex, DOB, SSN/pseudo-SSN, marital status, patient type, veteran flag, address, phone, and optional ICN. `POST /updatepatient` with `dfn`, `ien`, or `icn`; verify graph merge/index/link response, `Observation` vital filing through `GMVDCSAV`, Encounter Health Factor import/readback as Encounter extensions, DocumentReference text/plain attachment filing to TIU and readback alongside Encounter.note, `Immunization` CVX filing through `DATA2PCE^PXAI` with `^AUPNVIMM("AD",visit,...)` rerun idempotency, RPMS `Procedure` load via `scripts/smoke-rpms-procedure.sh` (V CPT + `/fhir` Procedure), RPMS imaging `ServiceRequest` via `scripts/smoke-rpms-servicerequest.sh` (`#75.1` + `/fhir` ServiceRequest), and deterministic adapter-specific not-implemented statuses for domains not yet clinically implemented. |
 | `C0FWWBS` | Writeback-save graph artifact API. | `POST /writebacksaves`, `GET /writebacksaves`, get by id, rename, archive. |
 | `C0RGWBS` | Compatibility shim for legacy callers of the writeback-save graph artifact API. | Smoke only if an older route or caller still invokes `C0RGWBS`; primary route should use `C0FWWBS`. |
 | `C0TSWS` | BSTS/C0TS terminology HTTP service wrappers. | `/bsts/codeset?format=json`, `/bsts/codes?id=<id>&format=json&max=...`. |
@@ -340,6 +341,16 @@ For each RPMS test pass, save:
 - XINDEX output for installed routines;
 - install logs showing copied routines, `ZLINK`, setup, route registration, and
   listener restart.
+
+## Radiology orders follow-on (not this delivery)
+
+Mammo `ServiceRequest` → `ORDER^RAMAG02` / `#75.1` is enabled on RPMS when RA is
+present (`C0FWSR`, `C0FHIRQ`, `C0FRABOOT`, `scripts/smoke-rpms-servicerequest.sh`).
+Still out of scope:
+
+- General imaging catalog beyond the CMS125 mammo SNOMED allowlist
+- `VistA-ordering-service` `C0FORAD` / CPRS-on-FHIR CFH-ORD-RAD-001 dialog surface
+- Exam register/complete and radiology `DiagnosticReport` / `ImagingStudy` write
 
 ## Open Decisions
 
