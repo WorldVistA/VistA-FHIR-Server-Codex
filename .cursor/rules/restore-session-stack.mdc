@@ -18,4 +18,7 @@ Exact phrases **"snapshot"**, **"remember the stack"**, or **"remember what's ru
 
 After starting the UI gateway / CPRS demo yourself, also run `snapshot` so a later `restore` works after Cursor reload.
 
-Default restored service today: `vehu10-fhir-gateway` (`http://localhost:5177/fhir`, Quality AI Consult via fhirdev).
+Default restored services (always both on restore):
+
+- `vehu10-fhir-gateway` — `http://localhost:5177/fhir` → vehu10 (`9085`); Quality AI Consult via fhirdev
+- `rpms-rebuild-fhir-gateway` — `http://localhost:5178/fhir` → `rpms-rebuild-candidate` (`9088`)

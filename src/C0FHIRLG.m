@@ -32,7 +32,9 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  S BEG=+$G(BEG) S:BEG<1 BEG=1410101
  S END=+$G(END) S:END<1 END=4141015 S:END'["." END=END_".24"
  S MAX=+$G(MAX) S:MAX<1 MAX=200
- S CNT=$$OBCNT(.RTN)
+ ; MAX is labs-to-add (same as GETLAB^C0FHIRL), not total Observations in the
+ ; bundle. Seeding from OBCNT let vitals fill rehmp CHUNKSIZE (50) and starve labs.
+ S CNT=0
  K KEEP
  ; Required LOINCs via code index
  D KEEPCODE(ROOT,IEN,"72166-2",.KEEP)
@@ -183,12 +185,6 @@ MAPOREF(REF) ; $$ - urn:uuid:x or Observation/x -> Observation/x (strip GOBS-)
  S ID=$E(REF,P,$L(REF)) Q:ID="" REF
  I $E(ID,1,5)="GOBS-" S ID=$E(ID,6,$L(ID))
  Q "Observation/"_ID
- ;
-OBCNT(RTN) ; $$ - current Observation count in bundle builder array
- N I,N
- S (I,N)=0
- F  S I=$O(RTN("entry",I)) Q:'I  I $G(RTN("entry",I,"resource","resourceType"))="Observation" S N=N+1
- Q N
  ;
 ISOFM(ISO) ; $$ - FHIR/ISO datetime to FileMan (best effort)
  N H,X
