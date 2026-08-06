@@ -38,6 +38,34 @@ for m in CMS122v14 CMS125v14 CMS165v14; do
   else
     bad "$m missing Population criteria (brief) IPP/DENOM/NUMER"
   fi
+  # NUMER/DENEX must not exceed DENOM (patients outside DENOM must not inflate rate)
+  python3 - "$m" "/tmp/qsmoke-$m.html" <<'PY' || fail=1
+import re, sys
+m, path = sys.argv[1], sys.argv[2]
+html = open(path, encoding="utf-8", errors="replace").read()
+# e.g. IPP <strong>51</strong> · DENOM <strong>51</strong> · NUMER <strong>70</strong>
+nums = dict(re.findall(r"(IPP|DENOM|NUMER|DENEX)\s*<strong>(\d+)</strong>", html))
+if not nums:
+    print(f"  PASS  {m} summary counts not present (skip nesting check)")
+    raise SystemExit(0)
+try:
+    ipp, denom = int(nums["IPP"]), int(nums["DENOM"])
+    numer, denex = int(nums.get("NUMER", 0)), int(nums.get("DENEX", 0))
+except KeyError as e:
+    print(f"  FAIL  {m}: incomplete summary counts {nums}: missing {e}", file=sys.stderr)
+    raise SystemExit(1)
+ok = True
+if denom > ipp:
+    print(f"  FAIL  {m}: DENOM {denom} > IPP {ipp}", file=sys.stderr); ok = False
+if numer > denom:
+    print(f"  FAIL  {m}: NUMER {numer} > DENOM {denom} (outside-DENOM numerators)", file=sys.stderr); ok = False
+if denex > denom:
+    print(f"  FAIL  {m}: DENEX {denex} > DENOM {denom}", file=sys.stderr); ok = False
+if ok:
+    print(f"  PASS  {m} population nesting IPP>={denom}>={numer}/DENEX")
+else:
+    raise SystemExit(1)
+PY
 done
 
 code=$(curl -sS -o /tmp/qsmoke-presets.json -w "%{http_code}" --max-time 45 "$BASE/c0x/presets" || echo 000)

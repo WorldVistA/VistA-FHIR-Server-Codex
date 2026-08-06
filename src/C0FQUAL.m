@@ -186,14 +186,24 @@ SETMETA(CMS,IPP,PERIOD,DOCS,TOOLS,MODE,DENOM,NUMER) ;
 SETSUM(CMS,N,IPP,DENOM,NUMER,DENEX,ASOF,COHORT) ;
  SET CMS=$$NORM($GET(CMS))
  IF CMS="" QUIT
- SET ^C0FQUAL("SUM",CMS)=+$GET(N)_"^"_+$GET(IPP)_"^"_+$GET(DENOM)_"^"_+$GET(NUMER)_"^"_+$GET(DENEX)_"^"_$GET(ASOF)_"^"_$GET(COHORT)
+ ; Population nesting: NUMER/DENEX only count inside DENOM (≤ IPP).
+ DO NORMPOP(.IPP,.DENOM,.NUMER,.DENEX)
+ SET ^C0FQUAL("SUM",CMS)=+$GET(N)_"^"_+IPP_"^"_+DENOM_"^"_+NUMER_"^"_+DENEX_"^"_$GET(ASOF)_"^"_$GET(COHORT)
  QUIT
  ;
 SETPOP(CMS,DFN,IPP,DENOM,NUMER,DENEX,EVID,MODE) ; Store per-patient population flags
  SET CMS=$$FIND($GET(CMS)),DFN=+$GET(DFN)
  IF CMS=""!(DFN<1) QUIT 0
- SET ^C0FQUAL("POP",CMS,DFN)=+$GET(IPP)_"^"_+$GET(DENOM)_"^"_+$GET(NUMER)_"^"_+$GET(DENEX)_"^"_$GET(EVID)_"^"_$GET(MODE)
+ DO NORMPOP(.IPP,.DENOM,.NUMER,.DENEX)
+ SET ^C0FQUAL("POP",CMS,DFN)=+IPP_"^"_+DENOM_"^"_+NUMER_"^"_+DENEX_"^"_$GET(EVID)_"^"_$GET(MODE)
  QUIT 1
+ ;
+NORMPOP(IPP,DENOM,NUMER,DENEX) ; Clamp flags: NUMER/DENEX require DENOM; DENOM requires IPP
+ SET IPP=+$GET(IPP),DENOM=+$GET(DENOM),NUMER=+$GET(NUMER),DENEX=+$GET(DENEX)
+ IF DENOM,'IPP SET IPP=1
+ IF 'IPP SET DENOM=0,NUMER=0,DENEX=0 QUIT
+ IF 'DENOM SET NUMER=0,DENEX=0
+ QUIT
  ;
 ACTIVATE(CMS) ;
  NEW KEY
@@ -624,11 +634,11 @@ REEVALJ(CMS) ; Background JOB: cds1 evaluate-cohort → SETPOP/SETSUM
  . SET DFN=+$GET(RESP("patients",SLOT,"dfn"))
  . QUIT:DFN<1
  . DO SETPOP(CMS,DFN,+$GET(RESP("patients",SLOT,"ipp")),+$GET(RESP("patients",SLOT,"denom")),+$GET(RESP("patients",SLOT,"numer")),+$GET(RESP("patients",SLOT,"denex")),"cds1-quality-eval","official-cql")
- IF $DATA(RESP("summary")) DO
- . SET N=+$GET(RESP("summary","n"))
- . DO SETSUM(CMS,N,+$GET(RESP("summary","ipp")),+$GET(RESP("summary","denom")),+$GET(RESP("summary","numer")),+$GET(RESP("summary","denex")),$PIECE($$FMTE^XLFDT($$NOW^XLFDT,5),"@",1),"cds1 /quality/evaluate-cohort ("_BASE_")")
- ELSE  DO RESUM(CMS,.SUM)
- SET ^C0FQUAL("REEVAL",CMS)="done^"_$$NOW^XLFDT_"^"_+$GET(RESP("summary","ipp"))_"/"_+$GET(RESP("summary","denom"))_"/"_+$GET(RESP("summary","numer"))_"^"_BASE
+ ; Always RESUM from clamped POP rows — cds1 summary can count NUMER outside DENOM.
+ KILL SUM
+ SET SUM("cohort")="cds1 /quality/evaluate-cohort ("_BASE_")"
+ DO RESUM(CMS,.SUM)
+ SET ^C0FQUAL("REEVAL",CMS)="done^"_$$NOW^XLFDT_"^"_+$GET(SUM("ipp"))_"/"_+$GET(SUM("denom"))_"/"_+$GET(SUM("numer"))_"^"_BASE
  QUIT
  ;
 FHIRBASE(BODY) ; $$ - FHIR base for THIS host (audit / override; remote cds1 fetch when public)
@@ -804,16 +814,27 @@ APPLY(OUT,CMS,DFN,REQ) ; Heuristic POP update from acceptedActions/actionValues
  QUIT
  ;
 RESUM(CMS,OUT) ; Rebuild SUM from POP rows for one measure
- NEW D,N,IPP,DENOM,NUMER,DENEX,ROW,ASOF
+ NEW D,N,IPP,DENOM,NUMER,DENEX,ROW,ASOF,PIPP,PDEN,PNUM,PDEX,EVID,MODE,COHORT
  SET CMS=$$FIND(CMS)
  SET (N,IPP,DENOM,NUMER,DENEX)=0,D=0
  FOR  SET D=$ORDER(^C0FQUAL("POP",CMS,D)) QUIT:'D  DO
  . SET ROW=$GET(^C0FQUAL("POP",CMS,D)),N=N+1
- . SET IPP=IPP+$PIECE(ROW,"^",1),DENOM=DENOM+$PIECE(ROW,"^",2)
- . SET NUMER=NUMER+$PIECE(ROW,"^",3),DENEX=DENEX+$PIECE(ROW,"^",4)
+ . SET PIPP=+$PIECE(ROW,"^",1),PDEN=+$PIECE(ROW,"^",2)
+ . SET PNUM=+$PIECE(ROW,"^",3),PDEX=+$PIECE(ROW,"^",4)
+ . SET EVID=$PIECE(ROW,"^",5),MODE=$PIECE(ROW,"^",6)
+ . DO NORMPOP(.PIPP,.PDEN,.PNUM,.PDEX)
+ . ; Heal stale rows where NUMER was set without DENOM/IPP
+ . IF ROW'=(PIPP_"^"_PDEN_"^"_PNUM_"^"_PDEX_"^"_EVID_"^"_MODE) DO
+ . . SET ^C0FQUAL("POP",CMS,D)=PIPP_"^"_PDEN_"^"_PNUM_"^"_PDEX_"^"_EVID_"^"_MODE
+ . SET IPP=IPP+PIPP,DENOM=DENOM+PDEN,NUMER=NUMER+PNUM,DENEX=DENEX+PDEX
  SET ASOF=$PIECE($$NOW^XLFDT,".",1)
  SET ASOF=$$FMTE^XLFDT(ASOF,5)
- DO SETSUM(CMS,N,IPP,DENOM,NUMER,DENEX,ASOF,"heuristic-recompute after quality writeback")
+ SET COHORT=$GET(OUT("cohort"))
+ IF COHORT="" SET COHORT=$PIECE($GET(^C0FQUAL("SUM",CMS)),"^",7)
+ IF COHORT="" SET COHORT="resum from POP (NUMER clamped to DENOM)"
+ DO SETSUM(CMS,N,IPP,DENOM,NUMER,DENEX,ASOF,COHORT)
+ SET OUT("n")=N,OUT("ipp")=IPP,OUT("denom")=DENOM
+ SET OUT("numer")=NUMER,OUT("denex")=DENEX
  SET OUT("sum","n")=N,OUT("sum","ipp")=IPP,OUT("sum","denom")=DENOM
  SET OUT("sum","numer")=NUMER,OUT("sum","denex")=DENEX
  SET OUT("sum","rate")=$SELECT(DENOM>0:$JUSTIFY(NUMER/DENOM*100,0,1)_"%",1:"n/a")
