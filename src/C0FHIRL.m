@@ -15,18 +15,27 @@ GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
  SET MAX=+$GET(MAX)
  IF MAX<1 SET MAX=200
  SET CNT=0
+ ; RPMS: fhir-intake graph is lab-of-record. Emit graph labs FIRST so writeback
+ ; / Quality AI Consult results are not starved when ^LR already fills MAX.
+ IF $TEXT(ON^C0FHIRLG)'="",$$ON^C0FHIRLG() DO
+ . DO GETGRPLAB^C0FHIRLG(.RTN,DFN,BEG,END,MAX)
+ . SET CNT=$$LABOCNT(.RTN)
  SET LRDFN=+$GET(^DPT(DFN,"LR"))
- IF LRDFN>0 DO
+ IF LRDFN>0,CNT<MAX DO
  . ; Reserve 2 slots so LABMSFILL showcase rows are not crowded out at MAX.
- . SET FILLMAX=MAX IF FILLMAX>2 SET FILLMAX=FILLMAX-2
+ . SET FILLMAX=MAX IF FILLMAX>(CNT+2) SET FILLMAX=FILLMAX-2
  . DO GETLBSUB(.RTN,DFN,BEG,END,FILLMAX,"CH",.CNT,LRDFN,.PAN)
  . IF CNT<FILLMAX DO GETLBSUB(.RTN,DFN,BEG,END,FILLMAX,"MI",.CNT,LRDFN)
  . IF $DATA(PAN) DO ADDPANELS(.RTN,DFN,.PAN)
  . ; CMS165 cohorts are quantity-heavy; ensure MS valueString/valueCodeableConcept exist.
  . DO LABMSFILL(.RTN,DFN)
- ; RPMS (and opt-in): intake-graph Observations + panel DiagnosticReports via C0FHIRLG.
- IF $TEXT(ON^C0FHIRLG)'="",$$ON^C0FHIRLG() DO GETGRPLAB^C0FHIRLG(.RTN,DFN,BEG,END,MAX)
  QUIT
+ ;
+LABOCNT(RTN) ; $$ - Observation entries currently in lab bundle
+ NEW I,N
+ SET (I,N)=0
+ FOR  SET I=$ORDER(RTN("entry",I)) QUIT:I<1  IF $GET(RTN("entry",I,"resource","resourceType"))="Observation" SET N=N+1
+ QUIT N
  ;
 LABMSFILL(RTN,DFN) ; Emit showcase qualitative labs when cohort has none
  NEW HASVCC,HASVS,I,R

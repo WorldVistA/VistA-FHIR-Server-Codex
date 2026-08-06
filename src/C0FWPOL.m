@@ -57,7 +57,7 @@ ISRPMS() ; $$ - detect RPMS by package capabilities, not host/container name
  ;
 RPMSDEF(DOMAIN) ; $$ - RPMS first-pass deferred domains
  S DOMAIN=$G(DOMAIN)
- I DOMAIN="Lab" Q 1
+ ; Lab is NOT deferred: on RPMS, fhir-intake graph is lab-of-record (C0FWLAB / C0FHIRLG).
  I DOMAIN="Medication" Q 1
  ; Procedure enabled via RPMS/PCE path in C0FWPRC (DATA2PCE / V CPT)
  ; ServiceRequest enabled via C0FWSR / ORDER^RAMAG02 when RA package present

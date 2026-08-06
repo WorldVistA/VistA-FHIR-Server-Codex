@@ -43,8 +43,9 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  S RIEN=0
  F  S RIEN=$O(@ROOT@(IEN,"type","Observation",RIEN)) Q:'RIEN  D
  . I $$WANT(ROOT,IEN,RIEN) S KEEP(RIEN)=""
- S RIEN=0
- F  S RIEN=$O(KEEP(RIEN)) Q:'RIEN!(CNT'<MAX)  D
+ ; Newest intake entries first so Quality AI / writeback labs win MAX slots.
+ S RIEN=" "
+ F  S RIEN=$O(KEEP(RIEN),-1) Q:'RIEN!(CNT'<MAX)  D
  . I '$$INWIN(ROOT,IEN,RIEN,BEG,END) Q
  . D EMIT(.RTN,ROOT,IEN,RIEN,DFN,.CNT)
  ; Lab panel DiagnosticReports (category LAB) with result[] links
@@ -93,7 +94,7 @@ INWIN(ROOT,IEN,RIEN,BEG,END) ; $$ - effective time in window (FM)
  Q 1
  ;
 EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bundle
- N IDX,RID,RES
+ N IDX,KEY,RID,RES
  Q:'$D(@ROOT@(IEN,"json","entry",RIEN,"resource"))
  M RES=@ROOT@(IEN,"json","entry",RIEN,"resource")
  Q:$G(RES("resourceType"))'="Observation"
@@ -101,7 +102,9 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  S RID=$G(RES("id"))
  I RID="" S RID=IEN_"-"_RIEN
  I $E(RID,1,5)="GOBS-" S RID=$E(RID,6,$L(RID))
- I $D(RTN("index","Observation|"_RID)) Q
+ ; Match ADDRES^C0FHIRBU key (SAFE id) so duplicates do not burn MAX.
+ S KEY="Observation|"_$$SAFE^C0FHIRBU(RID)
+ I $D(RTN("index",KEY)) Q
  ; Force laboratory category so CQL lab retrieves see tobacco/PHQ LOINCs.
  S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
  S RES("category",1,"coding",1,"code")="laboratory"

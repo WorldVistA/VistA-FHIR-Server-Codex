@@ -3,13 +3,19 @@ C0FWLAB ; VEHU/Codex - C0FW lab writeback via SYN/ISI ;Jul 18, 2026
  ;
  Q
  ;
-LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Observation lab result through LABADD^SYNDHP63
+LOAD(ROOT,IEN,RIEN,RETURN) ; File lab Observation (ISI) or accept into fhir-intake graph
  N CSAMP,DFN,HL7DT,ICN,LOCN,LOINC,MSG,RETSTA,TEST,TYPE,VAL,X
  S TYPE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))
- I TYPE="DiagnosticReport" D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"DiagnosticReport lab panels are not filed by C0FWLAB yet; accept Observation actions for atomic results.",.RETURN) Q
+ I TYPE="DiagnosticReport" D  Q
+ . ; Panels stay in fhir-intake; C0FHIRLG GETGRPDR reads them as labs-of-record.
+ . I $$USEGRAPH() D GRAPHOK(ROOT,IEN,RIEN,TYPE,"Lab DiagnosticReport retained in fhir-intake (RPMS graph labs-of-record)",.RETURN) Q
+ . D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"DiagnosticReport lab panels are not filed by C0FWLAB yet; accept Observation actions for atomic results.",.RETURN)
  I TYPE'="Observation" D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"C0FWLAB only files laboratory Observation resources",.RETURN) Q
  I $$ISVITAL^C0FWVIT(ROOT,IEN,RIEN) D SKIP^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Observation is a vital-sign; routed to C0FWVIT instead",.RETURN) Q
  I $$ISSMOK^C0FWSMOK(ROOT,IEN,RIEN) D SKIP^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Observation is smoking status; routed to C0FWSMOK instead",.RETURN) Q
+ ; RPMS (and hosts without ISI lab import): intake graph is already persisted by
+ ; /updatepatient before LOAD; mark loaded so Quality AI Consult is not "skipped".
+ I $$USEGRAPH() D GRAPHOK(ROOT,IEN,RIEN,TYPE,"Lab Observation retained in fhir-intake (RPMS graph labs-of-record)",.RETURN) Q
  S X="LABADD^SYNDHP63"
  I $T(@X)="" D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"SYNDHP63 is not installed; cannot file labs through ISI",.RETURN) Q
  S X="LAB^ISIIMP12"
@@ -45,6 +51,17 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Observation lab result through LABADD
  I MSG="" S MSG="-1^LABADD^SYNDHP63 returned empty status"
  D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"LABADD failed: "_MSG,.RETURN)
  D LOG(ROOT,IEN,RIEN,ICN,LOCN,TEST,VAL,HL7DT,LOINC,CSAMP,"error",MSG)
+ Q
+ ;
+USEGRAPH() ; $$ - 1 when fhir-intake is lab-of-record (no LR filing)
+ I $TEXT(ISRPMS^C0FWPOL)'="",$$ISRPMS^C0FWPOL() Q 1
+ I $T(LABADD^SYNDHP63)="" Q 1
+ Q 0
+ ;
+GRAPHOK(ROOT,IEN,RIEN,TYPE,MSG,RETURN) ; Mark graph-retained lab as loaded
+ D SET^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"loaded",$G(MSG),.RETURN)
+ S @ROOT@(IEN,"load","Lab",RIEN,"engine")="graph"
+ S @ROOT@(IEN,"load","Lab",RIEN,"routine")="C0FHIRLG"
  Q
  ;
 ICN(DFN,IEN) ; $$ - ICN for LABADD (must be a ^DPT("AFICN") key)
