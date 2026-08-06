@@ -92,6 +92,14 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . NEW PARAMS
  . SET PARAMS(1)="B"
  . DO addService^%webutils("POST","fhir-quality-reeval","WSREEVAL^C0FQUAL","","","",.PARAMS)
+ IF $T(WSDELCOH^C0FQUAL)'="" DO
+ . NEW PARAMS
+ . SET PARAMS(1)="B"
+ . DO addService^%webutils("POST","fhir-quality-cohort-delete","WSDELCOH^C0FQUAL","","","",.PARAMS)
+ IF $T(WSCLEAN^C0FQUAL)'="" DO
+ . NEW PARAMS
+ . SET PARAMS(1)="B"
+ . DO addService^%webutils("POST","fhir-quality-cohort-clean","WSCLEAN^C0FQUAL","","","",.PARAMS)
  IF $T(WSAPP^C0FWAIR)'="" DO
  . NEW PARAMS
  . SET PARAMS(1)="B"

@@ -38,6 +38,14 @@ for m in CMS122v14 CMS125v14 CMS165v14; do
   else
     bad "$m missing Population criteria (brief) IPP/DENOM/NUMER"
   fi
+  if grep -q 'id="cleanCohortBtn"' "/tmp/qsmoke-$m.html" \
+    && grep -q 'id="deleteCohortBtn"' "/tmp/qsmoke-$m.html" \
+    && grep -q 'fhir-quality-cohort-clean' "/tmp/qsmoke-$m.html" \
+    && grep -q 'fhir-quality-cohort-delete' "/tmp/qsmoke-$m.html"; then
+    pass "$m cohort clean/delete controls"
+  else
+    bad "$m missing Clean non-IPP / Delete cohort buttons"
+  fi
   # NUMER/DENEX must not exceed DENOM (patients outside DENOM must not inflate rate)
   python3 - "$m" "/tmp/qsmoke-$m.html" <<'PY' || fail=1
 import re, sys

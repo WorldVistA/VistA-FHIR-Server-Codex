@@ -4,6 +4,8 @@ C0FQUAL ; VAMC/GPL - FHIR quality measure dashboards ; 23-JUL-2026
  ; Active-measure registry and HTML dashboards for:
  ;   GET /fhir-quality-dashboards
  ;   GET /fhir-quality-dashboards/{measure}
+ ;   POST /fhir-quality-cohort-delete?measure=
+ ;   POST /fhir-quality-cohort-clean?measure=
  ;
  ; ^C0FQUAL("MEAS",CMS)=TITLE^FOCUS^STATUS^NOTE
  ; ^C0FQUAL("META",CMS)=IPP^PERIOD^DOCS^TOOLS^MODE^DENOM^NUMER
@@ -349,6 +351,26 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  ; Curated CQL cohort rows from ^C0FQUAL("POP") — always listed first
  DO ADDLN^C0FHIR(.RTN,"<h2>Curated CQL cohort</h2>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Per-DFN flags from SETPOP^C0FQUAL (selected-18 / showcase CQL).</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p>")
+ DO ADDLN^C0FHIR(.RTN,"<button type=""button"" class=""btn"" id=""cleanCohortBtn"" title=""Remove POP rows with IPP=No after CQL re-eval"">Clean non-IPP</button> ")
+ DO ADDLN^C0FHIR(.RTN,"<button type=""button"" class=""btn btn-danger"" id=""deleteCohortBtn"" title=""Delete all curated POP rows for this measure"">Delete cohort</button> ")
+ DO ADDLN^C0FHIR(.RTN,"<span id=""cohortActionStatus"" class=""muted""></span></p>")
+ DO ADDLN^C0FHIR(.RTN,"<script>")
+ DO ADDLN^C0FHIR(.RTN,"(function(){")
+ DO ADDLN^C0FHIR(.RTN,"function go(path,confirmMsg){var s=document.getElementById('cohortActionStatus');")
+ DO ADDLN^C0FHIR(.RTN,"if(!confirm(confirmMsg))return;")
+ DO ADDLN^C0FHIR(.RTN,"s.textContent='working…';")
+ DO ADDLN^C0FHIR(.RTN,"fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})")
+ DO ADDLN^C0FHIR(.RTN,".then(function(r){return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){j={status:'error',message:t.slice(0,200)}};")
+ DO ADDLN^C0FHIR(.RTN,"if(!r.ok||j.status==='error'){s.textContent='error: '+(j.message||('HTTP '+r.status));return;}")
+ DO ADDLN^C0FHIR(.RTN,"s.textContent=(j.message||j.status||'ok')+' — reloading…'; setTimeout(function(){location.reload();},600);});})")
+ DO ADDLN^C0FHIR(.RTN,".catch(function(e){s.textContent='error: '+e;});}")
+ DO ADDLN^C0FHIR(.RTN,"var c=document.getElementById('cleanCohortBtn');")
+ DO ADDLN^C0FHIR(.RTN,"if(c)c.addEventListener('click',function(){go('/fhir-quality-cohort-clean?measure="_CMS_"','Remove patients not in IPP from the curated cohort for "_CMS_"?');});")
+ DO ADDLN^C0FHIR(.RTN,"var d=document.getElementById('deleteCohortBtn');")
+ DO ADDLN^C0FHIR(.RTN,"if(d)d.addEventListener('click',function(){go('/fhir-quality-cohort-delete?measure="_CMS_"','DELETE the entire curated POP cohort for "_CMS_"? This cannot be undone (rebuild via SETPOP / seed / re-eval).');});")
+ DO ADDLN^C0FHIR(.RTN,"})();")
+ DO ADDLN^C0FHIR(.RTN,"</script>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
  DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
  SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=0
@@ -559,7 +581,8 @@ HDR(RTN,TITLE,SUB) ;
  DO ADDLN^C0FHIR(.RTN,".muted{color:#64748b} .links a{margin-right:12px}")
  DO ADDLN^C0FHIR(.RTN,"table{border-collapse:collapse;width:100%;margin:14px 0;background:#fff}")
  DO ADDLN^C0FHIR(.RTN,"th,td{border:1px solid #cbd5e1;padding:8px;text-align:left;vertical-align:top}th{background:#e2e8f0}")
- DO ADDLN^C0FHIR(.RTN,".btn{display:inline-block;padding:4px 10px;background:#0f766e;color:#fff;text-decoration:none;border-radius:4px}")
+ DO ADDLN^C0FHIR(.RTN,".btn{display:inline-block;padding:4px 10px;background:#0f766e;color:#fff;text-decoration:none;border-radius:4px;border:0;cursor:pointer}")
+ DO ADDLN^C0FHIR(.RTN,".btn-danger{background:#b91c1c}")
  DO ADDLN^C0FHIR(.RTN,".card{background:#fff;border:1px solid #cbd5e1;padding:14px 16px;margin:14px 0;border-radius:6px}")
  DO ADDLN^C0FHIR(.RTN,".stats .big{font-size:1.05rem} .yes{color:#047857;font-weight:600} .no{color:#b91c1c} .na{color:#94a3b8}")
  DO ADDLN^C0FHIR(.RTN,"code{background:#e2e8f0;padding:1px 4px;border-radius:3px}")
@@ -571,6 +594,76 @@ HDR(RTN,TITLE,SUB) ;
 FTR(RTN) ;
  DO ADDLN^C0FHIR(.RTN,"</body></html>")
  QUIT
+ ;
+ ;----- Curated cohort maintenance -----
+WSDELCOH(ARGS,BODY,RESULT) ; POST /fhir-quality-cohort-delete?measure=
+ IF '$DATA(RESULT) DO WSDELCOH2(.ARGS,.BODY) QUIT ""
+ DO WSDELCOH2(.RESULT,.BODY)
+ QUIT ""
+ ;
+WSDELCOH2(OUT,BODY) ; Delete all POP rows for measure (+ clear SUM)
+ NEW CMS,N,TMP,ERR
+ SET U="^",HTTPRSP("mime")="application/json"
+ KILL OUT
+ DO SEED
+ SET CMS=$$FIND($GET(HTTPARGS("measure")))
+ IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
+ SET N=$$DELPOP(CMS)
+ KILL TMP
+ SET TMP("status")="ok",TMP("measure")=CMS,TMP("deleted")=+N
+ SET TMP("message")="Deleted "_+N_" curated POP row(s) for "_CMS
+ DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
+ IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode delete response") QUIT
+ QUIT
+ ;
+WSCLEAN(ARGS,BODY,RESULT) ; POST /fhir-quality-cohort-clean?measure=
+ IF '$DATA(RESULT) DO WSCLEAN2(.ARGS,.BODY) QUIT ""
+ DO WSCLEAN2(.RESULT,.BODY)
+ QUIT ""
+ ;
+WSCLEAN2(OUT,BODY) ; Remove POP rows that are not in IPP; RESUM
+ NEW CMS,N,TMP,ERR,SUM
+ SET U="^",HTTPRSP("mime")="application/json"
+ KILL OUT
+ DO SEED
+ SET CMS=$$FIND($GET(HTTPARGS("measure")))
+ IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
+ SET N=$$CLEANPOP(CMS)
+ KILL SUM
+ SET SUM("cohort")=$PIECE($GET(^C0FQUAL("SUM",CMS)),"^",7)
+ IF SUM("cohort")="" SET SUM("cohort")="clean non-IPP from curated cohort"
+ DO RESUM(CMS,.SUM)
+ KILL TMP
+ SET TMP("status")="ok",TMP("measure")=CMS,TMP("removed")=+N
+ SET TMP("n")=+$GET(SUM("n")),TMP("ipp")=+$GET(SUM("ipp"))
+ SET TMP("denom")=+$GET(SUM("denom")),TMP("numer")=+$GET(SUM("numer"))
+ SET TMP("message")="Removed "_+N_" non-IPP row(s); cohort n="_+$GET(SUM("n"))
+ DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
+ IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode clean response") QUIT
+ QUIT
+ ;
+DELPOP(CMS) ; $$ - kill all POP for measure; clear SUM; return deleted count
+ NEW D,N
+ SET CMS=$$FIND($GET(CMS))
+ IF CMS="" QUIT 0
+ SET (D,N)=0
+ FOR  SET D=$ORDER(^C0FQUAL("POP",CMS,D)) QUIT:'D  SET N=N+1
+ KILL ^C0FQUAL("POP",CMS)
+ KILL ^C0FQUAL("SUM",CMS)
+ KILL ^C0FQUAL("REEVAL",CMS)
+ QUIT N
+ ;
+CLEANPOP(CMS) ; $$ - kill POP rows with IPP=0; return removed count
+ NEW D,N,KILL
+ SET CMS=$$FIND($GET(CMS))
+ IF CMS="" QUIT 0
+ SET D=0 KILL KILL
+ FOR  SET D=$ORDER(^C0FQUAL("POP",CMS,D)) QUIT:'D  DO
+ . IF +$PIECE($GET(^C0FQUAL("POP",CMS,D)),"^",1) QUIT
+ . SET KILL(D)=""
+ SET (D,N)=0
+ FOR  SET D=$ORDER(KILL(D)) QUIT:'D  KILL ^C0FQUAL("POP",CMS,D) SET N=N+1
+ QUIT N
  ;
  ;----- Official CQL re-eval via cds1 quality-eval (not AI Consult) -----
 WSREEVAL(ARGS,BODY,RESULT) ; POST /fhir-quality-reeval?measure=
