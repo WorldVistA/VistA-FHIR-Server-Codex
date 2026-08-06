@@ -2,7 +2,7 @@
 # Deploy quality-dashboard + C0X stack to all active servers, then smoke each.
 #
 # Active servers (default):
-#   fhirdev  vehu10  rpms-candidate  fhirprod
+#   fhirdev  vehu10  rpms-candidate  rpmsfhir  fhirprod
 #
 # Usage:
 #   ./scripts/deploy-quality-all.sh
@@ -19,7 +19,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 C0X_ROOT="${C0X_ROOT:-$ROOT/../fhir-triple-store}"
 SMOKE="$ROOT/scripts/smoke-quality-host.sh"
-TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate fhirprod}"
+TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir fhirprod}"
 SKIP_DEPLOY="${QUALITY_SKIP_DEPLOY:-0}"
 REINDEX="${QUALITY_REINDEX:-0}"
 
@@ -110,6 +110,22 @@ M
       run_seedcrit_local rpms-rebuild-candidate rpms /home/rpms/r /home/rpms/lib/gtm/mumps || true
       maybe_reindex http://127.0.0.1:9088
       ;;
+    rpmsfhir|rpms-fhir)
+      # Public RPMS demo: Codex routines + graph-labs + quality dashboard routes
+      FHIRDEV_SSH=root@rpmsfhir.vistaplex.org \
+      FHIRDEV_CONTAINER=rpms-fhir \
+      FHIRDEV_ROUTINE_DIR=/home/rpms/r \
+      FHIRDEV_WWW=/home/rpms/www/filesystem \
+      VEHU_ENV=/home/rpms/etc/env \
+      FHIRDEV_MUMPS=/home/rpms/lib/gtm/mumps \
+      FHIRDEV_HTTP_BASE=https://rpmsfhir.vistaplex.org \
+      FHIRDEV_M_USER=rpms \
+      "$ROOT/scripts/fhirdev-codex-sync.sh" || true
+      "$ROOT/scripts/deploy-rpmsfhir-graphlabs.sh" 8 || true
+      "$C0X_ROOT/scripts/deploy-c0x.sh" rpmsfhir || true
+      run_seedcrit_remote root@rpmsfhir.vistaplex.org rpms-fhir rpms /home/rpms/r /home/rpms/lib/gtm/mumps /home/rpms/etc/env || true
+      maybe_reindex https://rpmsfhir.vistaplex.org
+      ;;
     *)
       echo "unknown target: $t" >&2
       return 1
@@ -124,6 +140,7 @@ smoke_one() {
     fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=101076 ;;
     vehu10)   base=http://127.0.0.1:9085; dfn=101076 ;;
     rpms-candidate|rpms-rebuild-candidate|rpms) base=http://127.0.0.1:9088; dfn=4 ;;
+    rpmsfhir|rpms-fhir) base=https://rpmsfhir.vistaplex.org; dfn=8 ;;
     *) echo "unknown smoke target: $t" >&2; return 1 ;;
   esac
   if "$SMOKE" "$t" "$base" "$dfn"; then
