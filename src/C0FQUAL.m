@@ -467,17 +467,19 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  ; Official CQL re-eval via cds1 /quality/evaluate-cohort (not AI Consult /analyze)
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
  DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Re-evaluate CQL</h2>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 using this server's curated POP DFNs (local FHIR bundles, not a hardcoded fhirdev base). Updates SETPOP/SETSUM. Separate from AI Consult.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 for this server's curated POP DFNs (cds1 fetches /fhir when public; updates SETPOP/SETSUM). Separate from AI Consult.</p>")
  DO ADDLN^C0FHIR(.RTN,"<p><button type=""button"" class=""btn"" id=""reevalBtn"">Re-evaluate CQL</button> <span id=""reevalStatus"" class=""muted"">"_$$HTMLESC^C0FHIR($PIECE($GET(^C0FQUAL("REEVAL",CMS)),"^",1))_"</span></p>")
  DO ADDLN^C0FHIR(.RTN,"<script>")
  DO ADDLN^C0FHIR(.RTN,"(function(){var b=document.getElementById('reevalBtn'),s=document.getElementById('reevalStatus');")
  DO ADDLN^C0FHIR(.RTN,"if(!b)return;b.addEventListener('click',async function(){")
- DO ADDLN^C0FHIR(.RTN,"b.disabled=true;s.textContent='running…';")
+ DO ADDLN^C0FHIR(.RTN,"b.disabled=true;s.textContent='starting…';")
  DO ADDLN^C0FHIR(.RTN,"try{var r=await fetch('/fhir-quality-reeval?measure="_CMS_"',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});")
  DO ADDLN^C0FHIR(.RTN,"var t=await r.text(),j={}; try{j=JSON.parse(t)}catch(e){j={status:'error',message:t.slice(0,200)||('HTTP '+r.status)};}")
  DO ADDLN^C0FHIR(.RTN,"if(!r.ok||j.status==='error'){s.textContent='error: '+(j.message||('HTTP '+r.status));b.disabled=false;return;}")
- DO ADDLN^C0FHIR(.RTN,"s.textContent='done ('+((j.summary&&j.summary.ipp)||'?')+'/'+((j.summary&&j.summary.denom)||'?')+'/'+((j.summary&&j.summary.numer)||'?')+')';location.reload();")
- DO ADDLN^C0FHIR(.RTN,"}catch(e){s.textContent='error: '+e;b.disabled=false;}});})();")
+ DO ADDLN^C0FHIR(.RTN,"s.textContent='running… (background)'; var n=0; var iv=setInterval(function(){n++; if(n>90){clearInterval(iv);s.textContent='still running — reload manually';b.disabled=false;return;} location.reload();},3000);")
+ DO ADDLN^C0FHIR(.RTN,"}catch(e){s.textContent='error: '+e;b.disabled=false;}});")
+ DO ADDLN^C0FHIR(.RTN,"if((s.textContent||'').indexOf('running')===0){b.disabled=true; setTimeout(function(){location.reload();},3000);}")
+ DO ADDLN^C0FHIR(.RTN,"})();")
  DO ADDLN^C0FHIR(.RTN,"</script>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  QUIT
@@ -566,61 +568,70 @@ WSREEVAL(ARGS,BODY,RESULT) ; POST /fhir-quality-reeval?measure=
  DO WSREEVAL2(.RESULT,.BODY)
  QUIT ""
  ;
-WSREEVAL2(OUT,BODY) ; Call cds1 /quality/evaluate-cohort and apply SETPOP/SETSUM
- NEW BASE,CMS,DFN,ERR,N,PAYLOAD,REQ,RESP,SLOT,SUM,TMP
+WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy timeouts)
+ NEW BASE,CMS,DFN,ERR,INLINE,N,TMP
  SET U="^",HTTPRSP("mime")="application/json"
  KILL OUT
  DO SEED
  SET CMS=$$FIND($GET(HTTPARGS("measure")))
  IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
- SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT
- ; Evaluate THIS server's patients: build local FHIR bundles and send inline to cds1.
- ; cds1 cannot reach localhost, and DFN numbers are not portable across hosts.
- KILL REQ
  SET BASE=$$FHIRBASE(.BODY)
+ SET INLINE=$$NEEDINLINE(BASE)
+ IF $DATA(HTTPARGS("inline"))#2 DO
+ . IF +$GET(HTTPARGS("inline")) SET INLINE=1
+ . ELSE  SET INLINE=0
+ ; Count POP only (do not build bundles on the request thread)
+ SET N=0,DFN=0
+ FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  SET N=N+1
+ IF N<1 DO OO^C0FWAIS(.OUT,"error","invalid","No curated POP DFNs for "_CMS) QUIT
+ SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT_"^"_BASE_"^"_$SELECT(INLINE:1,1:0)_"^"_+N
+ ; Background job: large cohorts exceed ~60s edge/proxy limits (Failed to fetch)
+ JOB REEVALJ^C0FQUAL(CMS)
+ KILL TMP
+ SET TMP("status")="accepted"
+ SET TMP("measure")=CMS
+ SET TMP("fhirBase")=BASE
+ SET TMP("inlineBundles")=$SELECT(INLINE:1,1:0)
+ SET TMP("patients")=+N
+ SET TMP("reeval")=$GET(^C0FQUAL("REEVAL",CMS))
+ SET TMP("message")="Re-evaluate started in background; reload when status is done."
+ DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
+ IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode reeval response") QUIT
+ QUIT
+ ;
+REEVALJ(CMS) ; Background JOB: cds1 evaluate-cohort → SETPOP/SETSUM
+ NEW BASE,DFN,ERR,INLINE,N,PAYLOAD,REQ,RESP,SLOT,SUM,PARTS
+ SET CMS=$$FIND($GET(CMS)) QUIT:CMS=""
+ SET PARTS=$GET(^C0FQUAL("REEVAL",CMS))
+ SET BASE=$PIECE(PARTS,"^",3)
+ SET INLINE=+$PIECE(PARTS,"^",4)
+ IF BASE="" SET BASE=$$FHIRBASE(.REQ)
+ KILL REQ
  SET REQ("measureId")=CMS
  SET REQ("fhirBase")=BASE
- SET REQ("inlineBundles")="true"
- DO LOADBND(.REQ,CMS,.N,.ERR)
- IF $GET(ERR)'="" DO  QUIT
- . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80)
- . DO OO^C0FWAIS(.OUT,"error","exception",ERR)
- IF +$GET(N)<1 DO  QUIT
- . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^no POP rows"
- . DO OO^C0FWAIS(.OUT,"error","invalid","No curated POP DFNs for "_CMS)
+ ; Use 0/1 so XLFJSON emits JSON boolean/number — string "false" is truthy in cds1
+ SET REQ("inlineBundles")=$SELECT(INLINE:1,1:0)
+ IF INLINE DO LOADBND(.REQ,CMS,.N,.ERR)
+ ELSE  DO LOADDFNS(.REQ,CMS,.N,.ERR)
+ IF $GET(ERR)'="" SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80) QUIT
+ IF +$GET(N)<1 SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^no POP rows" QUIT
  DO TOJSON^C0FHIRBU(.REQ,.PAYLOAD,.ERR)
- IF $DATA(ERR) DO  QUIT
- . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^encode"
- . DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode evaluate-cohort request")
+ IF $DATA(ERR) SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^encode" QUIT
  DO CALLEVAL(.PAYLOAD,.RESP,.ERR)
- IF $GET(ERR)'="" DO  QUIT
- . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80)
- . DO OO^C0FWAIS(.OUT,"error","exception",ERR)
- ; Apply per-patient results
+ IF $GET(ERR)'="" SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80) QUIT
  SET SLOT=0
  FOR  SET SLOT=$ORDER(RESP("patients",SLOT)) QUIT:'SLOT  DO
  . SET DFN=+$GET(RESP("patients",SLOT,"dfn"))
  . QUIT:DFN<1
  . DO SETPOP(CMS,DFN,+$GET(RESP("patients",SLOT,"ipp")),+$GET(RESP("patients",SLOT,"denom")),+$GET(RESP("patients",SLOT,"numer")),+$GET(RESP("patients",SLOT,"denex")),"cds1-quality-eval","official-cql")
- ; Prefer summary from cds1; fall back to RESUM
  IF $DATA(RESP("summary")) DO
  . SET N=+$GET(RESP("summary","n"))
  . DO SETSUM(CMS,N,+$GET(RESP("summary","ipp")),+$GET(RESP("summary","denom")),+$GET(RESP("summary","numer")),+$GET(RESP("summary","denex")),$PIECE($$FMTE^XLFDT($$NOW^XLFDT,5),"@",1),"cds1 /quality/evaluate-cohort ("_BASE_")")
  ELSE  DO RESUM(CMS,.SUM)
  SET ^C0FQUAL("REEVAL",CMS)="done^"_$$NOW^XLFDT_"^"_+$GET(RESP("summary","ipp"))_"/"_+$GET(RESP("summary","denom"))_"/"_+$GET(RESP("summary","numer"))_"^"_BASE
- KILL TMP
- SET TMP("status")="ok"
- SET TMP("measure")=CMS
- SET TMP("fhirBase")=BASE
- SET TMP("inlineBundles")=1
- MERGE TMP("summary")=RESP("summary")
- SET TMP("patients")=+$GET(RESP("summary","n"))
- SET TMP("reeval")=$GET(^C0FQUAL("REEVAL",CMS))
- DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
- IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode reeval response") QUIT
  QUIT
  ;
-FHIRBASE(BODY) ; $$ - FHIR base for THIS host (audit / override; bundles are inline)
+FHIRBASE(BODY) ; $$ - FHIR base for THIS host (audit / override; remote cds1 fetch when public)
  NEW BASE,HOST,PROTO
  ; Explicit overrides first
  SET BASE=$GET(HTTPARGS("fhirBase"))
@@ -629,27 +640,55 @@ FHIRBASE(BODY) ; $$ - FHIR base for THIS host (audit / override; bundles are inl
  IF BASE="" SET BASE=$GET(^C0FQUAL("FHIRBASE"))
  IF BASE'="" Q $$TRIMSL(BASE)
  ; Derive from inbound request host (gateway / Caddy / direct)
- SET HOST=$GET(HTTPREQ("header","x-forwarded-host"))
- IF HOST="" SET HOST=$GET(HTTPREQ("header","host"))
- SET HOST=$P(HOST,",")
- SET HOST=$$TRIMSP(HOST)
+ SET HOST=$$HTTPHOST
  SET PROTO=$GET(HTTPREQ("header","x-forwarded-proto"))
+ IF PROTO="" SET PROTO=$GET(HTTPREQ("header","X-Forwarded-Proto"))
  IF PROTO="" SET PROTO=$S($$LOW^XLFSTR(HOST)["localhost":"http",$$LOW^XLFSTR(HOST)["127.0.0.1":"http",HOST[".vistaplex.org":"https",1:"http")
- IF HOST'="" Q PROTO_"://"_HOST_"/fhir"
+ IF HOST'="",$$LOW^XLFSTR(HOST)'["127.0.0.1",$$LOW^XLFSTR(HOST)'["localhost" Q PROTO_"://"_HOST_"/fhir"
  ; Last-resort defaults by profile / known public hosts
- IF $$ISRPMS^C0FWPOL() Q "http://127.0.0.1:9088/fhir"
+ IF $$ISRPMS^C0FWPOL() Q $S($G(^C0FQUAL("FHIRBASE"))'="":$$TRIMSL(^C0FQUAL("FHIRBASE")),1:"https://rpmsfhir.vistaplex.org/fhir")
  Q "https://devfhir.vistaplex.org/fhir"
  ;
-LOADBND(REQ,CMS,N,ERR) ; Build patients[] + inline bundles[] for curated POP
- NEW BND,DFN,FIL,SLOT
+HTTPHOST() ; $$ - Host / X-Forwarded-Host (case-tolerant)
+ NEW HOST
+ SET HOST=$GET(HTTPREQ("header","x-forwarded-host"))
+ IF HOST="" SET HOST=$GET(HTTPREQ("header","X-Forwarded-Host"))
+ IF HOST="" SET HOST=$GET(HTTPREQ("header","host"))
+ IF HOST="" SET HOST=$GET(HTTPREQ("header","Host"))
+ SET HOST=$P(HOST,",")
+ QUIT $$TRIMSP(HOST)
+ ;
+NEEDINLINE(BASE) ; $$ - 1 when cds1 cannot fetch BASE (localhost / private)
+ NEW B
+ SET B=$$LOW^XLFSTR($$TRIMSL($GET(BASE)))
+ IF B="" QUIT 1
+ IF B["127.0.0.1" QUIT 1
+ IF B["localhost" QUIT 1
+ IF $EXTRACT(B,1,7)="http://" QUIT 1
+ QUIT 0
+ ;
+LOADDFNS(REQ,CMS,N,ERR) ; patients[] only — cds1 fetches each DFN from fhirBase
+ NEW DFN,SLOT
  KILL ERR
+ SET (N,SLOT,DFN)=0
+ FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  DO
+ . SET SLOT=SLOT+1,N=SLOT
+ . SET REQ("patients",SLOT)=DFN
+ QUIT
+ ;
+LOADBND(REQ,CMS,N,ERR) ; Build patients[] + inline bundles[] for curated POP
+ NEW BND,DFN,FIL,REF,SLOT
+ KILL ERR
+ ; Default: use C0FWCAC cache. ?refresh=1 rebuilds every patient and can hang the
+ ; %web worker for minutes on large lab graphs (browser shows Failed to fetch).
+ SET REF=+$GET(HTTPARGS("refresh"))
  SET (N,SLOT,DFN)=0
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  DO  QUIT:$GET(ERR)'=""
  . SET SLOT=SLOT+1,N=SLOT
  . SET REQ("patients",SLOT)=DFN
  . KILL BND,FIL
- . ; Force cache refresh so OS5/SCT map installs are visible to CQL.
- . SET FIL("dfn")=+DFN,FIL("arrayOnly")=1,FIL("refresh")=1
+ . SET FIL("dfn")=+DFN,FIL("arrayOnly")=1
+ . IF REF SET FIL("refresh")=1
  . DO GETFHIR^C0FHIR(.BND,.FIL)
  . IF '$DATA(BND) SET ERR="Unable to build FHIR bundle for DFN "_DFN QUIT
  . IF $GET(BND("resourceType"))'="Bundle" SET ERR="GETFHIR did not return a Bundle for DFN "_DFN QUIT
