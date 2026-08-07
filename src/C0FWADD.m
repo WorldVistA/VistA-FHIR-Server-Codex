@@ -4,10 +4,9 @@ C0FWADD ; VEHU/Codex - C0FW /addpatient handler ;May 13, 2026
  Q
  ;
 WSPAT(ARGS,BODY,RESULT) ; POST /addpatient
- N BUNDLE,CNT,DNX,ERR,GR,GR1,ICN,ID,IEN,JSON,LASTRIEN,PATDONE,RDFN,RETURN,RIEN,ROOT,USER,ZI
+ N ERR,GR1,JSON,RETURN,ROOT
  S U="^"
  S HTTPRSP("mime")="application/json"
- S USER=$$DUZ^C0FWCTX()
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
  I ROOT="" D ERR(.RESULT,"GRAPH","Unable to open fhir-intake graph") Q 0
  I '$D(BODY) D  Q 0
@@ -21,6 +20,16 @@ WSPAT(ARGS,BODY,RESULT) ; POST /addpatient
  I '$D(GR1("entry")) D  Q 0
  . S HTTPERR=400
  . D ERR(.RESULT,"VALIDATION","FHIR Bundle entry array not found")
+ D ADDJSON(.ARGS,.GR1,.RETURN)
+ D ENCODE^XLFJSON("RETURN","RESULT")
+ Q 1
+ ;
+ADDJSON(ARGS,GR1,RETURN) ; ingest decoded Bundle array GR1 into fhir-intake (+ optional load)
+ N BUNDLE,CNT,GR,ICN,ID,IEN,LASTRIEN,PATDONE,RDFN,ROOT,SYNCICN,ZI
+ K RETURN
+ S ROOT=$$ROOT^C0FWGRT("fhir-intake")
+ I ROOT="" S RETURN("status")="error",RETURN("error","message")="Unable to open fhir-intake graph" Q
+ I '$D(GR1("entry")) S RETURN("status")="error",RETURN("error","message")="FHIR Bundle entry array not found" Q
  S ID=$G(ARGS("id"))
  S IEN=$O(@ROOT@(" "),-1)+1
  M GR(IEN,"json")=GR1
@@ -31,11 +40,26 @@ WSPAT(ARGS,BODY,RESULT) ; POST /addpatient
  S BUNDLE=$$BUNDLE^C0FWIDX($NA(GR(IEN)))
  M @ROOT@(IEN)=GR(IEN)
  I ID'="" S @ROOT@("B",ID,IEN)=""
+ I $G(ARGS("filename"))'="" S @ROOT@("filename",ARGS("filename"),IEN)=""
+ ; Early Synthea ICN dedupe: kill this graph IEN if UUID→ICN already filed
+ S SYNCICN=$$SYNCFULL^C0FWFUTL(ROOT,IEN)
+ I SYNCICN'="",$$ICNEXISTS^C0FWFUTL(SYNCICN) D  Q
+ . S RDFN=+$O(^DPT("AFICN",SYNCICN,""))
+ . S RETURN("status")="duplicate"
+ . S RETURN("icn")=SYNCICN
+ . S RETURN("dfn")=RDFN
+ . S RETURN("existingIen")=$$ICN2IEN^C0FWFUTL(SYNCICN)
+ . S RETURN("attemptedIen")=IEN
+ . S RETURN("createdGraph")=0
+ . S RETURN("patient","loadStatus")="duplicate"
+ . S RETURN("patient","message")="Synthea ICN already exists; discarded new graph IEN (no DFN created)"
+ . D KILLIEN(ROOT,IEN,ID,$G(ARGS("filename")))
  S RETURN("status")="ok"
  S RETURN("id")=ID
  S RETURN("ien")=IEN
  S RETURN("createdGraph")=1
  S RETURN("bundle")=BUNDLE
+ I SYNCICN'="" S RETURN("icn")=SYNCICN,ARGS("icn")=SYNCICN
  S ARGS("bundle")=BUNDLE
  S ARGS("firstEntry")=1
  S ARGS("lastEntry")=LASTRIEN
@@ -65,9 +89,15 @@ WSPAT(ARGS,BODY,RESULT) ; POST /addpatient
  . I $G(RETURN("loadStatus"))="" S RETURN("loadStatus")="skipped"
  . S RETURN("load","message")="No DFN resolved for addpatient graph row"
  I $G(ARGS("returngraph"))=1 D TXLOAD^C0FWIDX(.RETURN,IEN,1,LASTRIEN)
- K C0FWBUNDLE
- D ENCODE^XLFJSON("RETURN","RESULT")
- Q 1
+ K C0FWBUNDLE,GR
+ Q
+ ;
+KILLIEN(ROOT,IEN,ID,FNAME) ; drop a just-created graph IEN (dedupe path)
+ Q:$G(ROOT)=""  Q:+$G(IEN)<1
+ K @ROOT@(IEN)
+ I $G(ID)'="" K @ROOT@("B",ID,IEN)
+ I $G(FNAME)'="" K @ROOT@("filename",FNAME,IEN)
+ Q
  ;
 PATIENT(RETURN,IEN,ICN,ROOT) ; File Patient directly through FileMan
  N CITY,DEM,DFN,DIC,DOB,ERR,FDA,MAR,NAME,PENT,PHONE,PTYPE,SEX,SSN,SSNIN,STATE,STIEN,STREET,STREET2,VET,X,Y,ZIP
@@ -359,12 +389,11 @@ FILEICN(DFN,ROOT,IEN,RIEN,SSN,RETURN) ; $$ - optional native ICN filing
  N BASE,CHK,ERR,FDA,FULL,H99101,H99102,H9911
  S BASE=$$ICNBASE(ROOT,IEN,RIEN,SSN)
  I BASE="" Q ""
- I $T(CHECKDG^MPIFSPC)="" D  Q ""
- . S RETURN("patient","icnMessage")="ICN not filed: MPIFSPC checksum API is not installed"
- S CHK=$$CHECKDG^MPIFSPC(BASE)
- I CHK="" D  Q ""
- . S RETURN("patient","icnMessage")="ICN not filed: MPIFSPC did not return a checksum"
- S FULL=BASE_"V"_CHK
+ S FULL=$$FULLICN^C0FWFUTL(BASE)
+ I FULL="" D  Q ""
+ . S RETURN("patient","icnMessage")="ICN not filed: unable to compute checksum for ICN base"
+ S CHK=$P(FULL,"V",2)
+ I $T(CHECKDG^MPIFSPC)="" S RETURN("patient","icnMessage")="ICN filed with local checksum (MPIFSPC absent)"
  K FDA,ERR
  S H99101=$$FLD(2,991.01),H99102=$$FLD(2,991.02),H9911=$$FLD(2,991.1)
  I H99101 S FDA(2,DFN_",",991.01)=BASE
@@ -387,8 +416,8 @@ FILEICN(DFN,ROOT,IEN,RIEN,SSN,RETURN) ; $$ - optional native ICN filing
 FLD(FILE,FIELD) ; $$ - FileMan field exists
  Q $S($D(^DD(+$G(FILE),+$G(FIELD),0)):1,1:0)
  ;
-ICNBASE(ROOT,IEN,RIEN,SSN) ; $$ - 10 digit ICN base from FHIR identifiers or SSN
- N BASE,IDX,SYS,VAL
+ICNBASE(ROOT,IEN,RIEN,SSN) ; $$ - 10 digit ICN base from FHIR ICN, Synthea UUID, or SSN
+ N BASE,IDX,PID,SYS,VAL
  S (BASE,IDX)=""
  F  S IDX=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","identifier",IDX)) Q:IDX=""  D  Q:BASE'=""
  . S SYS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","identifier",IDX,"system"))
@@ -396,6 +425,9 @@ ICNBASE(ROOT,IEN,RIEN,SSN) ; $$ - 10 digit ICN base from FHIR identifiers or SSN
  . S VAL=$$DIGITS($G(@ROOT@(IEN,"json","entry",RIEN,"resource","identifier",IDX,"value")))
  . I $L(VAL)'<10 S BASE=$E(VAL,1,10)
  I BASE?10N Q BASE
+ ; Prefer deterministic Synthea UUID ICN over per-IEN pseudo-SSN
+ S PID=$$SYNCPID^C0FWFUTL(ROOT,IEN)
+ I PID'="" S BASE=$$PID2ICN^C0FWFUTL(PID) I BASE?10N Q BASE
  I $G(SSN)?9N Q "8"_SSN
  Q ""
  ;

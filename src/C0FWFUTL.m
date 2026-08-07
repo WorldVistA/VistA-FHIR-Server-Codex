@@ -108,3 +108,108 @@ FHIRTFM(DTIN) ; $$ - ISO/FHIR instant to FileMan date/time
 FHIRTHL7(DTIN) ; $$ - ISO/FHIR instant to compact HL7 timestamp
  Q $$FHIRISO2HL7($G(DTIN))
  ;
+HEX2DEC(HEX) ; $$ - decimal from hex (Synthea UUID tail)
+ N II,DEC,DIG
+ S DEC=0,HEX=$TR($G(HEX),"ABCDEF","abcdef")
+ F II=1:1:$L(HEX) S DIG=$F("0123456789abcdef",$E(HEX,II)) Q:'DIG  S DEC=(DEC*16)+(DIG-2)
+ Q DEC
+ ;
+PID2ICN(PID) ; $$ - 10-digit ICN base from Synthea UUID / urn:uuid
+ ; example: urn:uuid:0a01efae-0662-41ae-a20d-4646ce42b687
+ N HPID,DPID
+ S HPID=$P($G(PID),"-",5)
+ I HPID="" Q ""
+ S DPID=$$HEX2DEC(HPID)
+ S DPID=$E(DPID,1,10)
+ I DPID'?1.10N Q ""
+ I $L(DPID)<10 S DPID=$E("0000000000",1,10-$L(DPID))_DPID
+ Q DPID
+ ;
+FULLICN(BASE) ; $$ - BASE_V_checksum (MPIFSPC or local fallback)
+ N CHK
+ S BASE=$G(BASE)
+ I BASE'?10N Q ""
+ S CHK=$$CHKSUM(BASE)
+ I CHK="" Q ""
+ Q BASE_"V"_CHK
+ ;
+CHKSUM(BASE) ; $$ - ICN check digits; prefer MPI API when present
+ N CHK
+ S BASE=$G(BASE)
+ I BASE'?10N Q ""
+ I $T(CHECKDG^MPIFSPC)'="" D  Q CHK
+ . S CHK=$$CHECKDG^MPIFSPC(BASE)
+ Q $$LOCCHK(BASE)
+ ;
+LOCCHK(BASE) ; $$ - deterministic 6-digit checksum when MPIFSPC absent
+ N I,S,D
+ S S=0
+ F I=1:1:$L(BASE) S D=$E(BASE,I) S S=S+(D*I)
+ S S=S#1000000
+ Q $E(1000000+S,2,7)
+ ;
+ICNEXISTS(FULL) ; $$ - 1 if ICN already on File 2 or graph
+ N BASE,NXT,ROOT
+ S FULL=$G(FULL)
+ I FULL="" Q 0
+ I $D(^DPT("AFICN",FULL)) Q 1
+ ; Also match any AFICN with same 10-digit base (checksum may differ by site)
+ S BASE=$P(FULL,"V",1)
+ I BASE?10N D  I NXT'="" Q 1
+ . S NXT=$O(^DPT("AFICN",BASE_"V"))
+ . I NXT'="",$E(NXT,1,11)'=(BASE_"V") S NXT=""
+ S ROOT=$$ROOT()
+ I ROOT'="",$O(@ROOT@("POS","ICN",FULL,""))'="" Q 1
+ Q 0
+ ;
+SYNCPID(ROOT,IEN) ; $$ - Synthea UUID string from Patient in graph row
+ N PENT,ID,IDX,SYS,VAL,LOW,FU
+ S ROOT=$G(ROOT) I ROOT="" S ROOT=$$ROOT()
+ I ROOT=""!(+$G(IEN)<1) Q ""
+ S PENT=0
+ F  S PENT=$O(@ROOT@(IEN,"json","entry",PENT)) Q:+PENT=0  I $G(@ROOT@(IEN,"json","entry",PENT,"resource","resourceType"))="Patient" Q
+ I +PENT<1 Q ""
+ S ID=$$TRIM($G(@ROOT@(IEN,"json","entry",PENT,"resource","id")))
+ I $$ISUUID(ID) Q $S(ID["urn:uuid:":ID,1:"urn:uuid:"_ID)
+ S FU=$$TRIM($G(@ROOT@(IEN,"json","entry",PENT,"fullUrl")))
+ I $$ISUUID(FU) Q $S(FU["urn:uuid:":FU,FU["urn:uuid":FU,1:FU)
+ S (IDX,VAL)=""
+ F  S IDX=$O(@ROOT@(IEN,"json","entry",PENT,"resource","identifier",IDX)) Q:IDX=""  D  Q:VAL'=""
+ . S LOW=$$LOW($G(@ROOT@(IEN,"json","entry",PENT,"resource","identifier",IDX,"system")))
+ . S VAL=$$TRIM($G(@ROOT@(IEN,"json","entry",PENT,"resource","identifier",IDX,"value")))
+ . Q:VAL=""
+ . I LOW'["synthetichealth",LOW'["synthea" S VAL="" Q
+ . I '$$ISUUID(VAL) S VAL="" Q
+ I VAL'="" Q $S(VAL["urn:uuid:":VAL,1:"urn:uuid:"_VAL)
+ Q ""
+ ;
+SYNCFULL(ROOT,IEN) ; $$ - full ICN (baseVchk) from Synthea UUID in graph
+ N PID,BASE
+ S PID=$$SYNCPID($G(ROOT),+$G(IEN))
+ I PID="" Q ""
+ S BASE=$$PID2ICN(PID)
+ I BASE="" Q ""
+ Q $$FULLICN(BASE)
+ ;
+ISUUID(X) ; $$ - looks like UUID or urn:uuid
+ N S
+ S S=$$LOW($G(X))
+ I S["urn:uuid:" S S=$P(S,"urn:uuid:",2)
+ I $L(S)'=36 Q 0
+ I $E(S,9)'="-"!($E(S,14)'="-")!($E(S,19)'="-")!($E(S,24)'="-") Q 0
+ I $TR(S,"0123456789abcdef-","")'="" Q 0
+ Q 1
+ ;
+TRIM(X) ;
+ N S S S=$G(X)
+ F  Q:$E(S)'=" "  S S=$E(S,2,$L(S))
+ F  Q:$E(S,$L(S))'=" "  S S=$E(S,1,$L(S)-1)
+ Q S
+ ;
+LOW(X) ;
+ N Y
+ S X=$G(X)
+ I $T(LOW^XLFSTR)'="" Q $$LOW^XLFSTR(X)
+ S Y=X
+ Q $TR(Y,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
+ ;
