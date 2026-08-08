@@ -342,8 +342,10 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
  SET CURL="/filesystem/c0x/index.html?measure="_CMS
  DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">C0X population IPP</a>")
+ SET CURL="/filesystem/quality/measurereports/"_CMS_"/summary-deqm.json"
+ DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">DEQM Summary MeasureReport</a>")
  SET CURL="/filesystem/quality/measurereports/"_CMS_"/summary.json"
- DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">Summary MeasureReport</a>")
+ DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">SETPOP Summary MeasureReport</a>")
  SET CURL="/filesystem/quality/measurereports/"_CMS_"/index.html"
  DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">MeasureReport index</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
@@ -482,10 +484,13 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  . IF ASOF'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">As of "_$$HTMLESC^C0FHIR(ASOF)_"</p>")
  . IF COHORT'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Cohort: "_$$HTMLESC^C0FHIR(COHORT)_"</p>")
  ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">No aggregate CQL/heuristic summary stored yet for this measure.</p>")
+ SET MURL="/filesystem/quality/measurereports/"_CMS_"/summary-deqm.json"
+ DO ADDLN^C0FHIR(.RTN,"<p><a href="""_MURL_""">DEQM Summary MeasureReport (official-cql freeze)</a>")
  SET MURL="/filesystem/quality/measurereports/"_CMS_"/summary.json"
- DO ADDLN^C0FHIR(.RTN,"<p><a href="""_MURL_""">Summary MeasureReport (JSON)</a>")
+ DO ADDLN^C0FHIR(.RTN," · <a href="""_MURL_""">SETPOP aggregate Summary (DEQM profile)</a>")
  SET MURL="/filesystem/quality/measurereports/"_CMS_"/Bundle-all.json"
  DO ADDLN^C0FHIR(.RTN," · <a href="""_MURL_""">All MeasureReports (Bundle)</a></p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">QRDA-III replacement path: Da Vinci DEQM Summary MeasureReport (STU5). Prefer the official-cql freeze for Connectathon exchange.</p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")

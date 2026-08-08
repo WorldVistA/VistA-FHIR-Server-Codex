@@ -35,6 +35,7 @@ provides:
 
 | Capability | Evidence |
 |---|---|
+| Quality dashboards link DEQM Summary MeasureReports | `C0FQUAL` → `/filesystem/quality/measurereports/{CMS}/summary-deqm.json` (official-cql freeze) and DEQM-profiled SETPOP `summary.json` |
 | Multi-domain FHIR read with VPR parity workflow | `docs/TEST_SERVER_VALIDATION.md` (baseline DFN 1595) |
 | Encounter/procedure CPT happy path | `docs/CPT_HAPPY_PATH_VALIDATION_2026-03-15.md` |
 | FHIR browser with TJSON WASM **0.6.5** on vehu10/fhirdev22 | `docs/FHIR_BROWSER_TJSON_CODEX.md`; vendored `@rfanth/tjson` 0.6.5 |
