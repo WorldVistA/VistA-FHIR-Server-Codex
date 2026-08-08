@@ -1,5 +1,5 @@
 /* @ts-self-types="./tjson.d.ts" */
-import { jsonTextToValue, throwNamingIllFormedString, valueToJsonText } from './snippets/tjson-rs-41301e55c2ba063a/src/js/value_transport.js';
+import { jsonTextToValue, throwNamingIllFormedString, valueToJsonText } from './snippets/tjson-rs-243c38fd23ed5d84/src/js/value_transport.js';
 
 
 /**
@@ -145,50 +145,78 @@ export function toJson(input) {
         wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
     }
 }
+
+/**
+ * The tjson version this module was built from.
+ *
+ * Reported from inside the wasm rather than read from package metadata,
+ * because the metadata sits beside the artifact and can disagree with it: a
+ * page holding a cached `.wasm` will show fresh surroundings while running old
+ * code, and nothing outside the module can tell. This string cannot be wrong
+ * about which build is executing.
+ *
+ * A function rather than a constant only because a `&'static str` cannot cross
+ * the wasm boundary as a module constant. `d3.version`, `vue.version` and
+ * `ts.version` are the same idea. The C API exposes the same constant through
+ * `tjson_version()`.
+ * @returns {string}
+ */
+export function version() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.version();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg___wbindgen_boolean_get_fa956cfa2d1bd751: function(arg0) {
+        __wbg___wbindgen_boolean_get_c9c83ebd41b34df3: function(arg0) {
             const v = arg0;
             const ret = typeof(v) === 'boolean' ? v : undefined;
             return isLikeNone(ret) ? 0xFFFFFF : ret ? 1 : 0;
         },
-        __wbg___wbindgen_is_null_ea9085d691f535d3: function(arg0) {
+        __wbg___wbindgen_is_null_7d13f41e1a2d5140: function(arg0) {
             const ret = arg0 === null;
             return ret;
         },
-        __wbg___wbindgen_is_object_a27215656b807791: function(arg0) {
+        __wbg___wbindgen_is_object_a2790eb24c211ea0: function(arg0) {
             const val = arg0;
             const ret = typeof(val) === 'object' && val !== null;
             return ret;
         },
-        __wbg___wbindgen_is_undefined_c05833b95a3cf397: function(arg0) {
+        __wbg___wbindgen_is_undefined_6cff064c44e0d823: function(arg0) {
             const ret = arg0 === undefined;
             return ret;
         },
-        __wbg___wbindgen_throw_344f42d3211c4765: function(arg0, arg1) {
+        __wbg___wbindgen_throw_bb96b2010945f0bc: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
-        __wbg_get_78f252d074a84d0b: function() { return handleError(function (arg0, arg1) {
+        __wbg_get_971a0c45d172643f: function() { return handleError(function (arg0, arg1) {
             const ret = Reflect.get(arg0, arg1);
             return ret;
         }, arguments); },
-        __wbg_isArray_0677c962b281d01a: function(arg0) {
+        __wbg_isArray_6339f732981044bf: function(arg0) {
             const ret = Array.isArray(arg0);
             return ret;
         },
-        __wbg_jsonTextToValue_55496c36578d77ce: function() { return handleError(function (arg0, arg1, arg2) {
+        __wbg_jsonTextToValue_e4fe19bdd27d9072: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = jsonTextToValue(getStringFromWasm0(arg0, arg1), arg2 !== 0);
             return ret;
         }, arguments); },
-        __wbg_new_b667d279fd5aa943: function(arg0, arg1) {
+        __wbg_new_358857d90afd5a2d: function(arg0, arg1) {
             const ret = new Error(getStringFromWasm0(arg0, arg1));
             return ret;
         },
-        __wbg_throwNamingIllFormedString_1e1f8ba3c95be7b3: function() { return handleError(function (arg0) {
+        __wbg_throwNamingIllFormedString_ba978783c5e14470: function() { return handleError(function (arg0) {
             throwNamingIllFormedString(arg0);
         }, arguments); },
-        __wbg_valueToJsonText_7275f1c780052d7a: function() { return handleError(function (arg0, arg1) {
+        __wbg_valueToJsonText_6c8ef6154215e48d: function() { return handleError(function (arg0, arg1) {
             const ret = valueToJsonText(arg1);
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len1 = WASM_VECTOR_LEN;
@@ -340,11 +368,15 @@ function __wbg_finalize_init(instance, module) {
 
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
+        if (!module.ok) {
+            throw new Error(`failed to fetch Wasm: ${module.status} ${module.statusText} fetching '${module.url}'`);
+        }
+
         if (typeof WebAssembly.instantiateStreaming === 'function') {
             try {
                 return await WebAssembly.instantiateStreaming(module, imports);
             } catch (e) {
-                const validResponse = module.ok && expectedResponseType(module.type);
+                const validResponse = expectedResponseType(module.type);
 
                 if (validResponse && module.headers.get('Content-Type') !== 'application/wasm') {
                     console.warn("`WebAssembly.instantiateStreaming` failed because your server does not serve Wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n", e);
