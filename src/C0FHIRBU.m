@@ -32,7 +32,10 @@ BYENC(REQ,OUT) ; Encounter bundle with supporting resources
  IF $$WANT(.REQ,"MEDICATION") DO GETMED^C0FHIR(.OUT,DFN,BEG,END,MAX)
  IF $$WANT(.REQ,"IMMUNIZATION") DO GETIMM^C0FHIR(.OUT,DFN,BEG,END,MAX)
  IF $$WANT(.REQ,"PROCEDURE") DO GETPROC^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ IF $$WANT(.REQ,"SERVICEREQUEST") DO GETSRQ^C0FHIR(.OUT,DFN,BEG,END,MAX)
  IF $$WANT(.REQ,"LAB") DO GETLAB^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ IF $$WANT(.REQ,"CAREPLAN") DO GETCP^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ IF $$WANT(.REQ,"REMINDER") DO GETREM^C0FHIR(.OUT,DFN,+$GET(REQ("LOCATION")),MAX)
  QUIT
  ;
 BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
@@ -60,7 +63,10 @@ BYDATE(REQ,OUT) ; Date-range bundle for encounters and related resources
  IF $$WANT(.REQ,"MEDICATION") DO GETMED^C0FHIR(.OUT,DFN,BEG,END,MAX)
  IF $$WANT(.REQ,"IMMUNIZATION") DO GETIMM^C0FHIR(.OUT,DFN,BEG,END,MAX)
  IF $$WANT(.REQ,"PROCEDURE") DO GETPROC^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ IF $$WANT(.REQ,"SERVICEREQUEST") DO GETSRQ^C0FHIR(.OUT,DFN,BEG,END,MAX)
  IF $$WANT(.REQ,"LAB") DO GETLAB^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ IF $$WANT(.REQ,"CAREPLAN") DO GETCP^C0FHIR(.OUT,DFN,BEG,END,MAX)
+ IF $$WANT(.REQ,"REMINDER") DO GETREM^C0FHIR(.OUT,DFN,+$GET(REQ("LOCATION")),MAX)
  QUIT
  ;
 INIT(OUT,BTYPE) ; Initialize Bundle container
@@ -72,13 +78,14 @@ INIT(OUT,BTYPE) ; Initialize Bundle container
  ;
 WANT(REQ,DOM) ; True if domain should be included
  ; Supported canonical domain keys:
- ; ENCOUNTER, CONDITION, VITAL, ALLERGY, MEDICATION, IMMUNIZATION, PROCEDURE, LAB
+ ; ENCOUNTER, CONDITION, VITAL, ALLERGY, MEDICATION, IMMUNIZATION, PROCEDURE,
+ ; SERVICEREQUEST, LAB, CAREPLAN, REMINDER
  IF '$DATA(REQ("DOMAIN")) QUIT 1
  IF $GET(REQ("DOMAIN","ALL"))=1 QUIT 1
  QUIT +$GET(REQ("DOMAIN",$GET(DOM)))
  ;
 ADDRNG(REQ,OUT) ; Add encounters for a patient date range
- NEW BEG,CNT,DFN,END,LOC,MAX,VDT,VID
+ NEW AABEG,AAEND,BEG,CNT,DFN,END,IDT,LOC,MAX,VDT,VID,X
  SET DFN=+$GET(REQ("DFN"))
  SET BEG=+$GET(REQ("START_DT"))
  IF BEG<1 SET BEG=1410101
@@ -94,8 +101,22 @@ ADDRNG(REQ,OUT) ; Add encounters for a patient date range
  . FOR  SET LOC=$ORDER(^AUPNVSIT("AET",DFN,VDT,LOC)) Q:LOC=""!(LOC<1)!(CNT'<MAX)  DO
  .. SET VID=0
  .. FOR  SET VID=$ORDER(^AUPNVSIT("AET",DFN,VDT,LOC,"P",VID)) Q:VID=""!(VID<1)!(CNT'<MAX)  DO
- ... DO GETENC^C0FHIR(.OUT,VID,DFN)
- ... SET CNT=CNT+1
+ ... DO ADDENC(.OUT,VID,DFN,.CNT,MAX)
+ SET X=BEG,AABEG=(9999999-$PIECE(END,".")),AAEND=(9999999-$PIECE(X,"."))_".2359"
+ SET IDT=AABEG
+ FOR  SET IDT=$ORDER(^AUPNVSIT("AA",DFN,IDT)) Q:IDT<1!(IDT>AAEND)!(CNT'<MAX)  DO
+ . SET VID=0
+ . FOR  SET VID=$ORDER(^AUPNVSIT("AA",DFN,IDT,VID)) Q:VID<1!(CNT'<MAX)  DO
+ .. IF $PIECE($GET(^AUPNVSIT(VID,150)),"^",3)'="","CS"[$PIECE($GET(^AUPNVSIT(VID,150)),"^",3) QUIT
+ .. DO ADDENC(.OUT,VID,DFN,.CNT,MAX)
+ QUIT
+ ;
+ADDENC(OUT,VID,DFN,CNT,MAX) ; Add one Encounter if it is not already in the bundle
+ SET VID=+$GET(VID)
+ IF VID<1 QUIT
+ IF $DATA(OUT("index","Encounter|E"_VID)) QUIT
+ DO GETENC^C0FHIR(.OUT,VID,DFN)
+ SET CNT=+$GET(CNT)+1
  QUIT
  ;
 ENCIEN(X) ; Normalize encounter input to visit ien
@@ -204,8 +225,10 @@ FM2FHIR(FMDT) ; Convert FileMan date/time to FHIR date/dateTime
  IF D'?7N QUIT ""
  SET Y=1700+$EXTRACT(D,1,3)
  SET M=$EXTRACT(D,4,5),DAY=$EXTRACT(D,6,7)
- IF M="" SET M="01"
- IF DAY="" SET DAY="01"
+ ; FileMan uses 00 for unknown month/day. FHIR date allows YYYY, YYYY-MM,
+ ; or YYYY-MM-DD - never month/day zero (HAPI rejects "1983-06-00").
+ IF +M=0 QUIT Y
+ IF +DAY=0 QUIT Y_"-"_M
  IF $PIECE($GET(FMDT),".")=$GET(FMDT) QUIT Y_"-"_M_"-"_DAY
  SET T=$EXTRACT($PIECE($GET(FMDT),".",2)_"000000",1,6)
  SET HH=+$EXTRACT(T,1,2),MM=+$EXTRACT(T,3,4),SS=+$EXTRACT(T,5,6)
@@ -226,12 +249,87 @@ PAD2(X) ; Left-pad a numeric value to two digits
  ;
 FINAL(OUT) ; Remove internal-only nodes before JSON encoding
  NEW IDX
+ IF $GET(OUT("resourceType"))="Bundle",$GET(OUT("type"))="collection" DO ADDPROV(.OUT)
  IF $GET(OUT("type"))'="transaction",$GET(OUT("type"))'="batch" DO
  . SET IDX=0
  . FOR  SET IDX=$ORDER(OUT("entry",IDX)) Q:IDX<1  KILL OUT("entry",IDX,"request")
  KILL OUT("index")
  KILL ^TMP("C0FHIRBU",$J,"UUID")
  QUIT
+ ;
+ADDPROV(OUT) ; Add one generated US Core Provenance covering bundle resources
+ NEW ENT,IDX,ORGIDX,PRVIDX,PROVIDX,TGT
+ IF $DATA(OUT("index","Provenance|usqualitycore-provenance")) QUIT
+ IF $$HASRES(.OUT,"Provenance","usqualitycore-provenance") QUIT
+ DO ADDRES(.OUT,"Organization","usqualitycore-organization",.ORGIDX)
+ DO PROVORG(.OUT,ORGIDX)
+ DO ADDRES(.OUT,"Practitioner","usqualitycore-practitioner",.PRVIDX)
+ DO PROVPRAC(.OUT,PRVIDX)
+ DO ADDRES(.OUT,"Provenance","usqualitycore-provenance",.PROVIDX)
+ SET OUT("entry",PROVIDX,"resource","resourceType")="Provenance"
+ SET OUT("entry",PROVIDX,"resource","id")="usqualitycore-provenance"
+ SET OUT("entry",PROVIDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0"
+ SET OUT("entry",PROVIDX,"resource","text","status")="generated"
+ SET OUT("entry",PROVIDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Generated Narrative: usqualitycore-provenance</div>"
+ SET OUT("entry",PROVIDX,"resource","recorded")=$$PROVDT()
+ SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"system")="http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"code")="author"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"display")="Author"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"who","reference")="Practitioner/usqualitycore-practitioner"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"onBehalfOf","reference")="Organization/usqualitycore-organization"
+ SET OUT("entry",PROVIDX,"resource","agent",2,"type","coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-provenance-participant-type"
+ SET OUT("entry",PROVIDX,"resource","agent",2,"type","coding",1,"code")="transmitter"
+ SET OUT("entry",PROVIDX,"resource","agent",2,"type","coding",1,"display")="Transmitter"
+ SET OUT("entry",PROVIDX,"resource","agent",2,"who","reference")="Organization/usqualitycore-organization"
+ SET TGT=0,ENT=0
+ FOR  SET ENT=$ORDER(OUT("entry",ENT)) Q:ENT<1  DO
+ . NEW ID,RT
+ . IF ENT=PROVIDX QUIT
+ . SET RT=$GET(OUT("entry",ENT,"resource","resourceType")),ID=$GET(OUT("entry",ENT,"resource","id"))
+ . IF RT=""!(ID="") QUIT
+ . IF RT="Organization"!(RT="Practitioner") QUIT
+ . SET TGT=TGT+1,OUT("entry",PROVIDX,"resource","target",TGT,"reference")=RT_"/"_ID
+ . IF TGT=1 SET OUT("entry",PROVIDX,"resource","entity",1,"role")="source",OUT("entry",PROVIDX,"resource","entity",1,"what","reference")=RT_"/"_ID
+ QUIT
+ ;
+HASRES(OUT,RTYPE,RID) ; $$ - true if the Bundle already contains this resource
+ NEW ENT
+ SET ENT=0
+ FOR  SET ENT=$ORDER(OUT("entry",ENT)) Q:ENT<1  DO  Q:$GET(ENT("hit"))
+ . IF $GET(OUT("entry",ENT,"resource","resourceType"))'=$GET(RTYPE) QUIT
+ . IF $GET(OUT("entry",ENT,"resource","id"))'=$GET(RID) QUIT
+ . SET ENT("hit")=1
+ QUIT +$GET(ENT("hit"))
+ ;
+PROVORG(OUT,IDX) ; Supporting Organization for generated Provenance
+ SET OUT("entry",IDX,"resource","resourceType")="Organization"
+ SET OUT("entry",IDX,"resource","id")="usqualitycore-organization"
+ SET OUT("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-organization"
+ SET OUT("entry",IDX,"resource","active")="true"
+ SET OUT("entry",IDX,"resource","name")="VistA FHIR Quality Testing"
+ DO ORGMS^C0FHIR(.OUT,IDX)
+ ; Retain OID identifier after NPI/CCN/EIN MS slices.
+ SET OUT("entry",IDX,"resource","identifier",4,"system")="urn:ietf:rfc:3986"
+ SET OUT("entry",IDX,"resource","identifier",4,"value")="urn:oid:2.16.840.1.113883.3.42.10001.100001.12"
+ SET OUT("entry",IDX,"resource","identifier",4,"value","\s")=""
+ QUIT
+ ;
+PROVPRAC(OUT,IDX) ; Supporting Practitioner for generated Provenance
+ SET OUT("entry",IDX,"resource","resourceType")="Practitioner"
+ SET OUT("entry",IDX,"resource","id")="usqualitycore-practitioner"
+ SET OUT("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-practitioner"
+ SET OUT("entry",IDX,"resource","name",1,"family")="Quality"
+ SET OUT("entry",IDX,"resource","name",1,"given",1)="FHIR"
+ SET OUT("entry",IDX,"resource","name",1,"text")="FHIR Quality"
+ DO PRACMS^C0FHIR(.OUT,IDX,"1245319599")
+ SET OUT("entry",IDX,"resource","identifier",3,"system")="urn:va:user"
+ SET OUT("entry",IDX,"resource","identifier",3,"value")="usqualitycore-practitioner"
+ SET OUT("entry",IDX,"resource","identifier",3,"value","\s")=""
+ QUIT
+ ;
+PROVDT() ; $$ - recorded instant for generated Provenance
+ IF $T(NOW^XLFDT)'="" QUIT $$FM2FHIR($$NOW^XLFDT)
+ QUIT "2026-01-01T00:00:00Z"
  ;
 ERR(MSG,OUT) ; Build OperationOutcome-like error payload
  KILL OUT
@@ -251,12 +349,13 @@ TOJSON(IN,OUT,ERR) ; Encode a local M structure with ENCODE^XLFJSON
  DO FORCESTR(.OUT)
  QUIT
  ;
-FORCESTR(OUT) ; Ensure id/code numeric JSON literals are emitted as strings
+FORCESTR(OUT) ; Ensure id/code/valueString numeric JSON literals are emitted as strings
  NEW I
  SET I=""
  FOR  SET I=$ORDER(OUT(I)) Q:I=""  DO
  . SET OUT(I)=$$QKEY($GET(OUT(I)),"id")
  . SET OUT(I)=$$QKEY($GET(OUT(I)),"code")
+ . SET OUT(I)=$$QKEY($GET(OUT(I)),"valueString")
  QUIT
  ;
 QKEY(LINE,KEY) ; Quote numeric JSON literal for named key

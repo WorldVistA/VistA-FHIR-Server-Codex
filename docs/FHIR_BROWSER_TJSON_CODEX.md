@@ -1,91 +1,100 @@
 # C0FHIR interactive browser — TJSON (WASM) integration
 
-This note records the full path from **unpkg** to a **same-origin**, **container-local** TJSON setup for `GET /fhir?view=browser` in **VistA-FHIR-Server-Codex** (`C0FHIRWS.m`), including pitfalls on minimal **`fhir`** vs **VEHU**-style images and **fhirdev22**.
+This note records how **`GET /fhir?view=browser`** loads **`@rfanth/tjson`** in
+**VistA-FHIR-Server-Codex** (`C0FHIRWS.m`).
 
-A copy is mirrored under **`~/work/vista-stack/tjson-tooling/docs/`** (repo **`glilly/tjson-tools`**). Treat **this** Codex file as **canonical**; refresh the mirror when it changes.
+A copy is mirrored under **`~/work/vista-stack/tjson-tooling/docs/`** (repo
+**`glilly/tjson-tools`**). Treat **this** Codex file as **canonical**.
 
 ## Goal
 
-Render selected FHIR resources in the browser using **`@rfanth/tjson`** (Rust / wasm-bindgen) instead of pretty-printed JSON only.
+Render selected FHIR resources with **`@rfanth/tjson`** instead of
+pretty-printed JSON only.
 
-## Steps taken (chronological)
+## Current approach (0.6.5+): `@rfanth/tjson/web`
 
-1. **Browser default to TJSON**  
-   In `C0FHIRWS.m` → `BROWSER()`, the detail pane defaults to TJSON with a TJSON / JSON toggle; preference stored in `sessionStorage` (`c0fhirBrowserFmt`).
+From **0.6.5**, the package ships a zero-setup browser entry under **`web/`**:
 
-2. **Drop unpkg**  
-   Dynamic `import('https://unpkg.com/@rfanth/tjson@…/tjson.js')` fails under strict **CSP** or offline. Switched to **same-origin** loading under the M listener’s static path.
+| File | Role |
+|------|------|
+| `web/index.js` | Inlined wasm (base64) + top-level `await init(...)`; re-exports API |
+| `web/tjson.js` | Glue / exports (`fromJson`, `stringify`, …) |
+| `web/snippets/…/value_transport.js` | Required sibling import |
 
-3. **Vendoring (pin 0.6.0)**  
-   Under **`vendor/tjson/`**:
-   - `tjson_bg.js`, `tjson_bg.wasm`, `tjson.d.ts` from `https://unpkg.com/@rfanth/tjson@0.6.0/`.
-   - **`tjson.js`** is a **patched** entry (not the stock npm file): see steps 7–10.
-   - Supported refresh path: **`./scripts/update-vendored-tjson.sh <version>`**. It vendors the npm package, regenerates **`.b64`**, and updates the browser cache-bust token in **`src/C0FHIRWS.m`** to the readable vendored version (for example **`0.6.0`**).
+**No** custom loader, **no** `.wasm` MIME games, **no** `.b64` sidecar.
 
-4. **Serve via `%W0` `/filesystem/<file>`**  
-   Static files must live under the M user’s **`www`** tree (listener-dependent mapping):
-   - **Minimal `fhir` (osehra):** `GET /filesystem/foo` → `/home/osehra/www/foo` (flat).
-   - **VEHU / vehu10 / fhirdev22 (vehu):** `GET /filesystem/foo` → `/home/vehu/www/filesystem/foo` (nested `filesystem` segment).
+### Vendoring
 
-5. **Sync scripts**  
-   - **`scripts/update-vendored-tjson.sh`**: supported entry point for changing vendored **`@rfanth/tjson`**; rewrites **`vendor/tjson/`**, regenerates **`tjson_bg.wasm.b64`**, writes **`vendor/tjson/VERSION`**, and updates the visible **`tjson.js?v=<version>`** token in **`C0FHIRWS.m`**.
-   - **`scripts/regen-tjson-wasm-b64.sh`**: refresh **`tjson_bg.wasm.b64`** from **`tjson_bg.wasm`** with a round-trip verify (run automatically before vendor copy in **`local-fhir-container-sync.sh`** and **`fhirdev-codex-sync.sh`** unless **`TJSON_SKIP_REGEN_B64=1`**).  
-   - **`scripts/local-fhir-container-sync.sh`**: `docker cp` `src/*.m` and `vendor/tjson/*` into the container; default **`FHIR_REMOTE_WWW=/home/<user>/www`** for `fhir`.
-   - **`scripts/vehu10-fhir-sync.sh`**: exports **`FHIR_REMOTE_WWW=/home/vehu/www/filesystem`**.
-   - **`scripts/vehu10_bootstrap.py`**: copies the same vendor set to **`--www-dest`** (default `/home/vehu/www/filesystem`).
-   - **`scripts/link-tjson-to-www.sh`**: host-only symlinks for a **native** M install (not Docker).
+```bash
+./scripts/update-vendored-tjson.sh 0.6.5
+```
 
-6. **Wrong MIME for `.wasm` on `/filesystem/`**  
-   The static layer may serve **`tjson_bg.wasm`** as **`application/json`**. Browsers reject **ESM `import` of `.wasm`** when the MIME is wrong.
+Writes **`vendor/tjson/web/`**, **`vendor/tjson/VERSION`**, and updates
+`TJSON_PKG` in **`src/C0FHIRWS.m`** to:
 
-7. **Patched `tjson.js` — fetch + `WebAssembly.compile` / `instantiate`**  
-   Upstream **`tjson.js` (0.4+)** uses `import * as wasm from "./tjson_bg.wasm"`, which is fragile behind wrong MIME / gzip. Our patch:
-   - Imports `./tjson_bg.js?v=<token>`.
-   - Loads bytes from **`tjson_bg.wasm.b64?v=<token>`** (text), **`atob` → `compile` / `instantiate`**.
-   - Calls **`__wbg_set_wasm`** and **`__wbindgen_start`**.
-   - Re-exports with **`export * from "./tjson_bg.js?v=<token>"`** (not `export { fromJson, … }`) so a site with an **older** `tjson_bg.js` still parses; the browser uses **`fromJson`** when present and **`stringify(jsonString)`** when not.
+```text
+/filesystem/tjson/web/index.js?v=0.6.5
+```
 
-8. **Gzip corruption on binary (minimal `fhir`)**  
-   With **`Accept-Encoding: gzip`**, the server sometimes produced a **bad uncompressed length** for the wasm body. After gunzip, **`WebAssembly.compile`** failed.
+### Serve / sync
 
-9. **`Accept-Encoding: identity` on `fetch()` does not work**  
-   In the Fetch API, **`Accept-Encoding` is a forbidden request header**; browsers ignore script-set values. The gzip issue could not be fixed from JS that way.
+Sync copies `vendor/tjson/web` → M user www as **`…/tjson/web/`**:
 
-10. **Base64 sidecar `tjson_bg.wasm.b64`**  
-    - Generate (preferred): `./scripts/regen-tjson-wasm-b64.sh` (encodes and **verifies** decode matches wasm).  
-    - Manual: `base64 -w0 vendor/tjson/tjson_bg.wasm > vendor/tjson/tjson_bg.wasm.b64`  
-    - Loader fetches **`tjson_bg.wasm.b64?v=<token>`** as **text**, strips whitespace with **`.replace(/\s/g, "")`**, **`atob` → `Uint8Array` → `compile`**.  
-    - Sync copies **four** files: `tjson.js`, `tjson_bg.js`, `tjson_bg.wasm`, **`tjson_bg.wasm.b64`**.
+- **vehu10 / fhirdev22:** `/home/vehu/www/filesystem/tjson/web/`
+- **minimal fhir (osehra):** `/home/osehra/www/tjson/web/`
 
-11. **`C0FHIRWS.m` — JS API (0.4+ / 0.5+)**  
-    Detail pane uses **`fromJson(JSON.stringify(obj), {})`** so formatting runs on a **JSON string** inside Rust (avoids wasm-bindgen **`stringify(obj)`** paths that can throw **`RuntimeError: memory access out of bounds`** on large or deep FHIR graphs). **`import()`** uses **`tjson.js?v=<version>`** to reduce stale cached JS vs wasm while keeping the live browser token readable, and the vendored loader now applies that same token to **`tjson_bg.js`** and **`tjson_bg.wasm.b64`** so subordinate assets do not stay stale across upgrades. **`update-vendored-tjson.sh`** rewrites these tokens from **`vendor/tjson/VERSION`**; sync scripts verify them before deploy unless **`TJSON_SKIP_VERIFY_TOKEN=1`**. If **`fromJson`** is missing (very old vendor), the script falls back to **`stringify(obj, {})`**.
+Scripts: `local-fhir-container-sync.sh`, `vehu10-fhir-sync.sh`,
+`fhirdev-codex-sync.sh`, `vehu10_bootstrap.py`, `link-tjson-to-www.sh`.
 
-12. **`C0FHIRWS.m` error string**  
-    On failure, the UI mentions syncing **`vendor/tjson`** including **`.b64`** and redeploying.
+Browser import (embedded in `C0FHIRWS`):
+
+```js
+const TJSON_PKG = location.origin + '/filesystem/tjson/web/index.js?v=0.6.5';
+const m = await import(TJSON_PKG);
+// m.fromJson(JSON.stringify(obj), {})
+```
+
+Nested `/filesystem/tjson/web/...` is served by the M-Web-Server static
+handler (verified on vehu10). Prefer that path over `WSASSET^C0FHIRWS`
+(single-segment allowlist / `%ZISH` line reads).
+
+### MIME
+
+`.js` must be `text/javascript` or `application/javascript`. Soft-404 HTML
+for a module URL fails loudly at `import()` (better than silent wasm
+`CompileError`).
+
+## Historical notes (pre-0.6.5)
+
+Before **`web/`**, Codex used a **patched** `tjson.js` that fetched
+`tjson_bg.wasm.b64`, `atob`’d it, and `WebAssembly.compile`’d locally — to
+avoid wrong `.wasm` MIME and gzip ISIZE bugs. That pipeline also required
+**76-column wrapping** of the `.b64` file because `%ZISH` truncated single
+huge lines (~256KB), which produced `function body length too big`.
+
+Those files and `scripts/regen-tjson-wasm-b64.sh` are obsolete for the
+browser path once **0.6.5+ web/** is deployed. Keep the regen script only if
+you still need a binary sidecar for non-web consumers.
 
 ## Operational checklist
 
-- [ ] When updating vendored **`@rfanth/tjson`**: run **`./scripts/update-vendored-tjson.sh <version>`**.
-- [ ] After changing wasm manually: regenerate **`tjson_bg.wasm.b64`** and verify the visible **`tjson.js?v=<version>`** token, plus the vendored **`tjson_bg.js`** / **`.b64`** subordinate URLs, match before deploy.
-- [ ] **fhir:** files in **`/home/osehra/www/`** (flat).
-- [ ] **vehu10 / fhirdev22:** files in **`/home/vehu/www/filesystem/`**.
-- [ ] Run **`D EN^SYNWEBRG`** (or your site’s route registration) after routine updates; restart **`%webreq`** if required.
-- [ ] Browser: hard refresh or DevTools “Disable cache” when testing loader changes.
+- [ ] `./scripts/update-vendored-tjson.sh <version>` (≥ 0.6.5)
+- [ ] Deploy with `vehu10-fhir-sync.sh` / `fhirdev-codex-sync.sh`
+- [ ] Smoke: `GET /filesystem/tjson/web/index.js` returns JS (not HTML)
+- [ ] Smoke: `/fhir?dfn=…&view=browser` detail pane renders TJSON
+- [ ] Hard-refresh after upgrade (`?v=` token changes with VERSION)
 
-## Repo / script pointers
+## Repo pointers
 
 | Artifact | Location |
 |----------|----------|
-| Browser HTML/JS (M-embedded) | `src/C0FHIRWS.m` |
-| Route registration | `src/SYNWEBRG.m` |
-| Vendored TJSON (patched entry) | `vendor/tjson/` |
-| Update vendored package + cache token | `scripts/update-vendored-tjson.sh` |
-| Regenerate wasm sidecar | `scripts/regen-tjson-wasm-b64.sh` |
-| Verify cache token matches vendored assets | `scripts/check-tjson-cache-token.sh` |
-| Local Docker sync | `scripts/local-fhir-container-sync.sh`, `vehu10-fhir-sync.sh` |
-| Remote **fhirdev22** sync | `scripts/fhirdev-codex-sync.sh` (uses **SSH multiplexing** so many `scp`/`ssh` calls do not trip **MaxStartups** / rate limits; set `FHIRDEV_SSH_NO_MUX=1` to disable) |
+| Browser HTML/JS | `src/C0FHIRWS.m` |
+| Vendored web entry | `vendor/tjson/web/` |
+| Update script | `scripts/update-vendored-tjson.sh` |
+| Token check | `scripts/check-tjson-cache-token.sh` |
 
 ## References
 
-- npm package: `@rfanth/tjson` **0.6.0** (see [textjson.com](https://textjson.com/) for format + API examples)
-- FHIR browser URL shape: `/fhir?dfn=<dfn>&view=browser` (or as implemented by `WEB^C0FHIRWS`).
+- npm: `@rfanth/tjson` **0.6.5+** — export `@rfanth/tjson/web`
+- [textjson.com](https://textjson.com/)
+- FHIR browser: `/fhir?dfn=<dfn>&view=browser`

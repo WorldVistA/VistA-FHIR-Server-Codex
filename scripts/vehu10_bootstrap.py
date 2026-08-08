@@ -54,17 +54,16 @@ def copy_vendor_tjson_to_container_www(
     www_dest: str,
     chown_user: str,
 ) -> None:
-    """Copy repo vendor/tjson/* into the container for GET /filesystem/tjson.js (C0FHIR browser)."""
-    vdir = repo_root / "vendor" / "tjson"
-    names = ("tjson.js", "tjson_bg.js", "tjson_bg.wasm", "tjson_bg.wasm.b64")
-    if not vdir.is_dir() or not all((vdir / n).is_file() for n in names):
+    """Copy repo vendor/tjson/web into the container for GET /filesystem/tjson/web/index.js."""
+    vdir = repo_root / "vendor" / "tjson" / "web"
+    if not vdir.is_dir() or not (vdir / "index.js").is_file() or not (vdir / "tjson.js").is_file():
         print(
-            "warning: vendor/tjson incomplete in this checkout; C0FHIR browser TJSON may 404. "
-            "Populate vendor/tjson from unpkg or run scripts/vehu10-fhir-sync.sh from a full clone.",
+            "warning: vendor/tjson/web incomplete in this checkout; C0FHIR browser TJSON may 404. "
+            "Run scripts/update-vendored-tjson.sh 0.6.5",
             file=sys.stderr,
         )
         return
-    wd = www_dest.rstrip("/")
+    wd = www_dest.rstrip("/") + "/tjson/web"
     run(
         [
             "docker",
@@ -79,12 +78,11 @@ def copy_vendor_tjson_to_container_www(
             + ":"
             + shlex.quote(chown_user)
             + " "
-            + shlex.quote(wd),
+            + shlex.quote(www_dest.rstrip("/") + "/tjson"),
         ],
         check=True,
     )
-    for n in names:
-        docker_cp(vdir / n, container, f"{wd}/{n}")
+    docker_cp(Path(str(vdir) + "/."), container, wd + "/")
     run(
         [
             "docker",
@@ -92,14 +90,14 @@ def copy_vendor_tjson_to_container_www(
             container,
             "bash",
             "-lc",
-            "chown "
+            "chown -R "
             + shlex.quote(chown_user)
             + ":"
             + shlex.quote(chown_user)
             + " "
-            + " ".join(shlex.quote(f"{wd}/{n}") for n in names),
+            + shlex.quote(www_dest.rstrip("/") + "/tjson"),
         ],
-        check=True,
+        check=False,
     )
 
 

@@ -18,19 +18,28 @@ Optional: pass a **DFN** for extra smoke (`/fhir?dfn=…`, `/tiustats?dfn=…`).
 
 ---
 
-## Deploy Data-Loader routines (ICN, updatepatient, etc.)
+## C0FW `/addpatient` runtime assumptions
 
-Codex sync does **not** copy **VistA-FHIR-Data-Loader** `src/*.m`. Example for container **`fhir`**, user **`osehra`**, routines dir **`/home/osehra/p`**:
+Codex owns the `/addpatient` and `/updatepatient` HTTP handlers when `C0FWADD`
+and `C0FWUPD` are installed. C0FW no longer requires SYN or ISI routines for
+`/addpatient`.
 
-```bash
-DL=/path/to/VistA-FHIR-Data-Loader/src
-docker cp "$DL/SYNFPAT.m" fhir:/home/osehra/p/
-docker cp "$DL/SYNFUTL.m" fhir:/home/osehra/p/
-docker cp "$DL/SYNFHIRU.m" fhir:/home/osehra/p/
-docker exec fhir chown osehra:osehra /home/osehra/p/SYNFPAT.m /home/osehra/p/SYNFUTL.m /home/osehra/p/SYNFHIRU.m
-docker exec fhir su - osehra -c \
-  '/home/osehra/lib/gtm/mumps -run %XCMD "zlink \"SYNFPAT\" zlink \"SYNFUTL\" zlink \"SYNFHIRU\" zlink \"SYNWEBRG\" d EN^SYNWEBRG d stop^%webreq d go^%webreq"'
-```
+Required runtime pieces:
+
+- `%webutils` / `%webreq` or compatible route registration and listener.
+- `XLFJSON` for JSON decode/encode.
+- Kernel/FileMan APIs used by the web job: `UPDATE^DIE`, `FIND1^DIC`, `%ZOSF`,
+  `XLFDT`.
+- A supported C0FW graph backend for `fhir-intake`: `SYNGRAF`/`^SYNGRAPH` or
+  legacy `%wd`.
+- Patient file `#2` / `^DPT` with standard fields for name, sex, DOB, SSN,
+  marital status, patient type, veteran flag, address, and phone.
+
+Optional runtime piece:
+
+- `MPIFSPC` for `$$CHECKDG^MPIFSPC`, if you want C0FW to file MPI ICN fields
+  `991.01`, `991.02`, and `991.1`. Without it, patient creation still succeeds,
+  but `icn` is omitted and the response includes `patient.icnMessage`.
 
 ---
 
@@ -45,7 +54,9 @@ curl -sS 'http://127.0.0.1:9085/fhir?dfn=101075' -o /tmp/vehu-dfn101075.json
 
 ## New patient: `POST /addpatient`
 
-Routes are registered lowercase in **`SYNWEBRG`**: **`addpatient`**.
+Routes are registered lowercase in **`SYNWEBRG`**: **`addpatient`**. When
+`C0FWADD` is installed, route registration prefers `WSPAT^C0FWADD`; older stacks
+without C0FW fall back to `wsPostFHIR^SYNFHIR`.
 
 ```bash
 curl -sS -w '\nHTTP %{http_code}\n' -H 'Expect:' -H 'Content-Type: application/json' \
@@ -53,10 +64,21 @@ curl -sS -w '\nHTTP %{http_code}\n' -H 'Expect:' -H 'Content-Type: application/j
   'http://127.0.0.1:9081/addpatient?load=1'
 ```
 
-- **`load=1`** (default for domain loaders in many paths): run labs, vitals, encounters, etc. after patient file.
-- **`load=0`**: tend to **patient / graph only**; use when you want to avoid duplicate domain work or work around loader errors.
+- **`load=1`** (default after a DFN is resolved): run C0FW domain loaders after
+  patient filing or patient linking.
+- **`load=0`**: graph/patient-link only; use when you want to avoid duplicate
+  domain work or work around loader errors.
 
-Successful JSON often includes **`ien`**, **`dfn`**, **`icn`** (full string with **`V`**), and per-domain status.
+Successful JSON includes **`ien`** for the graph row and **`dfn`** when C0FW
+creates or links the VistA patient. It includes **`icn`** when an ICN is supplied
+or when `MPIFSPC` is installed and C0FW can derive/file an ICN base.
+
+C0FW's native patient create files the ISI-template fields that are available as
+direct Patient-file fields on the target: name, sex, DOB, SSN or local
+pseudo-SSN, marital status, patient type, veteran flag, street line 1/2, city,
+state, ZIP, phone, DFN graph link, and optional MPI ICN fields. Race and
+ethnicity are site/DD-dependent on current test targets and are reported as not
+filed rather than reintroducing SYN demographic maps.
 
 ---
 
@@ -69,7 +91,7 @@ Query keys (use at least one):
 | Query | Meaning |
 |--------|---------|
 | **`ien=`** | Graph store IEN (integer). |
-| **`dfn=`** | VistA **DFN** → resolved to graph IEN via **`dfn2ien^SYNFUTL`**. |
+| **`dfn=`** | VistA **DFN** → resolved to graph IEN via C0FW graph indexes. |
 | **`icn=`** or **`id=`** | Full ICN string (same as in **`addpatient`** response), resolved via **`POS("ICN",…)`**. |
 
 ```bash
@@ -86,7 +108,7 @@ curl -sS -w '\nHTTP %{http_code}\n' -H 'Expect:' -H 'Content-Type: application/j
 ```
 
 - **`load=0`**: merge JSON and re-index; skip domain imports (or set explicitly).
-- **`load=1`**: run domain importers (labs, vitals, …). **`updatepatient`** does **not** call the **panels** path used by **`addpatient`**, so behavior can differ from a full **`addpatient?load=1`** until panels are aligned.
+- **`load=1`**: run C0FW domain loaders for the appended bundle slice.
 
 ---
 

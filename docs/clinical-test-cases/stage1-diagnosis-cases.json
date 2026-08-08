@@ -1,0 +1,418 @@
+{
+  "schemaVersion": 1,
+  "description": "Stage 1 clinical diagnosis writeback cases for testing the CPRS multi-code diagnosis picker and C0FW Encounter/Condition filing path.",
+  "defaults": {
+    "system": "http://snomed.info/sct",
+    "encounter": {
+      "classCode": "AMB",
+      "typeCode": "308335008",
+      "typeDisplay": "Patient encounter procedure",
+      "locationDisplay": "VEHU clinic",
+      "providerDisplay": "Programmer,One",
+      "periodStart": "2026-04-28T09:00:00Z",
+      "periodEnd": "2026-04-28T09:30:00Z"
+    }
+  },
+  "cases": [
+    {
+      "id": "htn-basic",
+      "title": "Essential hypertension",
+      "category": "chronic",
+      "plausiblePatientHint": "Older adult with outpatient history, blood-pressure monitoring, or cardiovascular risk factors.",
+      "diagnosis": {
+        "icd10Code": "I10",
+        "icd10Display": "Essential (primary) hypertension",
+        "snomedCode": "38341003",
+        "display": "Essential hypertension"
+      },
+      "selectedFindings": [
+        {
+          "code": "24184005",
+          "display": "Blood pressure above reference range"
+        },
+        {
+          "code": "330007",
+          "display": "Occipital headache"
+        }
+      ],
+      "povCode": "38341003",
+      "addToProblemList": true,
+      "noteSupport": "Sitting blood pressure is elevated at 145/92 mmHg with intermittent occipital headache; chronic hypertension management was reviewed.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": true,
+        "standardCodeCount": 3
+      }
+    },
+    {
+      "id": "t2dm-basic",
+      "title": "Type 2 diabetes mellitus",
+      "category": "chronic",
+      "plausiblePatientHint": "Adult with chronic metabolic disease context, obesity, or prior glucose/HbA1c monitoring.",
+      "diagnosis": {
+        "icd10Code": "E11.9",
+        "icd10Display": "Type 2 diabetes mellitus without complications",
+        "snomedCode": "44054006",
+        "display": "Type 2 diabetes mellitus"
+      },
+      "selectedFindings": [
+        {
+          "code": "56574000",
+          "display": "Polyuria"
+        },
+        {
+          "code": "17173007",
+          "display": "Polydipsia"
+        },
+        {
+          "code": "414916001",
+          "display": "Obesity"
+        }
+      ],
+      "povCode": "44054006",
+      "addToProblemList": true,
+      "noteSupport": "Patient reports polyuria and polydipsia with obesity and elevated diabetes screening values; Type 2 diabetes support was documented.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": true,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "cap-acute",
+      "title": "Community-acquired pneumonia",
+      "category": "acute",
+      "plausiblePatientHint": "Patient with recent acute outpatient or emergency-style respiratory encounter context.",
+      "diagnosis": {
+        "icd10Code": "J18.9",
+        "icd10Display": "Pneumonia, unspecified organism",
+        "snomedCode": "385093006",
+        "display": "Community acquired pneumonia"
+      },
+      "selectedFindings": [
+        {
+          "code": "386661006",
+          "display": "Fever"
+        },
+        {
+          "code": "267036007",
+          "display": "Dyspnea"
+        },
+        {
+          "code": "409609008",
+          "display": "Pulmonary infiltrate"
+        }
+      ],
+      "povCode": "385093006",
+      "addToProblemList": false,
+      "noteSupport": "Fever, dyspnea, productive cough, leukocytosis, and pulmonary infiltrate support community-acquired pneumonia.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": false,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "hypothyroid-primary",
+      "title": "Hypothyroidism",
+      "category": "chronic",
+      "plausiblePatientHint": "Patient with chronic endocrine follow-up or medication-monitoring context.",
+      "diagnosis": {
+        "icd10Code": "E03.9",
+        "icd10Display": "Hypothyroidism, unspecified",
+        "snomedCode": "40930008",
+        "display": "Hypothyroidism"
+      },
+      "selectedFindings": [
+        {
+          "code": "214264003",
+          "display": "Lethargy"
+        },
+        {
+          "code": "8943002",
+          "display": "Weight gain"
+        },
+        {
+          "code": "80585000",
+          "display": "Intolerant of cold"
+        }
+      ],
+      "povCode": "40930008",
+      "addToProblemList": true,
+      "noteSupport": "Lethargy, weight gain, cold intolerance, bradycardia, and thyroid laboratory pattern support hypothyroidism.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": true,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "cystitis-acute",
+      "title": "Acute cystitis",
+      "category": "acute",
+      "plausiblePatientHint": "Patient with recent acute urinary complaint or outpatient urgent visit.",
+      "diagnosis": {
+        "icd10Code": "N30.00",
+        "icd10Display": "Acute cystitis without hematuria",
+        "snomedCode": "68226007",
+        "display": "Acute cystitis"
+      },
+      "selectedFindings": [
+        {
+          "code": "49650001",
+          "display": "Dysuria"
+        },
+        {
+          "code": "162116003",
+          "display": "Urinary frequency"
+        },
+        {
+          "code": "162053006",
+          "display": "Suprapubic pain"
+        }
+      ],
+      "povCode": "68226007",
+      "addToProblemList": false,
+      "noteSupport": "Dysuria, urinary frequency, suprapubic pain, and abnormal urinalysis support acute cystitis.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": false,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "hyperlipidemia-basic",
+      "title": "Hyperlipidemia",
+      "category": "chronic",
+      "plausiblePatientHint": "Adult preventive-care patient with lipid screening or cardiovascular risk counseling.",
+      "diagnosis": {
+        "icd10Code": "E78.5",
+        "icd10Display": "Hyperlipidemia, unspecified",
+        "snomedCode": "55822004",
+        "display": "Hyperlipidemia"
+      },
+      "selectedFindings": [
+        {
+          "code": "67335000",
+          "display": "Asymptomatic"
+        },
+        {
+          "code": "166830008",
+          "display": "Serum cholesterol raised"
+        }
+      ],
+      "povCode": "55822004",
+      "addToProblemList": true,
+      "noteSupport": "Preventive lipid screening shows elevated total cholesterol and LDL; patient remains asymptomatic.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": true,
+        "standardCodeCount": 3
+      }
+    },
+    {
+      "id": "copd-basic",
+      "title": "Chronic obstructive pulmonary disease",
+      "category": "chronic",
+      "plausiblePatientHint": "Older adult with smoking history, chronic respiratory symptoms, or pulmonary medication context.",
+      "diagnosis": {
+        "icd10Code": "J44.9",
+        "icd10Display": "Chronic obstructive pulmonary disease, unspecified",
+        "snomedCode": "13645005",
+        "display": "Chronic obstructive lung disease"
+      },
+      "selectedFindings": [
+        {
+          "code": "68154008",
+          "display": "Chronic cough"
+        },
+        {
+          "code": "28743005",
+          "display": "Productive cough"
+        },
+        {
+          "code": "60845006",
+          "display": "Dyspnea on exertion"
+        }
+      ],
+      "povCode": "13645005",
+      "addToProblemList": true,
+      "noteSupport": "Chronic cough, sputum production, exertional dyspnea, low oxygen saturation, and obstructive spirometry support COPD.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": true,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "iron-def-anemia",
+      "title": "Iron deficiency anemia",
+      "category": "chronic",
+      "plausiblePatientHint": "Patient with lab-heavy history, fatigue complaints, or hematology follow-up context.",
+      "diagnosis": {
+        "icd10Code": "D50.9",
+        "icd10Display": "Iron deficiency anemia, unspecified",
+        "snomedCode": "87522002",
+        "display": "Iron deficiency anemia"
+      },
+      "selectedFindings": [
+        {
+          "code": "84229001",
+          "display": "Fatigue"
+        },
+        {
+          "code": "13791008",
+          "display": "Generalized weakness"
+        },
+        {
+          "code": "267029006",
+          "display": "Pallor"
+        }
+      ],
+      "povCode": "87522002",
+      "addToProblemList": true,
+      "noteSupport": "Fatigue, generalized weakness, pallor, low hemoglobin, low ferritin, and microcytic indices support iron deficiency anemia.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": true,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "appendicitis-acute",
+      "title": "Acute appendicitis",
+      "category": "acute",
+      "plausiblePatientHint": "Patient with acute abdominal pain context or emergency-style visit.",
+      "diagnosis": {
+        "icd10Code": "K35.80",
+        "icd10Display": "Unspecified acute appendicitis",
+        "snomedCode": "85189001",
+        "display": "Acute appendicitis"
+      },
+      "selectedFindings": [
+        {
+          "code": "301754002",
+          "display": "Right lower quadrant pain"
+        },
+        {
+          "code": "43478001",
+          "display": "Abdominal tenderness"
+        },
+        {
+          "code": "16932000",
+          "display": "Nausea and vomiting"
+        }
+      ],
+      "povCode": "85189001",
+      "addToProblemList": false,
+      "noteSupport": "Right lower quadrant pain, abdominal tenderness, nausea/vomiting, low-grade fever, and leukocytosis support acute appendicitis.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": false,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "ckd-stage-3",
+      "title": "Chronic kidney disease stage 3",
+      "category": "chronic",
+      "plausiblePatientHint": "Patient with renal laboratory trend, hypertension, diabetes, or chronic medication-monitoring history.",
+      "diagnosis": {
+        "icd10Code": "N18.30",
+        "icd10Display": "Chronic kidney disease, stage 3 unspecified",
+        "snomedCode": "433144002",
+        "display": "Chronic kidney disease stage 3"
+      },
+      "selectedFindings": [
+        {
+          "code": "84229001",
+          "display": "Fatigue"
+        },
+        {
+          "code": "139394000",
+          "display": "Nocturia"
+        },
+        {
+          "code": "271809000",
+          "display": "Peripheral edema"
+        }
+      ],
+      "povCode": "433144002",
+      "addToProblemList": true,
+      "noteSupport": "Reduced eGFR in the stage 3 range with elevated creatinine, nocturia, fatigue, and mild edema support CKD stage 3.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": true,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "mdd-recurrent-moderate",
+      "title": "Major depressive disorder, recurrent, moderate",
+      "category": "chronic",
+      "plausiblePatientHint": "Patient with note history where behavioral-health-style symptom support would not look out of place.",
+      "diagnosis": {
+        "icd10Code": "F33.1",
+        "icd10Display": "Major depressive disorder, recurrent, moderate",
+        "snomedCode": "191611001",
+        "display": "Recurrent major depressive episodes, moderate"
+      },
+      "selectedFindings": [
+        {
+          "code": "366979004",
+          "display": "Depressed mood"
+        },
+        {
+          "code": "193462001",
+          "display": "Insomnia"
+        },
+        {
+          "code": "28669007",
+          "display": "Anhedonia"
+        }
+      ],
+      "povCode": "191611001",
+      "addToProblemList": true,
+      "noteSupport": "Depressed mood, insomnia, anhedonia, and moderate PHQ-9 score support recurrent moderate major depressive disorder.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": true,
+        "standardCodeCount": 4
+      }
+    },
+    {
+      "id": "gout-flare",
+      "title": "Acute gout flare",
+      "category": "acute",
+      "plausiblePatientHint": "Patient with acute joint pain context, prior gout, renal disease, diuretic exposure, or elevated uric acid history.",
+      "diagnosis": {
+        "icd10Code": "M10.9",
+        "icd10Display": "Gout, unspecified",
+        "snomedCode": "90560007",
+        "display": "Gout"
+      },
+      "selectedFindings": [
+        {
+          "code": "67148009",
+          "display": "Podagra"
+        },
+        {
+          "code": "247441003",
+          "display": "Erythema of joint"
+        },
+        {
+          "code": "271771009",
+          "display": "Joint swelling"
+        }
+      ],
+      "povCode": "90560007",
+      "addToProblemList": false,
+      "noteSupport": "Acute first metatarsophalangeal pain with erythema, joint swelling, and elevated uric acid supports acute gout flare.",
+      "expectedWriteback": {
+        "condition": true,
+        "problemListCandidate": false,
+        "standardCodeCount": 4
+      }
+    }
+  ]
+}

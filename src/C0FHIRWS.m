@@ -7,9 +7,16 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  ; RTN:    Output array (passed by reference)
  ; FILTER: Input/Output array (passed by reference)
  ;
- N DFN,IEN,NAME,VIEW
+ N DFN,IEN,NAME,PATH,VIEW
  K RTN
  S FILTER("type")="application/json" ; default mime type
+ S PATH=$G(HTTPREQ("path"))
+ I $P(PATH,"/",2)="fhir",$P(PATH,"/",3)'="" D  Q
+ . S FILTER("resource")=$P(PATH,"/",3)
+ . I $P(PATH,"/",4)'="",$P(PATH,"/",4)'="_search" DO  QUIT
+ . . S FILTER("id")=$P(PATH,"/",4)
+ . . D WSREAD^C0FWCAC(.RTN,.FILTER,$P(PATH,"/",4))
+ . D WS^C0FWCAC(.RTN,.FILTER)
  ;
  S DFN=$G(FILTER("dfn"))
  S IEN=+$G(FILTER("ien"))
@@ -38,14 +45,129 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  D GETFHIR^C0FHIR(.RTN,.FILTER)
  Q
  ;
+DASH(RTN,FILTER) ; Human FHIR patient dashboard
+ K RTN
+ S FILTER("type")="text/html"
+ D FHIRIDX^C0FHIR(.RTN)
+ S HTTPRSP("mime")="text/html"
+ Q
+ ;
+QDASH(RTN,FILTER) ; Legacy /fhir-quality-dashboard → active summary
+ D QDASHES(.RTN,.FILTER)
+ Q
+ ;
+QDASHES(RTN,FILTER) ; /fhir-quality-dashboards[+/{measure}]
+ N CMS,PATH,VIEW
+ K RTN
+ S FILTER("type")="text/html"
+ S PATH=$G(HTTPREQ("path"))
+ S CMS=$G(FILTER("measure"))
+ I CMS="" S CMS=$P(PATH,"/",3)
+ S VIEW=$$UPCASE^C0FHIR($G(FILTER("view")))
+ I VIEW="ALL" D CATALOG^C0FQUAL(.RTN) S HTTPRSP("mime")="text/html" Q
+ I CMS'="" D MEASURE^C0FQUAL(.RTN,CMS) S HTTPRSP("mime")="text/html" Q
+ D SUMMARY^C0FQUAL(.RTN)
+ S HTTPRSP("mime")="text/html"
+ Q
+ ;
+WSASSET(RTN,FILTER) ; Serve allowlisted browser assets when static /filesystem is unavailable
+ N DIR,FILE,OK,TMP
+ K RTN
+ S FILE=$G(FILTER("file"))
+ I '$$ASSETOK(FILE) D  Q
+ . S HTTPERR=404
+ . S RTN(1)="Not found"
+ S TMP=$NA(^TMP("C0FHIRAS",$J))
+ K @TMP
+ S DIR=$$ASSETDIR(FILE,TMP)
+ I DIR="" D  Q
+ . S HTTPERR=404
+ . S RTN(1)="Not found"
+ M RTN=@TMP
+ K @TMP
+ D FIXJS(.RTN,FILE)
+ S HTTPRSP("mime")=$$ASSETMIME(FILE)
+ Q
+ ;
+FIXJS(RTN,FILE) ; Preserve JavaScript line boundaries after %ZISH reads text nodes
+ N I
+ I $G(FILE)'="tjson.js",$G(FILE)'="tjson_bg.js" Q
+ S I=0
+ F  S I=$O(RTN(I)) Q:I<1  S RTN(I)=$G(RTN(I))_$C(10)
+ Q
+ ;
+ASSETOK(FILE) ; $$ - true for browser asset names this route may serve
+ Q $S($G(FILE)="tjson.js":1,$G(FILE)="tjson_bg.js":1,$G(FILE)="tjson_bg.wasm.b64":1,$G(FILE)="tjson_bg.wasm":1,1:0)
+ ;
+ASSETDIR(FILE,TMP) ; $$ - first readable browser asset directory
+ N DIR,HOME,OK
+ S HOME=$ZTRNLNM("HOME")
+ I HOME'="" D  I OK Q DIR
+ . S DIR=HOME_"/www/filesystem/"
+ . K @TMP S OK=$$FTGOK(DIR,FILE,TMP)
+ I HOME'="" D  I OK Q DIR
+ . S DIR=HOME_"/www/"
+ . K @TMP S OK=$$FTGOK(DIR,FILE,TMP)
+ S DIR="/home/rpms/www/filesystem/"
+ K @TMP S OK=$$FTGOK(DIR,FILE,TMP) I OK Q DIR
+ S DIR="/home/vehu/www/filesystem/"
+ K @TMP S OK=$$FTGOK(DIR,FILE,TMP) I OK Q DIR
+ S DIR="/home/osehra/www/"
+ K @TMP S OK=$$FTGOK(DIR,FILE,TMP) I OK Q DIR
+ Q ""
+ ;
+FTGOK(DIR,FILE,TMP) ; $$ - read file with missing-dir errors contained
+ N $ETRAP,$ESTACK,OK,TGT
+ S OK=0
+ S $ETRAP="S $ECODE="""",OK=0 Q"
+ S TGT=$E(TMP,1,$L(TMP)-1)_",1)"
+ S OK=$$FTG^%ZISH(DIR,FILE,TGT,3)
+ Q +OK
+ ;
+ASSETMIME(FILE) ; $$ - HTTP MIME for browser asset
+ I $G(FILE)="tjson.js" Q "application/javascript"
+ I $G(FILE)="tjson_bg.js" Q "application/javascript"
+ I $G(FILE)="tjson_bg.wasm" Q "application/wasm"
+ Q "text/plain"
+ ;
 BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhir bundles
- N ALTLBL,ALTRAW,BADGE,D,IEN,LOADURL,RAWLBL,RAWURL,SRC,SRCNOTE,THEME,TOPLINKS
+ N ALTLBL,ALTRAW,BADGE,D,IEN,LOADURL,MEAS,MODE,RAWLBL,RAWURL,SRC,SRCNOTE,THEME,TOPLINKS
  S D=+$G(FILTER("dfn"))
  S IEN=+$G(FILTER("ien"))
+ S MEAS=$G(FILTER("measure"))
+ S MODE=$$UPCASE^C0FHIR($G(FILTER("mode")))
  S SRC=$$UPCASE^C0FHIR($G(FILTER("source")))
  I SRC="SYNTHEA" S SRC="SHOWFHIR"
  I SRC="" S SRC=$S(IEN>0:"SHOWFHIR",1:"FHIR")
- I SRC="SHOWFHIR" D
+ I SRC="AICONSULT" D
+ . S THEME="theme-light"
+ . I MODE="QUALITY" D
+ . . S BADGE="Quality AI Consult"
+ . . S SRCNOTE="Quality AI Consult via /aiconsult?mode=quality"
+ . E  D
+ . . S BADGE="AI Consult"
+ . . S SRCNOTE="AI Consult Stage 2 response via /aiconsult"
+ . S LOADURL="/aiconsult?dfn="_D_"&format=json&file=1&stage=2"
+ . I MODE="QUALITY" S LOADURL=LOADURL_"&mode=quality"
+ . E  I MODE'="" S LOADURL=LOADURL_"&mode="_MODE
+ . I MEAS'="" S LOADURL=LOADURL_"&measure="_MEAS
+ . S RAWLBL=$S(MODE="QUALITY":"raw quality ai consult",1:"raw ai consult")
+ . S RAWURL="/aiconsult?dfn="_D_"&format=json&file=1"
+ . I MODE="QUALITY" S RAWURL=RAWURL_"&mode=quality"
+ . E  I MODE'="" S RAWURL=RAWURL_"&mode="_MODE
+ . I MEAS'="" S RAWURL=RAWURL_"&measure="_MEAS
+ . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
+ . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")
+ E  I SRC="ALTFHIR" D
+ . S THEME="theme-light"
+ . S BADGE="altfhir"
+ . S SRCNOTE="Graph-source FHIR via /altfhir"
+ . S LOADURL=$S(IEN>0:"/altfhir?ien="_IEN,1:"/altfhir")
+ . S RAWLBL="raw altfhir"
+ . S RAWURL=LOADURL
+ . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
+ . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")
+ E  I SRC="SHOWFHIR" D
  . S THEME="theme-light"
  . S BADGE="Synthea source"
  . S SRCNOTE="Stored Synthea FHIR via /showfhir"
@@ -122,12 +244,12 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"</head>")
  D ADDLN(.RTN,"<body class='"_THEME_"'>")
  D ADDLN(.RTN,"<div class='top'><div class='topline'><strong>C0FHIR Browser</strong><span class='badge'>"_BADGE_"</span></div>")
- S TOPLINKS="<div class='sub'><a href='/fhir'>index</a><a href="""_RAWURL_""">"_RAWLBL_"</a>"
+ S TOPLINKS="<div class='sub'><a href='/fhir-dashboard'>dashboard</a><a href="""_RAWURL_""">"_RAWLBL_"</a>"
  I ALTRAW'="" S TOPLINKS=TOPLINKS_"<a href="""_ALTRAW_""">"_ALTLBL_"</a>"
  I D>0 S TOPLINKS=TOPLINKS_"<a href=""/vpr?dfn="_D_""">vpr</a>"
  S TOPLINKS=TOPLINKS_"<span class='srcnote'>"_SRCNOTE_"</span>"
  I D>0 S TOPLINKS=TOPLINKS_" | DFN "_D
- I SRC="SHOWFHIR",IEN>0 S TOPLINKS=TOPLINKS_" | IEN "_IEN
+ I (SRC="SHOWFHIR")!(SRC="ALTFHIR"),IEN>0 S TOPLINKS=TOPLINKS_" | IEN "_IEN
  S TOPLINKS=TOPLINKS_"</div></div>"
  D ADDLN(.RTN,TOPLINKS)
  D ADDLN(.RTN,"<div class='wrap'>")
@@ -144,10 +266,10 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"<script>")
  D ADDLN(.RTN,"const dfn="_D_";")
  D ADDLN(.RTN,"const graphIen="_IEN_";")
- D ADDLN(.RTN,"const sourceMode='"_$S(SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
- D ADDLN(.RTN,"const sourceLabel=sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR';")
+ D ADDLN(.RTN,"const sourceMode='"_$S(SRC="AICONSULT":"aiconsult",SRC="ALTFHIR":"altfhir",SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
+ D ADDLN(.RTN,"const sourceLabel=sourceMode==='aiconsult'?'AI Consult':(sourceMode==='altfhir'?'altfhir graph source':(sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR'));")
  D ADDLN(.RTN,"const bundleUrl='"_LOADURL_"';")
- D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson.js?v=0.6.0';")
+ D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson/web/index.js?v=0.6.5';")
  D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")
  D ADDLN(.RTN,"try{const x=sessionStorage.getItem('c0fhirBrowserFmt');if(x==='json'||x==='tjson')st.fmt=x;}catch(e){}")
  D ADDLN(.RTN,"let tjsonMod=null;")
@@ -158,7 +280,7 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"const rid=e=>((e||{}).resource||{}).id||'';")
  D ADDLN(.RTN,"const ref=e=>((e||{}).fullUrl)||'';")
  D ADDLN(.RTN,"function isPlainTextMime(ct){const s=String(ct||'').toLowerCase();")
- D ADDLN(.RTN," return s.indexOf('text/plain')===0||s.indexOf('plain/text')===0;}")
+ D ADDLN(.RTN," return s.indexOf('text/plain')===0||s.indexOf('plain/text')===0||s.indexOf('text/markdown')===0;}")
  D ADDLN(.RTN,"function decodeBase64Utf8(b64){")
  D ADDLN(.RTN," try{")
  D ADDLN(.RTN,"  const bin=atob(String(b64||'').replace(/\s+/g,''));")
@@ -170,9 +292,18 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"}")
  D ADDLN(.RTN,"function prepareForTjson(obj){")
  D ADDLN(.RTN," const r=obj||{};")
- D ADDLN(.RTN," if(r.resourceType!=='DocumentReference'||!Array.isArray(r.content)) return r;")
+ D ADDLN(.RTN," if(r.resourceType!=='DocumentReference'&&r.resourceType!=='DiagnosticReport') return r;")
  D ADDLN(.RTN," const out=JSON.parse(JSON.stringify(r));")
  D ADDLN(.RTN," let changed=false;")
+ D ADDLN(.RTN," if(out.resourceType==='DiagnosticReport'&&Array.isArray(out.presentedForm)){")
+ D ADDLN(.RTN,"  out.presentedForm.forEach(a=>{let txt;")
+ D ADDLN(.RTN,"   if(!a||!isPlainTextMime(a.contentType)||!a.data) return;")
+ D ADDLN(.RTN,"   txt=decodeBase64Utf8(a.data);")
+ D ADDLN(.RTN,"   if(txt===null) return;")
+ D ADDLN(.RTN,"   a.data=txt;changed=true;")
+ D ADDLN(.RTN,"  });")
+ D ADDLN(.RTN," }")
+ D ADDLN(.RTN," if(!Array.isArray(out.content)) return changed?out:r;")
  D ADDLN(.RTN," out.content.forEach(x=>{")
  D ADDLN(.RTN,"  const a=(x||{}).attachment||null;let txt;")
  D ADDLN(.RTN,"  if(!a||!isPlainTextMime(a.contentType)||!a.data) return;")
@@ -198,7 +329,8 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN," Array.from(set).sort().forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;s.appendChild(o);});")
  D ADDLN(.RTN," s.value=st.type;}")
  D ADDLN(.RTN,"function buildTree(){const byRef=new Map();")
- D ADDLN(.RTN," st.all.forEach(e=>{const u=ref(e);if(u) byRef.set(u,e);});")
+ D ADDLN(.RTN," st.all.forEach(e=>{const u=ref(e);if(u) byRef.set(u,e);")
+ D ADDLN(.RTN,"  const t=rtype(e),id=rid(e);if(t&&id){byRef.set(t+'/'+id,e);byRef.set('urn:uuid:'+id,e);}});")
  D ADDLN(.RTN," const childSet=new Set();")
  D ADDLN(.RTN," st.rows.forEach(e=>{if(rtype(e)!=='DiagnosticReport') return;reportKids(e,byRef).forEach(c=>childSet.add(c));});")
  D ADDLN(.RTN," st.tree=[];st.visible=[];")
@@ -243,7 +375,7 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"  const tobj=prepareForTjson(obj);")
  D ADDLN(.RTN,"  const js=JSON.stringify(tobj);")
  D ADDLN(.RTN,"  el('detail').textContent=(typeof m.fromJson==='function'?m.fromJson(js,{}):m.stringify(js,{}));")
- D ADDLN(.RTN," }catch(err){el('detail').textContent='TJSON failed (sync vendor/tjson including tjson_bg.wasm.b64 into M user www; hard-refresh; redeploy): '+String(err);}")
+ D ADDLN(.RTN," }catch(err){el('detail').textContent='TJSON failed (sync vendor/tjson/web into M user www/tjson/web; hard-refresh; redeploy): '+String(err);}")
  D ADDLN(.RTN,"}")
  D ADDLN(.RTN,"function draw(){drawList();updateFmtButtons();drawDetailAsync();}")
  D ADDLN(.RTN,"async function boot(){")

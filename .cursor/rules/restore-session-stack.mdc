@@ -1,0 +1,24 @@
+---
+description: Exact phrase "restore" restarts the last snapped local demo stack
+alwaysApply: true
+---
+
+# Restore session stack
+
+Exact phrases **"restore"**, **"restore session"**, or **"restore the stack"** mean:
+
+1. Run `/home/glilly/ops/scripts/cursor-session-stack.sh restore` with permissions that allow local Docker/network (`all` if sandbox blocks listeners).
+2. Report what came back up (gateway URL, ports, any failures).
+3. Do not ask which services unless restore fails or the snapshot is empty/unknown.
+
+Exact phrases **"snapshot"**, **"remember the stack"**, or **"remember what's running"** mean:
+
+1. Run `/home/glilly/ops/scripts/cursor-session-stack.sh snapshot`.
+2. Confirm the saved path (`~/.cursor/vista-session-stack.json`) and listed services.
+
+After starting the UI gateway / CPRS demo yourself, also run `snapshot` so a later `restore` works after Cursor reload.
+
+Default restored services (always both on restore):
+
+- `vehu10-fhir-gateway` — `http://localhost:5177/fhir` → vehu10 (`9085`); Quality AI Consult via fhirdev
+- `rpms-rebuild-fhir-gateway` — `http://localhost:5178/fhir` → `rpms-rebuild-candidate` (`9088`)
