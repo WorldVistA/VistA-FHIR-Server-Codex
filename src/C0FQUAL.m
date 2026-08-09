@@ -271,6 +271,7 @@ SUMMARY(RTN) ; HTML summary of active measures
  DO ADDLN^C0FHIR(.RTN,"<div class=""links"">")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-dashboards?view=all"">All catalog measures</a>")
+ DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-reporting"">Quality reporting (DEQM)</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/altfhir/metadata"">/altfhir metadata</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir/metadata"">/fhir metadata</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
@@ -484,6 +485,9 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  . IF ASOF'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">As of "_$$HTMLESC^C0FHIR(ASOF)_"</p>")
  . IF COHORT'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Cohort: "_$$HTMLESC^C0FHIR(COHORT)_"</p>")
  ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">No aggregate CQL/heuristic summary stored yet for this measure.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p><a href=""/fhir-quality-report?measure="_CMS_""">Live DEQM Summary MeasureReport (current counts)</a>")
+ DO ADDLN^C0FHIR(.RTN," · <a href=""/fhir-quality-report?measure="_CMS_"&amp;bundle=1"">Live submission Bundle</a>")
+ DO ADDLN^C0FHIR(.RTN," · <a href=""/fhir-quality-reporting"">Reporting pipeline</a></p>")
  SET MURL="/filesystem/quality/measurereports/"_CMS_"/summary-deqm.json"
  DO ADDLN^C0FHIR(.RTN,"<p><a href="""_MURL_""">DEQM Summary MeasureReport (official-cql freeze)</a>")
  SET MURL="/filesystem/quality/measurereports/"_CMS_"/summary.json"

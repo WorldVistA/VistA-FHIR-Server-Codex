@@ -73,6 +73,10 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . SET MQ(1)="U^measure"
  . DO addService^%webutils("GET","filesystem/quality/measurereports/{measure}","QMRHTML^C0FQUAL","","","",.MQ)
  . DO addService^%webutils("GET","filesystem/quality/measurereports/{measure}/","QMRHTML^C0FQUAL","","","",.MQ)
+ ; Live DEQM Summary MeasureReport export + reporting pipeline page
+ IF $T(WSRPT^C0FQRPT)'="" DO
+ . DO addService^%webutils("GET","fhir-quality-report","WSRPT^C0FQRPT")
+ . DO addService^%webutils("GET","fhir-quality-reporting","WSRPTPG^C0FQRPT")
  ; Seed quality-measure catalog when routine is present
  IF $T(SEED^C0FQUAL)'="" DO SEED^C0FQUAL
  IF $T(WS^C0FWAIS)'="" DO addService^%webutils("GET","aiconsult","WS^C0FWAIS")
