@@ -76,6 +76,69 @@ else:
 PY
 done
 
+# Live DEQM Summary MeasureReport export (C0FQRPT): report + bundle + page.
+# A measure without stored aggregates 404s by design; use the first with data.
+rpt_m=""
+for m in CMS165v14 CMS122v14 CMS138v14 CMS2v15 CMS125v14; do
+  code=$(curl -sS -o /tmp/qsmoke-rpt.json -w "%{http_code}" --max-time 30 "$BASE/fhir-quality-report?measure=$m" || echo 000)
+  [[ "$code" == "200" ]] && { rpt_m="$m"; break; }
+done
+if [[ -z "$rpt_m" ]]; then
+  if [[ "$code" == "404" ]] && grep -q '"OperationOutcome"' /tmp/qsmoke-rpt.json; then
+    pass "fhir-quality-report 404 OperationOutcome (no aggregates stored on this host)"
+  else
+    bad "fhir-quality-report HTTP $code (no measure served a live report)"
+  fi
+else
+  python3 - <<'PY' || fail=1
+import json, sys
+r = json.load(open("/tmp/qsmoke-rpt.json"))
+ok = True
+if r.get("resourceType") != "MeasureReport":
+    print(f"  FAIL  live report resourceType={r.get('resourceType')!r}", file=sys.stderr); ok = False
+else:
+    prof = (r.get("meta") or {}).get("profile") or []
+    if not any("summary-measurereport-deqm" in p for p in prof):
+        print("  FAIL  live report missing DEQM summary profile", file=sys.stderr); ok = False
+    pops = {p["code"]["coding"][0]["code"]: int(p["count"])
+            for p in (r.get("group") or [{}])[0].get("population", [])}
+    need = ["initial-population", "denominator", "numerator", "denominator-exclusion"]
+    if sorted(pops) != sorted(need):
+        print(f"  FAIL  live report populations {sorted(pops)}", file=sys.stderr); ok = False
+    elif not (pops["numerator"] <= pops["denominator"] <= pops["initial-population"]):
+        print(f"  FAIL  live report nesting {pops}", file=sys.stderr); ok = False
+if ok:
+    print("  PASS  fhir-quality-report live DEQM summary")
+else:
+    raise SystemExit(1)
+PY
+
+  code=$(curl -sS -o /tmp/qsmoke-rptb.json -w "%{http_code}" --max-time 30 "$BASE/fhir-quality-report?measure=$rpt_m&bundle=1" || echo 000)
+  if [[ "$code" != "200" ]]; then
+    bad "fhir-quality-report bundle HTTP $code"
+  else
+    python3 - <<'PY' || fail=1
+import json, sys
+b = json.load(open("/tmp/qsmoke-rptb.json"))
+kinds = [e.get("resource", {}).get("resourceType") for e in b.get("entry", [])]
+if b.get("resourceType") == "Bundle" and b.get("type") == "transaction" \
+        and kinds == ["Organization", "MeasureReport"]:
+    print("  PASS  fhir-quality-report submission Bundle")
+else:
+    print(f"  FAIL  submission Bundle type={b.get('type')!r} entries={kinds}", file=sys.stderr)
+    raise SystemExit(1)
+PY
+  fi
+fi
+
+code=$(curl -sS -o /tmp/qsmoke-rptpg.html -w "%{http_code}" --max-time 30 "$BASE/fhir-quality-reporting" || echo 000)
+if [[ "$code" == "200" ]] && grep -q "Active measures" /tmp/qsmoke-rptpg.html \
+  && grep -q "fhir-quality-report?measure=" /tmp/qsmoke-rptpg.html; then
+  pass "fhir-quality-reporting pipeline page"
+else
+  bad "fhir-quality-reporting HTTP $code or missing live report links"
+fi
+
 code=$(curl -sS -o /tmp/qsmoke-presets.json -w "%{http_code}" --max-time 45 "$BASE/c0x/presets" || echo 000)
 if [[ "$code" != "200" ]]; then
   bad "c0x/presets HTTP $code"
