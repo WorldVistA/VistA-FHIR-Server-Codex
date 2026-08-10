@@ -396,10 +396,10 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
  . SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
- . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a></td>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(BURL,"fhir",1)_"</td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
- . SET ROW=ROW_"<td><a href="""_AURL_""">quality ai</a></td>"
- . IF FURL'="" SET ROW=ROW_"<td><a href="""_FURL_""">synthea</a></td></tr>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(AURL,"quality ai",1)_"</td>"
+ . IF FURL'="" SET ROW=ROW_"<td>"_$$TJBTN(FURL,"synthea",1)_"</td></tr>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
  IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
@@ -437,10 +437,10 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
  . IF FLAG SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td>"
- . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a></td>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(BURL,"fhir",1)_"</td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
- . SET ROW=ROW_"<td><a href="""_AURL_""">quality ai</a></td>"
- . SET ROW=ROW_"<td><a href="""_FURL_""">synthea</a></td></tr>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(AURL,"quality ai",1)_"</td>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(FURL,"synthea",1)_"</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
  IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No graph-linked patients found.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
@@ -595,6 +595,11 @@ HDR(RTN,TITLE,SUB) ;
  DO ADDLN^C0FHIR(.RTN,".card{background:#fff;border:1px solid #cbd5e1;padding:14px 16px;margin:14px 0;border-radius:6px}")
  DO ADDLN^C0FHIR(.RTN,".stats .big{font-size:1.05rem} .yes{color:#047857;font-weight:600} .no{color:#b91c1c} .na{color:#94a3b8}")
  DO ADDLN^C0FHIR(.RTN,"code{background:#e2e8f0;padding:1px 4px;border-radius:3px}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn{display:inline-block;padding:2px 10px;border-radius:999px;background:#0f766e;color:#fff;text-decoration:none;font-size:.8rem;font-weight:600;white-space:nowrap;border:1px solid #0f766e}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn:hover{background:#115e59;border-color:#115e59}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn .br{opacity:.7;margin-right:5px;font-weight:700}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn.lite{background:transparent;color:#0f766e}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn.lite:hover{background:#ccfbf1}")
  DO ADDLN^C0FHIR(.RTN,"</style></head><body>")
  DO ADDLN^C0FHIR(.RTN,"<h1>"_$$HTMLESC^C0FHIR(TITLE)_"</h1>")
  IF $GET(SUB)'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">"_$$HTMLESC^C0FHIR(SUB)_"</p>")
@@ -603,6 +608,13 @@ HDR(RTN,TITLE,SUB) ;
 FTR(RTN) ;
  DO ADDLN^C0FHIR(.RTN,"</body></html>")
  QUIT
+ ;
+TJBTN(URL,LABEL,LITE) ; $$ - pill button for links that open the TJSON browser
+ ; Solid teal pill for standalone placement; LITE=1 outline variant for tables.
+ NEW TIP
+ SET LABEL=$GET(LABEL) IF LABEL="" SET LABEL="TJSON"
+ SET TIP="Opens the C0FHIR Browser: resource list + TJSON rendering"
+ QUIT "<a class=""tjbtn"_$SELECT(+$GET(LITE):" lite",1:"")_""" href="""_URL_""" title="""_TIP_"""><span class=""br"">{&hellip;}</span>"_$$HTMLESC^C0FHIR(LABEL)_"</a>"
  ;
  ;----- Curated cohort maintenance -----
 WSDELCOH(ARGS,BODY,RESULT) ; POST /fhir-quality-cohort-delete?measure=

@@ -259,7 +259,7 @@ OUTPAGE(RTN,CMS,OP) ; Human-readable rendering of the stored outcome
  DO ADDLN^C0FHIR(.RTN,"<div class=""links"">")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-reporting"">Reporting pipeline</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-dashboards/"_CMS_""">"_CMS_" dashboard</a>")
- DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS_""">report in browser</a>")
+ DO ADDLN^C0FHIR(.RTN,$$TJBTN^C0FQUAL("/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS,"TJSON report"))
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-report-outcome?measure="_CMS_"&amp;op="_OP_""">raw JSON</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  DO ADDLN^C0FHIR(.RTN,"<div id=""out"" class=""card"">Loading outcome&hellip;</div>")
@@ -366,7 +366,7 @@ WSRPTPG(RTN,FILTER) ; GET /fhir-quality-reporting — pipeline page (HTML)
  . IF N>0 DO
  . . SET LNK="<a href=""/fhir-quality-report?measure="_CMS_""">report</a>"
  . . SET LNK=LNK_" · <a href=""/fhir-quality-report?measure="_CMS_"&amp;bundle=1"">submission Bundle</a>"
- . . SET LNK=LNK_" · <a href=""/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS_""">browser</a>"
+ . . SET LNK=LNK_" "_$$TJBTN^C0FQUAL("/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS)
  . . SET ROW=ROW_"<td>"_LNK_"</td>"
  . . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-op=""validate"">Validate</button><br><span class=""muted"" id=""st-validate-"_CMS_""">"_$$HTMLESC^C0FHIR($$OPSTAT(CMS,"validate"))_"</span>"_$$OUTLNK(CMS,"validate")_"</td>"
  . . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-op=""submit"">Submit</button><br><span class=""muted"" id=""st-submit-"_CMS_""">"_$$HTMLESC^C0FHIR($$OPSTAT(CMS,"submit"))_"</span>"_$$OUTLNK(CMS,"submit")_"</td>"
