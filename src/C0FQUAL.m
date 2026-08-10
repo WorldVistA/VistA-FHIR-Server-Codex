@@ -710,7 +710,8 @@ WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy t
  IF N<1 DO OO^C0FWAIS(.OUT,"error","invalid","No curated POP DFNs for "_CMS) QUIT
  SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT_"^"_BASE_"^"_$SELECT(INLINE:1,1:0)_"^"_+N
  ; Background job: large cohorts exceed ~60s edge/proxy limits (Failed to fetch)
- JOB REEVALJ^C0FQUAL(CMS)
+ ; DEFAULT=/tmp keeps JOB spawn independent of the listener's cwd (JOBFAIL)
+ JOB REEVALJ^C0FQUAL(CMS):(DEFAULT="/tmp")
  KILL TMP
  SET TMP("status")="accepted"
  SET TMP("measure")=CMS

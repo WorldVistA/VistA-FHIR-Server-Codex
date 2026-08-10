@@ -142,6 +142,17 @@ else
   bad "fhir-quality-reporting HTTP $code or missing live links/buttons/evidence log"
 fi
 
+# Validate button contract: POST must JOB the worker and answer "accepted".
+# Catches JOBFAIL (listener cwd not writable) which 500s before any work runs.
+if [[ -n "$rpt_m" ]]; then
+  code=$(curl -sS -o /tmp/qsmoke-val.json -w "%{http_code}" --max-time 30 -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/fhir-quality-report-validate?measure=$rpt_m" || echo 000)
+  if [[ "$code" == "200" ]] && grep -q '"status":"accepted"' /tmp/qsmoke-val.json; then
+    pass "fhir-quality-report-validate accepted (background JOB spawned)"
+  else
+    bad "fhir-quality-report-validate HTTP $code (JOB spawn failed?)"
+  fi
+fi
+
 # Outcome endpoint contract: route registered, unknown measure 404s.
 # Registered handler emits {} for HTTPERR; a missing route emits the
 # listener's "Not Found" error envelope instead.

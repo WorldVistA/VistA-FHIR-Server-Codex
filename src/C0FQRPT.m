@@ -167,8 +167,11 @@ WSGO2(OUT,BODY,OP) ; Accept request; JOB background worker (avoids proxy timeout
  IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
  IF +$$SUM^C0FQUAL(CMS,1)<1 DO OO^C0FWAIS(.OUT,"error","invalid","No aggregate summary stored for "_CMS) QUIT
  SET ^C0FQUAL("REPORT",CMS,OP)="running^"_$$NOW^XLFDT
- IF OP="validate" JOB VALJ^C0FQRPT(CMS)
- ELSE  JOB SUBJ^C0FQRPT(CMS)
+ ; DEFAULT=/tmp: JOB creates its stdout/stderr files there, so spawning
+ ; never depends on the web listener's cwd being writable (JOBFAIL on hosts
+ ; whose listener was restarted from a read-only directory).
+ IF OP="validate" JOB VALJ^C0FQRPT(CMS):(DEFAULT="/tmp")
+ ELSE  JOB SUBJ^C0FQRPT(CMS):(DEFAULT="/tmp")
  KILL TMP
  SET TMP("status")="accepted",TMP("measure")=CMS,TMP("op")=OP
  SET TMP("message")="Started in background; reload for status."
