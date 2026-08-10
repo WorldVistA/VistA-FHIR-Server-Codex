@@ -709,9 +709,17 @@ WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy t
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  SET N=N+1
  IF N<1 DO OO^C0FWAIS(.OUT,"error","invalid","No curated POP DFNs for "_CMS) QUIT
  SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT_"^"_BASE_"^"_$SELECT(INLINE:1,1:0)_"^"_+N
- ; Background job: large cohorts exceed ~60s edge/proxy limits (Failed to fetch)
- ; DEFAULT=/tmp keeps JOB spawn independent of the listener's cwd (JOBFAIL)
- JOB REEVALJ^C0FQUAL(CMS):(DEFAULT="/tmp")
+ ; Background task: large cohorts exceed ~60s edge/proxy limits (Failed to fetch)
+ ; Queue via TaskMan (SAC): REEVT restores CMS from the task symbol table
+ NEW ZTRTN,ZTDESC,ZTDTH,ZTIO,ZTSAVE,ZTSK
+ SET ZTRTN="REEVT^C0FQUAL"
+ SET ZTDESC="C0F quality re-evaluate "_CMS
+ SET ZTIO="",ZTDTH=$H
+ SET ZTSAVE("CMS")=""
+ DO ^%ZTLOAD
+ IF '$GET(ZTSK) DO  QUIT
+ . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^TaskMan queue failed"
+ . DO OO^C0FWAIS(.OUT,"error","exception","TaskMan queue failed for re-evaluate")
  KILL TMP
  SET TMP("status")="accepted"
  SET TMP("measure")=CMS
@@ -724,7 +732,12 @@ WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy t
  IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode reeval response") QUIT
  QUIT
  ;
-REEVALJ(CMS) ; Background JOB: cds1 evaluate-cohort → SETPOP/SETSUM
+REEVT ; TaskMan entry: re-evaluate cohort; CMS restored via ZTSAVE
+ SET ZTREQ="@"
+ DO REEVALJ($GET(CMS))
+ QUIT
+ ;
+REEVALJ(CMS) ; Background worker: cds1 evaluate-cohort → SETPOP/SETSUM
  NEW BASE,DFN,ERR,INLINE,N,PAYLOAD,REQ,RESP,SLOT,SUM,PARTS
  SET CMS=$$FIND($GET(CMS)) QUIT:CMS=""
  SET PARTS=$GET(^C0FQUAL("REEVAL",CMS))

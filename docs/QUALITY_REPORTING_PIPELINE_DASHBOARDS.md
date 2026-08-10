@@ -67,9 +67,10 @@ Design decisions:
   the sidecar. (Upstream images referenced `dhi.io`, which requires auth —
   swapped to public `node:24`/`redis:7-alpine`.)
 - M routes `POST /fhir-quality-report-validate|submit?measure=` follow the
-  `WSREEVAL` pattern (accept fast, `JOB` the work, status in
-  `^C0FQUAL("REPORT",CMS,op)`, page reloads to show the outcome). Buttons
-  appear on `/fhir-quality-reporting` next to each live report.
+  `WSREEVAL` pattern (accept fast, queue the worker as a TaskMan task via
+  `^%ZTLOAD`, status in `^C0FQUAL("REPORT",CMS,op)`, page reloads to show the
+  outcome). Buttons appear on `/fhir-quality-reporting` next to each live
+  report. The re-evaluate worker is TaskMan-queued the same way (SAC).
 
 ## Phase 3 (implemented) — evidence log
 

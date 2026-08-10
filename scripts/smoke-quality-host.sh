@@ -142,14 +142,27 @@ else
   bad "fhir-quality-reporting HTTP $code or missing live links/buttons/evidence log"
 fi
 
-# Validate button contract: POST must JOB the worker and answer "accepted".
-# Catches JOBFAIL (listener cwd not writable) which 500s before any work runs.
+# Validate button contract: POST must queue a TaskMan task ("accepted") AND
+# the task must actually run to completion (catches TaskMan down/queue-only).
 if [[ -n "$rpt_m" ]]; then
   code=$(curl -sS -o /tmp/qsmoke-val.json -w "%{http_code}" --max-time 30 -X POST -H 'Content-Type: application/json' -d '{}' "$BASE/fhir-quality-report-validate?measure=$rpt_m" || echo 000)
   if [[ "$code" == "200" ]] && grep -q '"status":"accepted"' /tmp/qsmoke-val.json; then
-    pass "fhir-quality-report-validate accepted (background JOB spawned)"
+    pass "fhir-quality-report-validate accepted (task queued)"
+    vst=""
+    for _ in $(seq 1 12); do
+      sleep 5
+      vst=$(curl -sS --max-time 30 "$BASE/fhir-quality-reporting" | grep -o "id=\"st-validate-$rpt_m\">[^<]*" | head -1 || true)
+      case "$vst" in *running*) continue ;; *) break ;; esac
+    done
+    if [[ "$vst" == *pass* ]]; then
+      pass "fhir-quality-report-validate task completed (pass)"
+    elif [[ "$vst" == *running* || -z "$vst" ]]; then
+      bad "fhir-quality-report-validate task never completed (TaskMan running?)"
+    else
+      bad "fhir-quality-report-validate task finished abnormally: ${vst#*>}"
+    fi
   else
-    bad "fhir-quality-report-validate HTTP $code (JOB spawn failed?)"
+    bad "fhir-quality-report-validate HTTP $code (queue failed?)"
   fi
 fi
 

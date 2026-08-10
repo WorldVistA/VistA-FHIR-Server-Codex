@@ -5,8 +5,8 @@ C0FQRPT ; VAMC/GPL - Live DEQM Summary MeasureReport + reporting page ; 09-AUG-2
  ;   GET  /fhir-quality-report?measure=CMS165v14      live DEQM Summary MeasureReport
  ;   GET  /fhir-quality-report?measure=...&bundle=1   transaction Bundle (Organization + report)
  ;   GET  /fhir-quality-reporting                     reporting pipeline page (HTML)
- ;   POST /fhir-quality-report-validate?measure=      HL7 validator via cds1 (background JOB)
- ;   POST /fhir-quality-report-submit?measure=        DEQM receiver via cds1 (background JOB)
+ ;   POST /fhir-quality-report-validate?measure=      HL7 validator via cds1 (TaskMan task)
+ ;   POST /fhir-quality-report-submit?measure=        DEQM receiver via cds1 (TaskMan task)
  ;   GET  /fhir-quality-report-outcome?measure=&op=   full cds1 response for latest run (JSON)
  ;
  ; TJSON browser view of the live submission Bundle:
@@ -147,7 +147,7 @@ JS(X) ; $$ - escape a string for a JSON string literal
  . SET OUT=OUT_C
  QUIT OUT
  ;
- ;----- One-click validate / submit (WSREEVAL pattern: accept, JOB, poll) -----
+ ;----- One-click validate / submit (accept, queue TaskMan task, poll) -----
 WSVAL(ARGS,BODY,RESULT) ; POST /fhir-quality-report-validate?measure=
  IF '$DATA(RESULT) DO WSGO2(.ARGS,.BODY,"validate") QUIT ""
  DO WSGO2(.RESULT,.BODY,"validate")
@@ -158,7 +158,7 @@ WSSUB(ARGS,BODY,RESULT) ; POST /fhir-quality-report-submit?measure=
  DO WSGO2(.RESULT,.BODY,"submit")
  QUIT ""
  ;
-WSGO2(OUT,BODY,OP) ; Accept request; JOB background worker (avoids proxy timeouts)
+WSGO2(OUT,BODY,OP) ; Accept request; queue TaskMan worker (avoids proxy timeouts)
  NEW CMS,ERR,TMP
  SET U="^",HTTPRSP("mime")="application/json"
  KILL OUT
@@ -167,19 +167,34 @@ WSGO2(OUT,BODY,OP) ; Accept request; JOB background worker (avoids proxy timeout
  IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
  IF +$$SUM^C0FQUAL(CMS,1)<1 DO OO^C0FWAIS(.OUT,"error","invalid","No aggregate summary stored for "_CMS) QUIT
  SET ^C0FQUAL("REPORT",CMS,OP)="running^"_$$NOW^XLFDT
- ; DEFAULT=/tmp: JOB creates its stdout/stderr files there, so spawning
- ; never depends on the web listener's cwd being writable (JOBFAIL on hosts
- ; whose listener was restarted from a read-only directory).
- IF OP="validate" JOB VALJ^C0FQRPT(CMS):(DEFAULT="/tmp")
- ELSE  JOB SUBJ^C0FQRPT(CMS):(DEFAULT="/tmp")
+ ; Queue via TaskMan (SAC): VALT/SUBT restore CMS from the task symbol table
+ NEW ZTRTN,ZTDESC,ZTDTH,ZTIO,ZTSAVE,ZTSK
+ SET ZTRTN=$SELECT(OP="validate":"VALT^C0FQRPT",1:"SUBT^C0FQRPT")
+ SET ZTDESC="C0F quality report "_OP_" "_CMS
+ SET ZTIO="",ZTDTH=$H
+ SET ZTSAVE("CMS")=""
+ DO ^%ZTLOAD
+ IF '$GET(ZTSK) DO  QUIT
+ . SET ^C0FQUAL("REPORT",CMS,OP)="error^"_$$NOW^XLFDT_"^TaskMan queue failed"
+ . DO OO^C0FWAIS(.OUT,"error","exception","TaskMan queue failed for "_OP)
  KILL TMP
- SET TMP("status")="accepted",TMP("measure")=CMS,TMP("op")=OP
- SET TMP("message")="Started in background; reload for status."
+ SET TMP("status")="accepted",TMP("measure")=CMS,TMP("op")=OP,TMP("task")=+ZTSK
+ SET TMP("message")="Queued as TaskMan task "_+ZTSK_"; reload for status."
  DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
  IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode response") QUIT
  QUIT
  ;
-VALJ(CMS) ; Background JOB: live report -> cds1 /quality/validate-report
+VALT ; TaskMan entry: validate live report; CMS restored via ZTSAVE
+ SET ZTREQ="@"
+ DO VALJ($GET(CMS))
+ QUIT
+ ;
+SUBT ; TaskMan entry: submit live Bundle; CMS restored via ZTSAVE
+ SET ZTREQ="@"
+ DO SUBJ($GET(CMS))
+ QUIT
+ ;
+VALJ(CMS) ; Background worker: live report -> cds1 /quality/validate-report
  NEW DET,ERR,FIRST,KN,LINES,NA,RAW,REP,RESP,ST
  SET CMS=$$FIND^C0FQUAL($GET(CMS)) QUIT:CMS=""
  DO REPORTER(.REP)
@@ -197,7 +212,7 @@ VALJ(CMS) ; Background JOB: live report -> cds1 /quality/validate-report
  DO LOGRUN(CMS,"validate",ST,DET)
  QUIT
  ;
-SUBJ(CMS) ; Background JOB: live Bundle -> cds1 /quality/submit-report -> receiver
+SUBJ(CMS) ; Background worker: live Bundle -> cds1 /quality/submit-report -> receiver
  NEW DET,ENT,ERR,I,LINES,RAW,REP,RESP,ST
  SET CMS=$$FIND^C0FQUAL($GET(CMS)) QUIT:CMS=""
  DO REPORTER(.REP)
