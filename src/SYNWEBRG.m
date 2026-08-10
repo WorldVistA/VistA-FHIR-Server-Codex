@@ -77,6 +77,11 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(WSRPT^C0FQRPT)'="" DO
  . DO addService^%webutils("GET","fhir-quality-report","WSRPT^C0FQRPT")
  . DO addService^%webutils("GET","fhir-quality-reporting","WSRPTPG^C0FQRPT")
+ IF $T(WSVAL^C0FQRPT)'="" DO
+ . NEW PARAMS
+ . SET PARAMS(1)="B"
+ . DO addService^%webutils("POST","fhir-quality-report-validate","WSVAL^C0FQRPT","","","",.PARAMS)
+ . DO addService^%webutils("POST","fhir-quality-report-submit","WSSUB^C0FQRPT","","","",.PARAMS)
  ; Seed quality-measure catalog when routine is present
  IF $T(SEED^C0FQUAL)'="" DO SEED^C0FQUAL
  IF $T(WS^C0FWAIS)'="" DO addService^%webutils("GET","aiconsult","WS^C0FWAIS")

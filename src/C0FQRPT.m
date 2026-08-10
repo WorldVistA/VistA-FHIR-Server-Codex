@@ -2,9 +2,14 @@ C0FQRPT ; VAMC/GPL - Live DEQM Summary MeasureReport + reporting page ; 09-AUG-2
  ;;1.0;C0FHIR PROJECT;;Aug 9, 2026;Build 1
  ;
  ; End-to-end quality reporting surface (QRDA Category III replacement):
- ;   GET /fhir-quality-report?measure=CMS165v14      live DEQM Summary MeasureReport
- ;   GET /fhir-quality-report?measure=...&bundle=1   transaction Bundle (Organization + report)
- ;   GET /fhir-quality-reporting                     reporting pipeline page (HTML)
+ ;   GET  /fhir-quality-report?measure=CMS165v14      live DEQM Summary MeasureReport
+ ;   GET  /fhir-quality-report?measure=...&bundle=1   transaction Bundle (Organization + report)
+ ;   GET  /fhir-quality-reporting                     reporting pipeline page (HTML)
+ ;   POST /fhir-quality-report-validate?measure=      HL7 validator via cds1 (background JOB)
+ ;   POST /fhir-quality-report-submit?measure=        DEQM receiver via cds1 (background JOB)
+ ;
+ ; Run status: ^C0FQUAL("REPORT",CMS,op)=status^fmts^detail
+ ; Evidence log: ^C0FQUAL("REPORT","LOG",n)=fmts^CMS^op^status^detail
  ;
  ; Counts come live from ^C0FQUAL("SUM",CMS)=N^IPP^DENOM^NUMER^DENEX^ASOF^COHORT —
  ; the same aggregates the dashboards display. The JSON shape mirrors
@@ -137,6 +142,105 @@ JS(X) ; $$ - escape a string for a JSON string literal
  . SET OUT=OUT_C
  QUIT OUT
  ;
+ ;----- One-click validate / submit (WSREEVAL pattern: accept, JOB, poll) -----
+WSVAL(ARGS,BODY,RESULT) ; POST /fhir-quality-report-validate?measure=
+ IF '$DATA(RESULT) DO WSGO2(.ARGS,.BODY,"validate") QUIT ""
+ DO WSGO2(.RESULT,.BODY,"validate")
+ QUIT ""
+ ;
+WSSUB(ARGS,BODY,RESULT) ; POST /fhir-quality-report-submit?measure=
+ IF '$DATA(RESULT) DO WSGO2(.ARGS,.BODY,"submit") QUIT ""
+ DO WSGO2(.RESULT,.BODY,"submit")
+ QUIT ""
+ ;
+WSGO2(OUT,BODY,OP) ; Accept request; JOB background worker (avoids proxy timeouts)
+ NEW CMS,ERR,TMP
+ SET U="^",HTTPRSP("mime")="application/json"
+ KILL OUT
+ DO SEED^C0FQUAL
+ SET CMS=$$FIND^C0FQUAL($GET(HTTPARGS("measure")))
+ IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
+ IF +$$SUM^C0FQUAL(CMS,1)<1 DO OO^C0FWAIS(.OUT,"error","invalid","No aggregate summary stored for "_CMS) QUIT
+ SET ^C0FQUAL("REPORT",CMS,OP)="running^"_$$NOW^XLFDT
+ IF OP="validate" JOB VALJ^C0FQRPT(CMS)
+ ELSE  JOB SUBJ^C0FQRPT(CMS)
+ KILL TMP
+ SET TMP("status")="accepted",TMP("measure")=CMS,TMP("op")=OP
+ SET TMP("message")="Started in background; reload for status."
+ DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
+ IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode response") QUIT
+ QUIT
+ ;
+VALJ(CMS) ; Background JOB: live report -> cds1 /quality/validate-report
+ NEW DET,ERR,FIRST,KN,LINES,NA,REP,RESP,ST
+ SET CMS=$$FIND^C0FQUAL($GET(CMS)) QUIT:CMS=""
+ DO REPORTER(.REP)
+ KILL LINES
+ DO ADDLN^C0FHIR(.LINES,"{""report"":")
+ DO REPORT(.LINES,CMS,.REP)
+ DO ADDLN^C0FHIR(.LINES,"}")
+ DO CALLCDS1("/quality/validate-report",.LINES,.RESP,.ERR)
+ IF $GET(ERR)'="" DO LOGRUN(CMS,"validate","error",ERR) QUIT
+ SET ST=$GET(RESP("status")) IF ST="" SET ST="error"
+ SET NA=$$NCOUNT(.RESP,"actionableErrors"),KN=$$NCOUNT(.RESP,"knownIgNoise")
+ SET DET="errors="_+$GET(RESP("severityCounts","error"))_" warnings="_+$GET(RESP("severityCounts","warning"))_" actionable="_NA_" knownNoise="_KN
+ IF ST="fail" SET FIRST=$GET(RESP("actionableErrors",1,"text")) IF FIRST'="" SET DET=DET_"; "_$EXTRACT(FIRST,1,80)
+ DO LOGRUN(CMS,"validate",ST,DET)
+ QUIT
+ ;
+SUBJ(CMS) ; Background JOB: live Bundle -> cds1 /quality/submit-report -> receiver
+ NEW DET,ENT,ERR,I,LINES,REP,RESP,ST
+ SET CMS=$$FIND^C0FQUAL($GET(CMS)) QUIT:CMS=""
+ DO REPORTER(.REP)
+ KILL LINES
+ DO ADDLN^C0FHIR(.LINES,"{""bundle"":")
+ DO BUNDLE(.LINES,CMS,.REP)
+ DO ADDLN^C0FHIR(.LINES,"}")
+ DO CALLCDS1("/quality/submit-report",.LINES,.RESP,.ERR)
+ IF $GET(ERR)'="" DO LOGRUN(CMS,"submit","error",ERR) QUIT
+ SET ST=$GET(RESP("status")) IF ST="" SET ST="error"
+ SET ENT="",I=0
+ FOR  SET I=$ORDER(RESP("entryStatuses",I)) QUIT:'I  SET ENT=ENT_$SELECT(ENT="":"",1:", ")_$GET(RESP("entryStatuses",I))
+ SET DET="HTTP "_+$GET(RESP("httpStatus"))_$SELECT(ENT'="":"; "_ENT,1:"")_"; receiver "_$GET(RESP("receiver"))
+ DO LOGRUN(CMS,"submit",ST,DET)
+ QUIT
+ ;
+NCOUNT(ARR,KEY) ; $$ - count numeric child nodes under ARR(KEY)
+ NEW I,N
+ SET (I,N)=0
+ FOR  SET I=$ORDER(ARR(KEY,I)) QUIT:'I  SET N=N+1
+ QUIT N
+ ;
+CALLCDS1(PATH,JSON,OUT,ERR) ; POST chunked JSON lines to the cds1 quality sidecar
+ NEW HDR,OPT,PAYLOAD,RET,STATUS,URL
+ KILL OUT,ERR,PAYLOAD,RET,HDR
+ DO CHUNK^C0FWAIS(.JSON,.PAYLOAD)
+ SET OPT("header",1)="Expect:"
+ SET URL="https://cds1.vistaplex.org"_PATH
+ SET STATUS=$$%^%WC(.RET,"POST",URL,.PAYLOAD,"application/json",300,.HDR,.OPT)
+ IF +$GET(STATUS)'=0 SET ERR="cds1 curl exit status "_STATUS QUIT
+ IF $GET(HDR("STATUS"))'="",($GET(HDR("STATUS"))<200!($GET(HDR("STATUS"))>299)) SET ERR="cds1 HTTP status "_$GET(HDR("STATUS")) QUIT
+ DO DECODE^XLFJSON("RET","OUT","ERR")
+ IF $DATA(ERR) SET ERR="Unable to decode cds1 response JSON" QUIT
+ IF $GET(OUT("status"))="error" SET ERR=$GET(OUT("message"),"cds1 error") QUIT
+ QUIT
+ ;
+LOGRUN(CMS,OP,ST,DET) ; Store run status + append evidence-log row
+ NEW N,TS
+ SET TS=$$NOW^XLFDT,DET=$EXTRACT($GET(DET),1,180)
+ SET ^C0FQUAL("REPORT",CMS,OP)=ST_"^"_TS_"^"_DET
+ SET N=$ORDER(^C0FQUAL("REPORT","LOG",""),-1)+1
+ SET ^C0FQUAL("REPORT","LOG",N)=TS_"^"_CMS_"^"_OP_"^"_ST_"^"_DET
+ QUIT
+ ;
+OPSTAT(CMS,OP) ; $$ - short status line for page display
+ NEW DET,ROW,ST,TS
+ SET ROW=$GET(^C0FQUAL("REPORT",CMS,OP))
+ IF ROW="" QUIT ""
+ SET ST=$PIECE(ROW,"^",1),TS=$PIECE(ROW,"^",2),DET=$PIECE(ROW,"^",3)
+ IF TS'="" SET TS=$$FMTE^XLFDT($PIECE(TS,"."),5)
+ QUIT ST_$SELECT(TS'="":" "_TS,1:"")_$SELECT(DET'="":" — "_$EXTRACT(DET,1,80),1:"")
+ ;
 WSRPTPG(RTN,FILTER) ; GET /fhir-quality-reporting — pipeline page (HTML)
  NEW ASOF,CMS,COHORT,DENEX,DENOM,IPP,LNK,N,NUMER,RATE,REP,ROW,TITLE
  KILL RTN
@@ -154,14 +258,14 @@ WSRPTPG(RTN,FILTER) ; GET /fhir-quality-reporting — pipeline page (HTML)
  DO ADDLN^C0FHIR(.RTN,"<ol>")
  DO ADDLN^C0FHIR(.RTN,"<li><strong>Calculate</strong> — the <em>Re-evaluate CQL</em> button on each measure dashboard runs official cqm-execution CQL on cds1 and stores per-patient flags and aggregates on this server.</li>")
  DO ADDLN^C0FHIR(.RTN,"<li><strong>Build</strong> — the <em>live report</em> links below generate a DEQM STU5 Summary MeasureReport from those aggregates at the moment you click, on this server, in M.</li>")
- DO ADDLN^C0FHIR(.RTN,"<li><strong>Validate</strong> — reports validate against the DEQM Summary profile (HL7 validator + davinci-deqm package). The frozen official-cql artifacts carry passing validation evidence; one-click validation from this page is next.</li>")
- DO ADDLN^C0FHIR(.RTN,"<li><strong>Submit</strong> — the <em>submission Bundle</em> links below are the exact transaction payload (reporter Organization + MeasureReport) a DEQM receiver accepts; one-click submit from this page is next.</li>")
+ DO ADDLN^C0FHIR(.RTN,"<li><strong>Validate</strong> — the <em>Validate</em> button sends the live report to the HL7 validator (davinci-deqm 5.0.0 package, hosted on cds1) and records the outcome below.</li>")
+ DO ADDLN^C0FHIR(.RTN,"<li><strong>Submit</strong> — the <em>Submit</em> button sends the transaction Bundle (reporter Organization + MeasureReport) to the hosted reference DEQM receiver (deqm-test-server on cds1) and records the receiver response below.</li>")
  DO ADDLN^C0FHIR(.RTN,"</ol>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">This replaces QRDA Category III aggregate reporting on the CMS FHIR dQM path. Live exports are tagged <code>setsum-live</code> with cohort provenance; frozen artifacts under the MeasureReport index hold the reviewed official-cql freeze used for exchange.</p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<h2>Active measures — live reports</h2>")
- DO ADDLN^C0FHIR(.RTN,"<table><tr><th>CMS ID</th><th>Measure</th><th>IPP / DENOM / NUMER / DENEX</th><th>Rate</th><th>As of</th><th>Provenance</th><th>Live report</th><th>Frozen (official-cql)</th></tr>")
+ DO ADDLN^C0FHIR(.RTN,"<table><tr><th>CMS ID</th><th>Measure</th><th>IPP / DENOM / NUMER / DENEX</th><th>Rate</th><th>As of</th><th>Provenance</th><th>Live report</th><th>Validate</th><th>Submit</th><th>Frozen (official-cql)</th></tr>")
  SET CMS=""
  FOR  SET CMS=$ORDER(^C0FQUAL("MEAS",CMS)) QUIT:CMS=""  DO
  . IF '$$ISACTIVE^C0FQUAL(CMS) QUIT
@@ -181,12 +285,29 @@ WSRPTPG(RTN,FILTER) ; GET /fhir-quality-reporting — pipeline page (HTML)
  . . SET LNK="<a href=""/fhir-quality-report?measure="_CMS_""">report</a>"
  . . SET LNK=LNK_" · <a href=""/fhir-quality-report?measure="_CMS_"&amp;bundle=1"">submission Bundle</a>"
  . . SET ROW=ROW_"<td>"_LNK_"</td>"
- . ELSE  SET ROW=ROW_"<td class=""muted"">—</td>"
+ . . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-op=""validate"">Validate</button><br><span class=""muted"" id=""st-validate-"_CMS_""">"_$$HTMLESC^C0FHIR($$OPSTAT(CMS,"validate"))_"</span></td>"
+ . . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-op=""submit"">Submit</button><br><span class=""muted"" id=""st-submit-"_CMS_""">"_$$HTMLESC^C0FHIR($$OPSTAT(CMS,"submit"))_"</span></td>"
+ . ELSE  SET ROW=ROW_"<td class=""muted"">—</td><td class=""muted"">—</td><td class=""muted"">—</td>"
  . SET LNK="<a href=""/filesystem/quality/measurereports/"_CMS_"/summary-deqm.json"">summary-deqm</a>"
  . SET LNK=LNK_" · <a href=""/filesystem/quality/measurereports/"_CMS_"/index.html"">index</a>"
  . SET ROW=ROW_"<td>"_LNK_"</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
  DO ADDLN^C0FHIR(.RTN,"</table>")
+ DO ADDLN^C0FHIR(.RTN,"<script>")
+ DO ADDLN^C0FHIR(.RTN,"(function(){")
+ DO ADDLN^C0FHIR(.RTN,"function wire(b){b.addEventListener('click',async function(){")
+ DO ADDLN^C0FHIR(.RTN,"var m=b.getAttribute('data-m'),op=b.getAttribute('data-op');")
+ DO ADDLN^C0FHIR(.RTN,"var s=document.getElementById('st-'+op+'-'+m);")
+ DO ADDLN^C0FHIR(.RTN,"b.disabled=true;if(s)s.textContent='starting…';")
+ DO ADDLN^C0FHIR(.RTN,"try{var r=await fetch('/fhir-quality-report-'+op+'?measure='+m,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});")
+ DO ADDLN^C0FHIR(.RTN,"var t=await r.text(),j={};try{j=JSON.parse(t)}catch(e){j={status:'error',message:t.slice(0,120)||('HTTP '+r.status)};}")
+ DO ADDLN^C0FHIR(.RTN,"if(!r.ok||j.status==='error'){if(s)s.textContent='error: '+(j.message||('HTTP '+r.status));b.disabled=false;return;}")
+ DO ADDLN^C0FHIR(.RTN,"if(s)s.textContent='running… (page reloads)';setTimeout(function(){location.reload();},5000);")
+ DO ADDLN^C0FHIR(.RTN,"}catch(e){if(s)s.textContent='error: '+e;b.disabled=false;}});}")
+ DO ADDLN^C0FHIR(.RTN,"var bs=document.querySelectorAll('.rptop');for(var i=0;i<bs.length;i++)wire(bs[i]);")
+ DO ADDLN^C0FHIR(.RTN,"})();")
+ DO ADDLN^C0FHIR(.RTN,"</script>")
+ DO RPTLOG(.RTN)
  ;
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
  DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Reporter for this server</h2>")
@@ -195,4 +316,20 @@ WSRPTPG(RTN,FILTER) ; GET /fhir-quality-reporting — pipeline page (HTML)
  DO ADDLN^C0FHIR(.RTN,"</div>")
  DO FTR^C0FQUAL(.RTN)
  SET HTTPRSP("mime")="text/html"
+ QUIT
+ ;
+RPTLOG(RTN) ; Evidence log: last 20 validate/submit runs (newest first)
+ NEW CNT,DET,N,OP,ROW,ST,TS
+ DO ADDLN^C0FHIR(.RTN,"<h2>Evidence log</h2>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Each validate/submit run from this page is recorded here (newest first).</p>")
+ DO ADDLN^C0FHIR(.RTN,"<table><tr><th>When</th><th>Measure</th><th>Step</th><th>Outcome</th><th>Detail</th></tr>")
+ SET CNT=0,N=""
+ FOR  SET N=$ORDER(^C0FQUAL("REPORT","LOG",N),-1) QUIT:'N!(CNT'<20)  DO
+ . SET ROW=$GET(^C0FQUAL("REPORT","LOG",N)) QUIT:ROW=""
+ . SET CNT=CNT+1
+ . SET TS=$$FMTE^XLFDT($PIECE(ROW,"^",1),1),OP=$PIECE(ROW,"^",3)
+ . SET ST=$PIECE(ROW,"^",4),DET=$PIECE(ROW,"^",5)
+ . DO ADDLN^C0FHIR(.RTN,"<tr><td>"_$$HTMLESC^C0FHIR(TS)_"</td><td>"_$$HTMLESC^C0FHIR($PIECE(ROW,"^",2))_"</td><td>"_$$HTMLESC^C0FHIR(OP)_"</td><td class="""_$SELECT(ST="pass"!(ST="accepted"):"yes",ST="running":"na",1:"no")_""">"_$$HTMLESC^C0FHIR(ST)_"</td><td class=""muted"">"_$$HTMLESC^C0FHIR(DET)_"</td></tr>")
+ IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""5"" class=""muted"">No runs recorded yet — use the Validate / Submit buttons above.</td></tr>")
+ DO ADDLN^C0FHIR(.RTN,"</table>")
  QUIT

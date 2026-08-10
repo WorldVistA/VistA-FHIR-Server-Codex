@@ -1,7 +1,7 @@
 # Quality Reporting Pipeline on the Dashboards
 
 **Date:** August 9, 2026
-**Status:** Phase 1 implemented (`C0FQRPT.m`); Phases 2–3 planned
+**Status:** Phases 1–3 implemented (`C0FQRPT.m` + cds1 hosted validator/receiver)
 
 ## Goal
 
@@ -51,21 +51,39 @@ Design decisions:
 - **Lane-aware reporter Organization** (fhirdev / rpmsfhir / fhirprod presets,
   RPMS detected via `$$ISRPMS^C0FWPOL`), matching the Python builder's presets.
 
-## Phase 2 (planned) — one-click Validate and Submit
+## Phase 2 (implemented) — one-click Validate and Submit
 
-- Small endpoints on the cds1 `quality-eval` sidecar: `POST /quality/validate-report`
-  (proxy to HL7 validator with the davinci-deqm package) and
-  `POST /quality/submit-report` (POST Bundle to a configured receiver, default
-  the hosted `deqm-test-server`; Connectathon receivers configurable).
+- cds1 `quality-eval` sidecar gained `POST /quality/validate-report` (proxies
+  the HL7 validator service with the `hl7.fhir.us.davinci-deqm` 5.0.0 package,
+  applies the same known-IG-noise allowlist as the workstation smoke) and
+  `POST /quality/submit-report` (POSTs the transaction Bundle to the hosted
+  Tacoma `deqm-test-server`; `body.receiver` can point at Connectathon
+  receivers).
+- Hosted infra on cds1: `fhir-validator` (Inferno validator service,
+  `DISABLE_TX=true`) joined the stage-2 compose; `deqm-test-server` + MongoDB +
+  Redis run from their own compose at `/opt/deqm-test-server` with ports bound
+  to the host loopback, reached by the sidecar over the compose network.
+  Caddy routes `/quality/validate-report*` and `/quality/submit-report*` to
+  the sidecar. (Upstream images referenced `dhi.io`, which requires auth —
+  swapped to public `node:24`/`redis:7-alpine`.)
 - M routes `POST /fhir-quality-report-validate|submit?measure=` follow the
-  `WSREEVAL` pattern (accept fast, `JOB` the work, status global, page polls).
-- Buttons appear on `/fhir-quality-reporting` next to each live report.
+  `WSREEVAL` pattern (accept fast, `JOB` the work, status in
+  `^C0FQUAL("REPORT",CMS,op)`, page reloads to show the outcome). Buttons
+  appear on `/fhir-quality-reporting` next to each live report.
 
-## Phase 3 (planned) — evidence log
+## Phase 3 (implemented) — evidence log
 
-- `^C0FQUAL("REPORT","LOG",ts)` rows: measure, counts, validation outcome,
-  receiver status; rendered at the bottom of `/fhir-quality-reporting` so the
-  demonstration leaves a visible audit trail.
+- `LOGRUN^C0FQRPT` appends `^C0FQUAL("REPORT","LOG",n)` rows (timestamp,
+  measure, step, outcome, detail); the last 20 render at the bottom of
+  `/fhir-quality-reporting`, so the demonstration leaves a visible audit trail.
+
+## Verified end to end (August 9, 2026, vehu10)
+
+- Validate: `pass` — 1 validator error, which is the known DEQM STU5 IG
+  supplementalData noise also present on the IG's own golden example; 0
+  actionable.
+- Submit: `accepted` — receiver returned 200/201 for the reporter Organization
+  and MeasureReport entries.
 
 ## Verification (Phase 1 gate)
 

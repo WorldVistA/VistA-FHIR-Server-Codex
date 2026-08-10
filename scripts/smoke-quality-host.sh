@@ -133,10 +133,12 @@ fi
 
 code=$(curl -sS -o /tmp/qsmoke-rptpg.html -w "%{http_code}" --max-time 30 "$BASE/fhir-quality-reporting" || echo 000)
 if [[ "$code" == "200" ]] && grep -q "Active measures" /tmp/qsmoke-rptpg.html \
-  && grep -q "fhir-quality-report?measure=" /tmp/qsmoke-rptpg.html; then
-  pass "fhir-quality-reporting pipeline page"
+  && grep -q "fhir-quality-report?measure=" /tmp/qsmoke-rptpg.html \
+  && grep -q "rptop" /tmp/qsmoke-rptpg.html \
+  && grep -q "Evidence log" /tmp/qsmoke-rptpg.html; then
+  pass "fhir-quality-reporting pipeline page (buttons + evidence log)"
 else
-  bad "fhir-quality-reporting HTTP $code or missing live report links"
+  bad "fhir-quality-reporting HTTP $code or missing live links/buttons/evidence log"
 fi
 
 code=$(curl -sS -o /tmp/qsmoke-presets.json -w "%{http_code}" --max-time 45 "$BASE/c0x/presets" || echo 000)
