@@ -77,6 +77,7 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  IF $T(WSRPT^C0FQRPT)'="" DO
  . DO addService^%webutils("GET","fhir-quality-report","WSRPT^C0FQRPT")
  . DO addService^%webutils("GET","fhir-quality-reporting","WSRPTPG^C0FQRPT")
+ . DO addService^%webutils("GET","fhir-quality-report-outcome","WSOUT^C0FQRPT")
  IF $T(WSVAL^C0FQRPT)'="" DO
  . NEW PARAMS
  . SET PARAMS(1)="B"

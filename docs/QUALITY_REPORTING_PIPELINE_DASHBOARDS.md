@@ -77,6 +77,26 @@ Design decisions:
   measure, step, outcome, detail); the last 20 render at the bottom of
   `/fhir-quality-reporting`, so the demonstration leaves a visible audit trail.
 
+## Phase 4 (implemented) — full outcomes and TJSON browser view
+
+- Each validate/submit run now keeps the **complete cds1 response** (the full
+  validator OperationOutcome with every issue, or the receiver's
+  transaction-response Bundle) at `^C0FQUAL("REPORT",CMS,op,"json")`, replaced
+  on each run.
+- `GET /fhir-quality-report-outcome?measure=&op=validate|submit` serves that
+  JSON; `&view=html` renders it as a page in the dashboard style: status,
+  severity counts, actionable errors vs. known IG noise, a severity/location/
+  message table of every validator issue (or the receiver's per-entry
+  results), with the validator's own narrative and the raw JSON one click
+  away. The *details* links under each button and the latest evidence-log row
+  per measure/step open the HTML view.
+- **TJSON browser view:** the C0FHIR Browser gained
+  `source=qualityreport`, so
+  `/fhir?view=browser&source=qualityreport&measure=CMS165v14` opens the live
+  submission Bundle (reporter Organization + MeasureReport) in the same
+  TJSON/JSON browser used for patient FHIR. A *browser* link sits next to each
+  live report on `/fhir-quality-reporting`.
+
 ## Verified end to end (August 9, 2026, vehu10)
 
 - Validate: `pass` — 1 validator error, which is the known DEQM STU5 IG

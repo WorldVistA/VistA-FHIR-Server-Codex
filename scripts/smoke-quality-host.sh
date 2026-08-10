@@ -135,10 +135,21 @@ code=$(curl -sS -o /tmp/qsmoke-rptpg.html -w "%{http_code}" --max-time 30 "$BASE
 if [[ "$code" == "200" ]] && grep -q "Active measures" /tmp/qsmoke-rptpg.html \
   && grep -q "fhir-quality-report?measure=" /tmp/qsmoke-rptpg.html \
   && grep -q "rptop" /tmp/qsmoke-rptpg.html \
+  && grep -q "source=qualityreport" /tmp/qsmoke-rptpg.html \
   && grep -q "Evidence log" /tmp/qsmoke-rptpg.html; then
-  pass "fhir-quality-reporting pipeline page (buttons + evidence log)"
+  pass "fhir-quality-reporting pipeline page (buttons + browser links + evidence log)"
 else
   bad "fhir-quality-reporting HTTP $code or missing live links/buttons/evidence log"
+fi
+
+# Outcome endpoint contract: route registered, unknown measure 404s.
+# Registered handler emits {} for HTTPERR; a missing route emits the
+# listener's "Not Found" error envelope instead.
+code=$(curl -sS -o /tmp/qsmoke-out.json -w "%{http_code}" --max-time 30 "$BASE/fhir-quality-report-outcome?measure=NOPE&op=validate" || echo 000)
+if [[ "$code" == "404" ]] && ! grep -q '"message":"Not Found"' /tmp/qsmoke-out.json; then
+  pass "fhir-quality-report-outcome route registered (404 for unknown measure)"
+else
+  bad "fhir-quality-report-outcome HTTP $code (route missing?)"
 fi
 
 code=$(curl -sS -o /tmp/qsmoke-presets.json -w "%{http_code}" --max-time 45 "$BASE/c0x/presets" || echo 000)

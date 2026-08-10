@@ -52,6 +52,10 @@ mkdir -p "$V/web"
 # JS + types + snippets only (wasm is inlined in index.js)
 cp "$PKG/web/index.js" "$V/web/index.js"
 cp "$PKG/web/tjson.js" "$V/web/tjson.js"
+# Cache-bust the internal ./tjson.js imports: index.js is fetched with ?v=,
+# but without this a browser can pair a new index.js with a cached old tjson.js
+# ("does not provide an export named ..." SyntaxError on upgrades).
+sed -i "s|from './tjson.js'|from './tjson.js?v=$VERSION'|g" "$V/web/index.js"
 [[ -f "$PKG/web/index.d.ts" ]] && cp "$PKG/web/index.d.ts" "$V/web/index.d.ts"
 [[ -f "$PKG/web/tjson.d.ts" ]] && cp "$PKG/web/tjson.d.ts" "$V/web/tjson.d.ts"
 cp -a "$PKG/web/snippets" "$V/web/snippets"
