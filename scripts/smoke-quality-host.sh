@@ -129,6 +129,79 @@ else:
     raise SystemExit(1)
 PY
   fi
+
+  # Live DEQM Individual MeasureReport (dfn=): find a POP DFN from the measure dashboard.
+  indv_dfn=""
+  code=$(curl -sS -o /tmp/qsmoke-mdash.html -w "%{http_code}" --max-time 45 "$BASE/fhir-quality-dashboards/$rpt_m" || echo 000)
+  if [[ "$code" == "200" ]]; then
+    indv_dfn=$(grep -oE "fhir-quality-report\?measure=${rpt_m}(&amp;|&)dfn=[0-9]+" /tmp/qsmoke-mdash.html \
+      | head -1 | grep -oE 'dfn=[0-9]+' | cut -d= -f2 || true)
+  fi
+  if [[ -z "$indv_dfn" ]]; then
+    pass "fhir-quality-report individual skipped (no curated POP DFN on $rpt_m)"
+  else
+    if ! grep -q "Live DEQM indv" /tmp/qsmoke-mdash.html \
+      || ! grep -q "data-dfn=\"$indv_dfn\"" /tmp/qsmoke-mdash.html; then
+      bad "$rpt_m dashboard missing live DEQM indv controls for DFN $indv_dfn"
+    else
+      pass "$rpt_m dashboard live DEQM indv controls (DFN $indv_dfn)"
+    fi
+    code=$(curl -sS -o /tmp/qsmoke-indv.json -w "%{http_code}" --max-time 30 \
+      "$BASE/fhir-quality-report?measure=$rpt_m&dfn=$indv_dfn" || echo 000)
+    if [[ "$code" != "200" ]]; then
+      bad "fhir-quality-report individual HTTP $code (dfn=$indv_dfn)"
+    else
+      python3 - "$indv_dfn" <<'PY' || fail=1
+import json, sys
+dfn = sys.argv[1]
+r = json.load(open("/tmp/qsmoke-indv.json"))
+ok = True
+if r.get("resourceType") != "MeasureReport":
+    print(f"  FAIL  indv resourceType={r.get('resourceType')!r}", file=sys.stderr); ok = False
+elif r.get("type") != "individual":
+    print(f"  FAIL  indv type={r.get('type')!r}", file=sys.stderr); ok = False
+else:
+    prof = (r.get("meta") or {}).get("profile") or []
+    if not any("indv-measurereport-deqm" in p for p in prof):
+        print("  FAIL  indv missing DEQM individual profile", file=sys.stderr); ok = False
+    sub = ((r.get("subject") or {}).get("reference") or "")
+    if sub != f"Patient/{dfn}":
+        print(f"  FAIL  indv subject={sub!r}", file=sys.stderr); ok = False
+    pops = {p["code"]["coding"][0]["code"]: int(p["count"])
+            for p in (r.get("group") or [{}])[0].get("population", [])}
+    need = ["initial-population", "denominator", "numerator", "denominator-exclusion"]
+    if sorted(pops) != sorted(need):
+        print(f"  FAIL  indv populations {sorted(pops)}", file=sys.stderr); ok = False
+    elif any(v not in (0, 1) for v in pops.values()):
+        print(f"  FAIL  indv non-binary counts {pops}", file=sys.stderr); ok = False
+    if "measureScore" in (r.get("group") or [{}])[0]:
+        print("  FAIL  indv should omit measureScore", file=sys.stderr); ok = False
+if ok:
+    print(f"  PASS  fhir-quality-report live DEQM individual (DFN {dfn})")
+else:
+    raise SystemExit(1)
+PY
+    fi
+    code=$(curl -sS -o /tmp/qsmoke-indvb.json -w "%{http_code}" --max-time 30 \
+      "$BASE/fhir-quality-report?measure=$rpt_m&dfn=$indv_dfn&bundle=1" || echo 000)
+    if [[ "$code" != "200" ]]; then
+      bad "fhir-quality-report individual bundle HTTP $code"
+    else
+      python3 - <<'PY' || fail=1
+import json, sys
+b = json.load(open("/tmp/qsmoke-indvb.json"))
+kinds = [e.get("resource", {}).get("resourceType") for e in b.get("entry", [])]
+mr = (b.get("entry") or [{}, {}])[1].get("resource") or {}
+if b.get("resourceType") == "Bundle" and b.get("type") == "transaction" \
+        and kinds == ["Organization", "MeasureReport"] \
+        and mr.get("type") == "individual":
+    print("  PASS  fhir-quality-report individual submission Bundle")
+else:
+    print(f"  FAIL  indv Bundle type={b.get('type')!r} entries={kinds} mr.type={mr.get('type')!r}", file=sys.stderr)
+    raise SystemExit(1)
+PY
+    fi
+  fi
 fi
 
 code=$(curl -sS -o /tmp/qsmoke-rptpg.html -w "%{http_code}" --max-time 30 "$BASE/fhir-quality-reporting" || echo 000)
@@ -136,10 +209,11 @@ if [[ "$code" == "200" ]] && grep -q "Active measures" /tmp/qsmoke-rptpg.html \
   && grep -q "fhir-quality-report?measure=" /tmp/qsmoke-rptpg.html \
   && grep -q "rptop" /tmp/qsmoke-rptpg.html \
   && grep -q "source=qualityreport" /tmp/qsmoke-rptpg.html \
-  && grep -q "Evidence log" /tmp/qsmoke-rptpg.html; then
-  pass "fhir-quality-reporting pipeline page (buttons + browser links + evidence log)"
+  && grep -q "Evidence log" /tmp/qsmoke-rptpg.html \
+  && grep -q "Individual" /tmp/qsmoke-rptpg.html; then
+  pass "fhir-quality-reporting pipeline page (buttons + browser links + evidence log + indv note)"
 else
-  bad "fhir-quality-reporting HTTP $code or missing live links/buttons/evidence log"
+  bad "fhir-quality-reporting HTTP $code or missing live links/buttons/evidence log/indv note"
 fi
 
 # Validate button contract: POST must queue a TaskMan task ("accepted") AND

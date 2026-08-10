@@ -1,37 +1,47 @@
-C0FQRPT ; VAMC/GPL - Live DEQM Summary MeasureReport + reporting page ; 09-AUG-2026
- ;;1.0;C0FHIR PROJECT;;Aug 9, 2026;Build 1
+C0FQRPT ; VAMC/GPL - Live DEQM Summary/Individual MeasureReport + reporting page ; 10-AUG-2026
+ ;;1.0;C0FHIR PROJECT;;Aug 10, 2026;Build 2
  ;
- ; End-to-end quality reporting surface (QRDA Category III replacement):
- ;   GET  /fhir-quality-report?measure=CMS165v14      live DEQM Summary MeasureReport
- ;   GET  /fhir-quality-report?measure=...&bundle=1   transaction Bundle (Organization + report)
- ;   GET  /fhir-quality-reporting                     reporting pipeline page (HTML)
- ;   POST /fhir-quality-report-validate?measure=      HL7 validator via cds1 (TaskMan task)
- ;   POST /fhir-quality-report-submit?measure=        DEQM receiver via cds1 (TaskMan task)
- ;   GET  /fhir-quality-report-outcome?measure=&op=   full cds1 response for latest run (JSON)
+ ; End-to-end quality reporting surface (QRDA Category III + I analogues):
+ ;   GET  /fhir-quality-report?measure=CMS165v14           live DEQM Summary MeasureReport
+ ;   GET  /fhir-quality-report?measure=...&dfn=101115      live DEQM Individual MeasureReport
+ ;   GET  /fhir-quality-report?measure=...&bundle=1        transaction Bundle (Organization + report)
+ ;   GET  /fhir-quality-reporting                          reporting pipeline page (HTML)
+ ;   POST /fhir-quality-report-validate?measure=[&dfn=]    HL7 validator via cds1 (TaskMan task)
+ ;   POST /fhir-quality-report-submit?measure=[&dfn=]      DEQM receiver via cds1 (TaskMan task)
+ ;   GET  /fhir-quality-report-outcome?measure=&op=[&dfn=] full cds1 response for latest run
  ;
  ; TJSON browser view of the live submission Bundle:
  ;   /fhir?view=browser&source=qualityreport&measure=CMS165v14
+ ;   /fhir?view=browser&source=qualityreport&measure=CMS165v14&dfn=101115
  ;
- ; Run status: ^C0FQUAL("REPORT",CMS,op)=status^fmts^detail
- ; Full outcome: ^C0FQUAL("REPORT",CMS,op,"json",n) = raw cds1 response lines
- ; Evidence log: ^C0FQUAL("REPORT","LOG",n)=fmts^CMS^op^status^detail
+ ; Summary run status: ^C0FQUAL("REPORT",CMS,op)=status^fmts^detail
+ ; Individual:         ^C0FQUAL("REPORT",CMS,"INDV",DFN,op)=status^fmts^detail
+ ; Full outcome: ... ,"json",n = raw cds1 response lines
+ ; Evidence log: ^C0FQUAL("REPORT","LOG",n)=fmts^CMS^op^status^detail[^DFN]
  ;
- ; Counts come live from ^C0FQUAL("SUM",CMS)=N^IPP^DENOM^NUMER^DENEX^ASOF^COHORT —
- ; the same aggregates the dashboards display. The JSON shape mirrors
- ; HL7-FHIR-quality-testing/scripts/build-deqm-summary.py, which validates
- ; against DEQM STU5 and is accepted by the reference deqm-test-server.
+ ; Summary counts from ^C0FQUAL("SUM",CMS); Individual from ^C0FQUAL("POP",CMS,DFN).
+ ; JSON shapes mirror HL7-FHIR-quality-testing build-deqm-summary.py /
+ ; build-deqm-individual.py (DEQM STU5; accepted by deqm-test-server).
  QUIT
  ;
-WSRPT(RTN,FILTER) ; GET /fhir-quality-report?measure=&bundle=1
- NEW CMS,REP
+WSRPT(RTN,FILTER) ; GET /fhir-quality-report?measure=&dfn=&bundle=1
+ NEW CMS,DFN,REP
  KILL RTN
  DO SEED^C0FQUAL
  SET CMS=$$FIND^C0FQUAL($GET(FILTER("measure")))
+ SET DFN=+$GET(FILTER("dfn"))
  IF CMS="" DO RPTERR(.RTN,"Unknown measure; use ?measure=CMS165v14") QUIT
+ IF DFN>0 DO  QUIT
+ . IF '$$HASPOP^C0FQUAL(CMS,DFN) DO RPTERR(.RTN,"No SETPOP row for "_CMS_" DFN "_DFN) QUIT
+ . DO REPORTER(.REP)
+ . ; Avoid ELSE after BUNDLE — BUNDLE's IF DFN>0 can leave $TEST false (M ELSE pitfall).
+ . IF +$GET(FILTER("bundle")) DO BUNDLE(.RTN,CMS,.REP,DFN)
+ . IF '+$GET(FILTER("bundle")) DO INDVREP(.RTN,CMS,DFN,.REP)
+ . SET HTTPRSP("mime")="application/fhir+json"
  IF +$$SUM^C0FQUAL(CMS,1)<1 DO RPTERR(.RTN,"No aggregate summary stored for "_CMS) QUIT
  DO REPORTER(.REP)
- IF +$GET(FILTER("bundle")) DO BUNDLE(.RTN,CMS,.REP)
- ELSE  DO REPORT(.RTN,CMS,.REP)
+ IF +$GET(FILTER("bundle")) DO BUNDLE(.RTN,CMS,.REP,0)
+ IF '+$GET(FILTER("bundle")) DO REPORT(.RTN,CMS,.REP)
  SET HTTPRSP("mime")="application/fhir+json"
  QUIT
  ;
@@ -67,16 +77,50 @@ REPORT(RTN,CMS,REP) ; Append live DEQM Summary MeasureReport JSON
  DO ADDLN^C0FHIR(.RTN,"""measureScore"":{""value"":"_$$SCORE(NUMER,DENOM)_"}}]}")
  QUIT
  ;
-BUNDLE(RTN,CMS,REP) ; Append transaction Bundle: Organization + live report
+INDVREP(RTN,CMS,DFN,REP) ; Append live DEQM Individual MeasureReport JSON (QRDA-I analogue)
+ NEW IPP,DENOM,NUMER,DENEX,EVID,MODE,RID,SRC,TAG
+ SET IPP=+$$POP^C0FQUAL(CMS,DFN,1),DENOM=+$$POP^C0FQUAL(CMS,DFN,2)
+ SET NUMER=+$$POP^C0FQUAL(CMS,DFN,3),DENEX=+$$POP^C0FQUAL(CMS,DFN,4)
+ SET EVID=$PIECE($GET(^C0FQUAL("POP",CMS,DFN)),"^",5)
+ SET MODE=$PIECE($GET(^C0FQUAL("POP",CMS,DFN)),"^",6) IF MODE="" SET MODE="setpop"
+ SET RID=$$RPTID(CMS,.REP,DFN)
+ SET SRC=$EXTRACT("live SETPOP: "_EVID,1,200)
+ SET TAG=$SELECT(MODE'="":MODE,1:"setpop")
+ DO ADDLN^C0FHIR(.RTN,"{""resourceType"":""MeasureReport"",""id"":"""_RID_""",")
+ DO ADDLN^C0FHIR(.RTN,"""meta"":{""profile"":[""http://hl7.org/fhir/us/davinci-deqm/StructureDefinition/indv-measurereport-deqm""],")
+ DO ADDLN^C0FHIR(.RTN,"""source"":""urn:vista:c0fqrpt-live-indv"",""tag"":[")
+ DO ADDLN^C0FHIR(.RTN,"{""system"":""https://vistaplex.org/fhir/CodeSystem/quality-calc-mode"",""code"":"""_$$JS(TAG)_""",""display"":"""_$$JS(TAG)_"""},")
+ DO ADDLN^C0FHIR(.RTN,"{""system"":""https://vistaplex.org/fhir/CodeSystem/quality-source"",""code"":""setpop-live"",""display"":""setpop-live""}")
+ IF EVID'="" DO ADDLN^C0FHIR(.RTN,",{""system"":""https://vistaplex.org/fhir/CodeSystem/quality-evidence"",""code"":""evidence"",""display"":"""_$$JS(SRC)_"""}")
+ DO ADDLN^C0FHIR(.RTN,"]},")
+ DO ADDLN^C0FHIR(.RTN,"""extension"":[{""url"":""http://hl7.org/fhir/us/davinci-deqm/StructureDefinition/extension-measureScoring"",")
+ DO ADDLN^C0FHIR(.RTN,"""valueCodeableConcept"":{""coding"":[{""system"":""http://terminology.hl7.org/CodeSystem/measure-scoring"",""code"":""proportion"",""display"":""Proportion""}]}}],")
+ DO ADDLN^C0FHIR(.RTN,"""status"":""complete"",""type"":""individual"",")
+ DO ADDLN^C0FHIR(.RTN,"""measure"":"""_$$MCANON(CMS)_""",""subject"":{""reference"":""Patient/"_DFN_"""},""date"":"""_$$NOWISO()_""",")
+ DO ADDLN^C0FHIR(.RTN,"""reporter"":{""reference"":""Organization/"_REP("id")_""",""display"":"""_$$JS(REP("display"))_"""},")
+ DO ADDLN^C0FHIR(.RTN,"""period"":{""start"":"""_$$PYEAR(CMS)_"-01-01"",""end"":"""_$$PYEAR(CMS)_"-12-31""},")
+ DO ADDLN^C0FHIR(.RTN,"""improvementNotation"":{""coding"":[{""system"":""http://terminology.hl7.org/CodeSystem/measure-improvement-notation"",")
+ DO ADDLN^C0FHIR(.RTN,"""code"":""increase"",""display"":""Increased score indicates improvement""}]},")
+ DO ADDLN^C0FHIR(.RTN,"""group"":[{""population"":[")
+ DO ADDLN^C0FHIR(.RTN,$$POPJ("initial-population","Initial Population",IPP)_",")
+ DO ADDLN^C0FHIR(.RTN,$$POPJ("denominator","Denominator",DENOM)_",")
+ DO ADDLN^C0FHIR(.RTN,$$POPJ("numerator","Numerator",NUMER)_",")
+ DO ADDLN^C0FHIR(.RTN,$$POPJ("denominator-exclusion","Denominator Exclusion",DENEX)_"]}]}")
+ QUIT
+ ;
+BUNDLE(RTN,CMS,REP,DFN) ; Append transaction Bundle: Organization + live report
  NEW RID,TS
- SET RID=$$RPTID(CMS,.REP)
+ SET DFN=+$GET(DFN)
+ SET RID=$$RPTID(CMS,.REP,DFN)
  SET TS=$$NOWISO()
  DO ADDLN^C0FHIR(.RTN,"{""resourceType"":""Bundle"",""id"":"""_RID_"-transaction"",""type"":""transaction"",""timestamp"":"""_TS_""",""entry"":[")
  DO ADDLN^C0FHIR(.RTN,"{""fullUrl"":""urn:uuid:"_REP("id")_""",""resource"":")
  DO ORG(.RTN,.REP)
  DO ADDLN^C0FHIR(.RTN,",""request"":{""method"":""PUT"",""url"":""Organization/"_REP("id")_"""}},")
  DO ADDLN^C0FHIR(.RTN,"{""fullUrl"":""urn:uuid:"_RID_""",""resource"":")
- DO REPORT(.RTN,CMS,.REP)
+ ; Use paired IFs (not ELSE) so $TEST does not leak to the caller's ELSE.
+ IF DFN>0 DO INDVREP(.RTN,CMS,DFN,.REP)
+ IF DFN<1 DO REPORT(.RTN,CMS,.REP)
  DO ADDLN^C0FHIR(.RTN,",""request"":{""method"":""PUT"",""url"":""MeasureReport/"_RID_"""}}]}")
  QUIT
  ;
@@ -88,7 +132,8 @@ ORG(RTN,REP) ; Append reporter Organization JSON (QI-Core profile)
  DO ADDLN^C0FHIR(.RTN,"""telecom"":[{""system"":""url"",""value"":"""_REP("url")_"""}]}")
  QUIT
  ;
-RPTID(CMS,REP) ; $$ - live report id (distinct from frozen artifact ids)
+RPTID(CMS,REP,DFN) ; $$ - live report id (distinct from frozen artifact ids)
+ IF +$GET(DFN)>0 QUIT CMS_"-"_$GET(REP("tag"))_"Patient-"_+DFN_"-live-indv-deqm"
  QUIT CMS_"-"_$GET(REP("tag"))_"live-summary-deqm"
  ;
 POPJ(CODE,DISP,CNT) ; $$ - one population JSON object
@@ -159,75 +204,88 @@ WSSUB(ARGS,BODY,RESULT) ; POST /fhir-quality-report-submit?measure=
  QUIT ""
  ;
 WSGO2(OUT,BODY,OP) ; Accept request; queue TaskMan worker (avoids proxy timeouts)
- NEW CMS,ERR,TMP
+ NEW CMS,DFN,ERR,TMP
  SET U="^",HTTPRSP("mime")="application/json"
  KILL OUT
  DO SEED^C0FQUAL
  SET CMS=$$FIND^C0FQUAL($GET(HTTPARGS("measure")))
+ SET DFN=+$GET(HTTPARGS("dfn"))
  IF CMS="" DO OO^C0FWAIS(.OUT,"error","invalid","Missing or unknown measure") QUIT
- IF +$$SUM^C0FQUAL(CMS,1)<1 DO OO^C0FWAIS(.OUT,"error","invalid","No aggregate summary stored for "_CMS) QUIT
- SET ^C0FQUAL("REPORT",CMS,OP)="running^"_$$NOW^XLFDT
- ; Queue via TaskMan (SAC): VALT/SUBT restore CMS from the task symbol table
+ IF DFN>0 DO  QUIT:$GET(ERR)'=""
+ . IF '$$HASPOP^C0FQUAL(CMS,DFN) SET ERR=1 DO OO^C0FWAIS(.OUT,"error","invalid","No SETPOP row for "_CMS_" DFN "_DFN) QUIT
+ . SET ^C0FQUAL("REPORT",CMS,"INDV",DFN,OP)="running^"_$$NOW^XLFDT
+ ELSE  DO  QUIT:$GET(ERR)'=""
+ . IF +$$SUM^C0FQUAL(CMS,1)<1 SET ERR=1 DO OO^C0FWAIS(.OUT,"error","invalid","No aggregate summary stored for "_CMS) QUIT
+ . SET ^C0FQUAL("REPORT",CMS,OP)="running^"_$$NOW^XLFDT
+ ; Queue via TaskMan (SAC): VALT/SUBT restore CMS/DFN from the task symbol table
  NEW ZTRTN,ZTDESC,ZTDTH,ZTIO,ZTSAVE,ZTSK
  SET ZTRTN=$SELECT(OP="validate":"VALT^C0FQRPT",1:"SUBT^C0FQRPT")
- SET ZTDESC="C0F quality report "_OP_" "_CMS
+ SET ZTDESC="C0F quality report "_OP_" "_CMS_$SELECT(DFN>0:"/"_DFN,1:"")
  SET ZTIO="",ZTDTH=$H
- SET ZTSAVE("CMS")=""
+ SET ZTSAVE("CMS")="",ZTSAVE("DFN")=""
  DO ^%ZTLOAD
  IF '$GET(ZTSK) DO  QUIT
- . SET ^C0FQUAL("REPORT",CMS,OP)="error^"_$$NOW^XLFDT_"^TaskMan queue failed"
+ . IF DFN>0 SET ^C0FQUAL("REPORT",CMS,"INDV",DFN,OP)="error^"_$$NOW^XLFDT_"^TaskMan queue failed"
+ . ELSE  SET ^C0FQUAL("REPORT",CMS,OP)="error^"_$$NOW^XLFDT_"^TaskMan queue failed"
  . DO OO^C0FWAIS(.OUT,"error","exception","TaskMan queue failed for "_OP)
  KILL TMP
  SET TMP("status")="accepted",TMP("measure")=CMS,TMP("op")=OP,TMP("task")=+ZTSK
+ IF DFN>0 SET TMP("dfn")=DFN
  SET TMP("message")="Queued as TaskMan task "_+ZTSK_"; reload for status."
  DO TOJSON^C0FHIRBU(.TMP,.OUT,.ERR)
  IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode response") QUIT
  QUIT
  ;
-VALT ; TaskMan entry: validate live report; CMS restored via ZTSAVE
+VALT ; TaskMan entry: validate live report; CMS/DFN restored via ZTSAVE
  SET ZTREQ="@"
- DO VALJ($GET(CMS))
+ DO VALJ($GET(CMS),+$GET(DFN))
  QUIT
  ;
-SUBT ; TaskMan entry: submit live Bundle; CMS restored via ZTSAVE
+SUBT ; TaskMan entry: submit live Bundle; CMS/DFN restored via ZTSAVE
  SET ZTREQ="@"
- DO SUBJ($GET(CMS))
+ DO SUBJ($GET(CMS),+$GET(DFN))
  QUIT
  ;
-VALJ(CMS) ; Background worker: live report -> cds1 /quality/validate-report
- NEW DET,ERR,FIRST,KN,LINES,NA,RAW,REP,RESP,ST
+VALJ(CMS,DFN) ; Background worker: live report -> cds1 /quality/validate-report
+ NEW DET,ERR,FIRST,KN,LINES,NA,PROF,RAW,REP,RESP,ST
  SET CMS=$$FIND^C0FQUAL($GET(CMS)) QUIT:CMS=""
+ SET DFN=+$GET(DFN)
  DO REPORTER(.REP)
  KILL LINES
  DO ADDLN^C0FHIR(.LINES,"{""report"":")
- DO REPORT(.LINES,CMS,.REP)
- DO ADDLN^C0FHIR(.LINES,"}")
+ IF DFN>0 DO INDVREP(.LINES,CMS,DFN,.REP)
+ ELSE  DO REPORT(.LINES,CMS,.REP)
+ IF DFN>0 DO
+ . SET PROF="http://hl7.org/fhir/us/davinci-deqm/StructureDefinition/indv-measurereport-deqm"
+ . DO ADDLN^C0FHIR(.LINES,",""profile"":"""_PROF_"""}")
+ ELSE  DO ADDLN^C0FHIR(.LINES,"}")
  DO CALLCDS1("/quality/validate-report",.LINES,.RESP,.ERR,.RAW)
- DO SAVERAW(CMS,"validate",.RAW)
- IF $GET(ERR)'="" DO LOGRUN(CMS,"validate","error",ERR) QUIT
+ DO SAVERAW(CMS,"validate",.RAW,DFN)
+ IF $GET(ERR)'="" DO LOGRUN(CMS,"validate","error",ERR,DFN) QUIT
  SET ST=$GET(RESP("status")) IF ST="" SET ST="error"
  SET NA=$$NCOUNT(.RESP,"actionableErrors"),KN=$$NCOUNT(.RESP,"knownIgNoise")
  SET DET="errors="_+$GET(RESP("severityCounts","error"))_" warnings="_+$GET(RESP("severityCounts","warning"))_" actionable="_NA_" knownNoise="_KN
  IF ST="fail" SET FIRST=$GET(RESP("actionableErrors",1,"text")) IF FIRST'="" SET DET=DET_"; "_$EXTRACT(FIRST,1,80)
- DO LOGRUN(CMS,"validate",ST,DET)
+ DO LOGRUN(CMS,"validate",ST,DET,DFN)
  QUIT
  ;
-SUBJ(CMS) ; Background worker: live Bundle -> cds1 /quality/submit-report -> receiver
+SUBJ(CMS,DFN) ; Background worker: live Bundle -> cds1 /quality/submit-report -> receiver
  NEW DET,ENT,ERR,I,LINES,RAW,REP,RESP,ST
  SET CMS=$$FIND^C0FQUAL($GET(CMS)) QUIT:CMS=""
+ SET DFN=+$GET(DFN)
  DO REPORTER(.REP)
  KILL LINES
  DO ADDLN^C0FHIR(.LINES,"{""bundle"":")
- DO BUNDLE(.LINES,CMS,.REP)
+ DO BUNDLE(.LINES,CMS,.REP,DFN)
  DO ADDLN^C0FHIR(.LINES,"}")
  DO CALLCDS1("/quality/submit-report",.LINES,.RESP,.ERR,.RAW)
- DO SAVERAW(CMS,"submit",.RAW)
- IF $GET(ERR)'="" DO LOGRUN(CMS,"submit","error",ERR) QUIT
+ DO SAVERAW(CMS,"submit",.RAW,DFN)
+ IF $GET(ERR)'="" DO LOGRUN(CMS,"submit","error",ERR,DFN) QUIT
  SET ST=$GET(RESP("status")) IF ST="" SET ST="error"
  SET ENT="",I=0
  FOR  SET I=$ORDER(RESP("entryStatuses",I)) QUIT:'I  SET ENT=ENT_$SELECT(ENT="":"",1:", ")_$GET(RESP("entryStatuses",I))
  SET DET="HTTP "_+$GET(RESP("httpStatus"))_$SELECT(ENT'="":"; "_ENT,1:"")_"; receiver "_$GET(RESP("receiver"))
- DO LOGRUN(CMS,"submit",ST,DET)
+ DO LOGRUN(CMS,"submit",ST,DET,DFN)
  QUIT
  ;
 NCOUNT(ARR,KEY) ; $$ - count numeric child nodes under ARR(KEY)
@@ -251,34 +309,50 @@ CALLCDS1(PATH,JSON,OUT,ERR,RAW) ; POST chunked JSON lines to the cds1 quality si
  IF $GET(OUT("status"))="error" SET ERR=$GET(OUT("message"),"cds1 error") QUIT
  QUIT
  ;
-SAVERAW(CMS,OP,RAW) ; Keep full cds1 response for the latest run of CMS/op
+SAVERAW(CMS,OP,RAW,DFN) ; Keep full cds1 response for the latest run of CMS/op[/dfn]
+ SET DFN=+$GET(DFN)
+ IF DFN>0 DO  QUIT
+ . KILL ^C0FQUAL("REPORT",CMS,"INDV",DFN,OP,"json")
+ . IF $DATA(RAW) MERGE ^C0FQUAL("REPORT",CMS,"INDV",DFN,OP,"json")=RAW
  KILL ^C0FQUAL("REPORT",CMS,OP,"json")
  IF $DATA(RAW) MERGE ^C0FQUAL("REPORT",CMS,OP,"json")=RAW
  QUIT
  ;
-WSOUT(RTN,FILTER) ; GET /fhir-quality-report-outcome?measure=&op=validate|submit[&view=html]
- NEW CMS,OP
+WSOUT(RTN,FILTER) ; GET /fhir-quality-report-outcome?measure=&op=[&dfn=][&view=html]
+ NEW CMS,DFN,OP
  KILL RTN
  DO SEED^C0FQUAL
  SET CMS=$$FIND^C0FQUAL($GET(FILTER("measure")))
+ SET DFN=+$GET(FILTER("dfn"))
  SET OP=$GET(FILTER("op")) IF OP'="submit" SET OP="validate"
  IF CMS="" DO RPTERR(.RTN,"Unknown measure; use ?measure=CMS165v14&op=validate|submit") QUIT
- IF '$DATA(^C0FQUAL("REPORT",CMS,OP,"json")) DO RPTERR(.RTN,"No stored "_OP_" outcome for "_CMS_"; run "_OP_" from /fhir-quality-reporting first") QUIT
- IF $$UPCASE^C0FHIR($GET(FILTER("view")))="HTML" DO OUTPAGE(.RTN,CMS,OP) QUIT
- MERGE RTN=^C0FQUAL("REPORT",CMS,OP,"json")
+ IF DFN>0,'$DATA(^C0FQUAL("REPORT",CMS,"INDV",DFN,OP,"json")) DO RPTERR(.RTN,"No stored "_OP_" outcome for "_CMS_" DFN "_DFN_"; run "_OP_" from the measure dashboard first") QUIT
+ IF DFN<1,'$DATA(^C0FQUAL("REPORT",CMS,OP,"json")) DO RPTERR(.RTN,"No stored "_OP_" outcome for "_CMS_"; run "_OP_" from /fhir-quality-reporting first") QUIT
+ IF $$UPCASE^C0FHIR($GET(FILTER("view")))="HTML" DO OUTPAGE(.RTN,CMS,OP,DFN) QUIT
+ IF DFN>0 MERGE RTN=^C0FQUAL("REPORT",CMS,"INDV",DFN,OP,"json")
+ ELSE  MERGE RTN=^C0FQUAL("REPORT",CMS,OP,"json")
  SET HTTPRSP("mime")="application/json"
  QUIT
  ;
-OUTPAGE(RTN,CMS,OP) ; Human-readable rendering of the stored outcome
- NEW SUB,TITLE
+OUTPAGE(RTN,CMS,OP,DFN) ; Human-readable rendering of the stored outcome
+ NEW QDFN,SUB,TITLE,TJURL
+ SET DFN=+$GET(DFN)
  SET TITLE=$SELECT(OP="validate":"Validation outcome",1:"Submission outcome")
- SET SUB=$SELECT(OP="validate":"HL7 validator (davinci-deqm 5.0.0, hosted on cds1) — live DEQM Summary MeasureReport",1:"Reference DEQM receiver (deqm-test-server on cds1) — live submission Bundle")
- DO HDR^C0FQUAL(.RTN,CMS_" — "_TITLE,SUB)
+ IF DFN>0 DO
+ . IF OP="validate" SET SUB="HL7 validator (davinci-deqm 5.0.0) — live Individual MeasureReport (Patient/"_DFN_")"
+ . ELSE  SET SUB="DEQM receiver (deqm-test-server) — live Individual Bundle (Patient/"_DFN_")"
+ ELSE  DO
+ . IF OP="validate" SET SUB="HL7 validator (davinci-deqm 5.0.0, hosted on cds1) — live DEQM Summary MeasureReport"
+ . ELSE  SET SUB="Reference DEQM receiver (deqm-test-server on cds1) — live submission Bundle"
+ DO HDR^C0FQUAL(.RTN,CMS_$SELECT(DFN>0:" / Patient/"_DFN,1:"")_" — "_TITLE,SUB)
  DO ADDLN^C0FHIR(.RTN,"<div class=""links"">")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-reporting"">Reporting pipeline</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-dashboards/"_CMS_""">"_CMS_" dashboard</a>")
- DO ADDLN^C0FHIR(.RTN,$$TJBTN^C0FQUAL("/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS,"TJSON report"))
- DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-report-outcome?measure="_CMS_"&amp;op="_OP_""">raw JSON</a>")
+ SET TJURL="/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS
+ IF DFN>0 SET TJURL=TJURL_"&amp;dfn="_DFN
+ DO ADDLN^C0FHIR(.RTN,$$TJBTN^C0FQUAL(TJURL,"TJSON report"))
+ SET QDFN=$SELECT(DFN>0:"&amp;dfn="_DFN,1:"")
+ DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-report-outcome?measure="_CMS_"&amp;op="_OP_QDFN_""">raw JSON</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  DO ADDLN^C0FHIR(.RTN,"<div id=""out"" class=""card"">Loading outcome&hellip;</div>")
  DO ADDLN^C0FHIR(.RTN,"<script>")
@@ -287,7 +361,7 @@ OUTPAGE(RTN,CMS,OP) ; Human-readable rendering of the stored outcome
  DO ADDLN^C0FHIR(.RTN,"function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}")
  DO ADDLN^C0FHIR(.RTN,"function chip(st){var c=(st==='pass'||st==='accepted')?'yes':(st==='running'?'na':'no');return '<span class=""'+c+'"">'+esc(st)+'</span>';}")
  DO ADDLN^C0FHIR(.RTN,"try{")
- DO ADDLN^C0FHIR(.RTN,"var r=await fetch('/fhir-quality-report-outcome?measure="_CMS_"&op="_OP_"');")
+ DO ADDLN^C0FHIR(.RTN,"var r=await fetch('/fhir-quality-report-outcome?measure="_CMS_"&op="_OP_$SELECT(DFN>0:"&dfn="_DFN,1:"")_"');")
  DO ADDLN^C0FHIR(.RTN,"if(!r.ok)throw new Error('HTTP '+r.status);")
  DO ADDLN^C0FHIR(.RTN,"var d=await r.json();")
  DO ADDLN^C0FHIR(.RTN,"var h='<h2 style=""margin-top:0"">Status: '+chip(d.status)+'</h2>';")
@@ -310,7 +384,7 @@ OUTPAGE(RTN,CMS,OP) ; Human-readable rendering of the stored outcome
  DO ADDLN^C0FHIR(.RTN,"}")
  DO ADDLN^C0FHIR(.RTN,"if(d.receiver)h+='<p><strong>Receiver:</strong> <code>'+esc(d.receiver)+'</code> &mdash; HTTP '+esc(d.httpStatus)+'</p>';")
  DO ADDLN^C0FHIR(.RTN,"if(d.entryStatuses){h+='<h3>Receiver entry results</h3><table><tr><th>Entry</th><th>Status</th></tr>';")
- DO ADDLN^C0FHIR(.RTN,"var names=['Organization (reporter)','MeasureReport (summary)'];")
+ DO ADDLN^C0FHIR(.RTN,"var names=['Organization (reporter)','MeasureReport ("_$SELECT(DFN>0:"individual",1:"summary")_")'];")
  DO ADDLN^C0FHIR(.RTN,"d.entryStatuses.forEach(function(s,i){h+='<tr><td>'+esc(names[i]||('entry '+(i+1)))+'</td><td class=""'+(String(s).charAt(0)==='2'?'yes':'no')+'"">'+esc(s)+'</td></tr>';});h+='</table>';}")
  DO ADDLN^C0FHIR(.RTN,"if(d.response)h+='<details><summary class=""muted"">Full receiver response Bundle (JSON)</summary><pre style=""white-space:pre-wrap"">'+esc(JSON.stringify(d.response,null,2))+'</pre></details>';")
  DO ADDLN^C0FHIR(.RTN,"el.innerHTML=h;")
@@ -321,21 +395,26 @@ OUTPAGE(RTN,CMS,OP) ; Human-readable rendering of the stored outcome
  SET HTTPRSP("mime")="text/html"
  QUIT
  ;
-LOGRUN(CMS,OP,ST,DET) ; Store run status + append evidence-log row
+LOGRUN(CMS,OP,ST,DET,DFN) ; Store run status + append evidence-log row
  NEW N,TS
- SET TS=$$NOW^XLFDT,DET=$EXTRACT($GET(DET),1,180)
- SET ^C0FQUAL("REPORT",CMS,OP)=ST_"^"_TS_"^"_DET
+ SET DFN=+$GET(DFN),TS=$$NOW^XLFDT,DET=$EXTRACT($GET(DET),1,180)
+ IF DFN>0 SET ^C0FQUAL("REPORT",CMS,"INDV",DFN,OP)=ST_"^"_TS_"^"_DET
+ ELSE  SET ^C0FQUAL("REPORT",CMS,OP)=ST_"^"_TS_"^"_DET
  SET N=$ORDER(^C0FQUAL("REPORT","LOG",""),-1)+1
- SET ^C0FQUAL("REPORT","LOG",N)=TS_"^"_CMS_"^"_OP_"^"_ST_"^"_DET
+ SET ^C0FQUAL("REPORT","LOG",N)=TS_"^"_CMS_"^"_OP_"^"_ST_"^"_DET_$SELECT(DFN>0:"^"_DFN,1:"")
  QUIT
  ;
-OUTLNK(CMS,OP) ; $$ - details link when a full outcome is stored
- IF '$DATA(^C0FQUAL("REPORT",CMS,OP,"json")) QUIT ""
- QUIT "<br><a href=""/fhir-quality-report-outcome?measure="_CMS_"&amp;op="_OP_"&amp;view=html"">details (full "_$SELECT(OP="validate":"OperationOutcome",1:"receiver response")_")</a>"
+OUTLNK(CMS,OP,DFN) ; $$ - details link when a full outcome is stored
+ SET DFN=+$GET(DFN)
+ IF DFN>0,'$DATA(^C0FQUAL("REPORT",CMS,"INDV",DFN,OP,"json")) QUIT ""
+ IF DFN<1,'$DATA(^C0FQUAL("REPORT",CMS,OP,"json")) QUIT ""
+ QUIT "<br><a href=""/fhir-quality-report-outcome?measure="_CMS_"&amp;op="_OP_$SELECT(DFN>0:"&amp;dfn="_DFN,1:"")_"&amp;view=html"">details (full "_$SELECT(OP="validate":"OperationOutcome",1:"receiver response")_")</a>"
  ;
-OPSTAT(CMS,OP) ; $$ - short status line for page display
+OPSTAT(CMS,OP,DFN) ; $$ - short status line for page display
  NEW DET,ROW,ST,TS
- SET ROW=$GET(^C0FQUAL("REPORT",CMS,OP))
+ SET DFN=+$GET(DFN)
+ IF DFN>0 SET ROW=$GET(^C0FQUAL("REPORT",CMS,"INDV",DFN,OP))
+ ELSE  SET ROW=$GET(^C0FQUAL("REPORT",CMS,OP))
  IF ROW="" QUIT ""
  SET ST=$PIECE(ROW,"^",1),TS=$PIECE(ROW,"^",2),DET=$PIECE(ROW,"^",3)
  IF TS'="" SET TS=$$FMTE^XLFDT($PIECE(TS,"."),5)
@@ -362,6 +441,9 @@ WSRPTPG(RTN,FILTER) ; GET /fhir-quality-reporting — pipeline page (HTML)
  DO ADDLN^C0FHIR(.RTN,"<li><strong>Submit</strong> — the <em>Submit</em> button sends the transaction Bundle (reporter Organization + MeasureReport) to the hosted reference DEQM receiver (deqm-test-server on cds1) and records the receiver response below.</li>")
  DO ADDLN^C0FHIR(.RTN,"</ol>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">This replaces QRDA Category III aggregate reporting on the CMS FHIR dQM path. Live exports are tagged <code>setsum-live</code> with cohort provenance; frozen artifacts under the MeasureReport index hold the reviewed official-cql freeze used for exchange.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p>Per-patient <strong>Individual</strong> MeasureReports (QRDA Category I analogue) live on each")
+ DO ADDLN^C0FHIR(.RTN," measure dashboard's curated cohort table — open a measure below, then use the live indv report /")
+ DO ADDLN^C0FHIR(.RTN," Validate / Submit controls on a patient row.</p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<h2>Active measures — live reports</h2>")
@@ -420,21 +502,29 @@ WSRPTPG(RTN,FILTER) ; GET /fhir-quality-reporting — pipeline page (HTML)
  QUIT
  ;
 RPTLOG(RTN) ; Evidence log: last 20 validate/submit runs (newest first)
- NEW CNT,DET,LCMS,N,OP,ROW,ST,STC,TS
+ NEW CNT,DET,LDFN,LCMS,LBL,N,OP,ROW,ST,STC,TS
+ ; ROW reused for HTML table rows
  DO ADDLN^C0FHIR(.RTN,"<h2>Evidence log</h2>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Each validate/submit run from this page is recorded here (newest first). The latest run per measure/step links to its full outcome (validator OperationOutcome or receiver response).</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Each validate/submit run (summary or individual) is recorded here (newest first). The latest run per measure/step[/patient] links to its full outcome.</p>")
  DO ADDLN^C0FHIR(.RTN,"<table><tr><th>When</th><th>Measure</th><th>Step</th><th>Outcome</th><th>Detail</th></tr>")
  SET CNT=0,N=""
  FOR  SET N=$ORDER(^C0FQUAL("REPORT","LOG",N),-1) QUIT:'N!(CNT'<20)  DO
  . SET ROW=$GET(^C0FQUAL("REPORT","LOG",N)) QUIT:ROW=""
  . SET CNT=CNT+1
  . SET TS=$$FMTE^XLFDT($PIECE(ROW,"^",1),1),LCMS=$PIECE(ROW,"^",2),OP=$PIECE(ROW,"^",3)
- . SET ST=$PIECE(ROW,"^",4),DET=$PIECE(ROW,"^",5)
+ . SET ST=$PIECE(ROW,"^",4),DET=$PIECE(ROW,"^",5),LDFN=+$PIECE(ROW,"^",6)
+ . SET LBL=LCMS_$SELECT(LDFN>0:" / Patient/"_LDFN,1:"")
  . SET STC=$$HTMLESC^C0FHIR(ST)
- . ; Link the outcome when this row is the latest run for its measure/step
- . IF $PIECE(ROW,"^",1)=$PIECE($GET(^C0FQUAL("REPORT",LCMS,OP)),"^",2),$DATA(^C0FQUAL("REPORT",LCMS,OP,"json")) DO
+ . ; Link the outcome when this row is the latest run for its measure/step[/dfn]
+ . ; Paired IFs (not ELSE) — avoid $TEST leak from nested IF inside DO.
+ . IF LDFN>0,$PIECE(ROW,"^",1)=$PIECE($GET(^C0FQUAL("REPORT",LCMS,"INDV",LDFN,OP)),"^",2),$DATA(^C0FQUAL("REPORT",LCMS,"INDV",LDFN,OP,"json")) DO
+ . . SET STC="<a href=""/fhir-quality-report-outcome?measure="_LCMS_"&amp;op="_OP_"&amp;dfn="_LDFN_"&amp;view=html"">"_STC_"</a>"
+ . IF LDFN<1,$PIECE(ROW,"^",1)=$PIECE($GET(^C0FQUAL("REPORT",LCMS,OP)),"^",2),$DATA(^C0FQUAL("REPORT",LCMS,OP,"json")) DO
  . . SET STC="<a href=""/fhir-quality-report-outcome?measure="_LCMS_"&amp;op="_OP_"&amp;view=html"">"_STC_"</a>"
- . DO ADDLN^C0FHIR(.RTN,"<tr><td>"_$$HTMLESC^C0FHIR(TS)_"</td><td>"_$$HTMLESC^C0FHIR(LCMS)_"</td><td>"_$$HTMLESC^C0FHIR(OP)_"</td><td class="""_$SELECT(ST="pass"!(ST="accepted"):"yes",ST="running":"na",1:"no")_""">"_STC_"</td><td class=""muted"">"_$$HTMLESC^C0FHIR(DET)_"</td></tr>")
- IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""5"" class=""muted"">No runs recorded yet — use the Validate / Submit buttons above.</td></tr>")
+ . SET ROW="<tr><td>"_$$HTMLESC^C0FHIR(TS)_"</td><td>"_$$HTMLESC^C0FHIR(LBL)_"</td><td>"_$$HTMLESC^C0FHIR(OP)_"</td>"
+ . SET ROW=ROW_"<td class="""_$SELECT(ST="pass"!(ST="accepted"):"yes",ST="running":"na",1:"no")_""">"_STC_"</td>"
+ . SET ROW=ROW_"<td class=""muted"">"_$$HTMLESC^C0FHIR(DET)_"</td></tr>"
+ . DO ADDLN^C0FHIR(.RTN,ROW)
+ IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""5"" class=""muted"">No runs recorded yet — use Validate / Submit above or on a measure dashboard.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
  QUIT

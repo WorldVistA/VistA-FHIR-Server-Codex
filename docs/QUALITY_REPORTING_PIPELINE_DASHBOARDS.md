@@ -1,7 +1,7 @@
 # Quality Reporting Pipeline on the Dashboards
 
-**Date:** August 9, 2026
-**Status:** Phases 1–3 implemented (`C0FQRPT.m` + cds1 hosted validator/receiver)
+**Date:** August 10, 2026
+**Status:** Phases 1–5 implemented (`C0FQRPT.m` + cds1 hosted validator/receiver)
 
 ## Goal
 
@@ -98,20 +98,51 @@ Design decisions:
   TJSON/JSON browser used for patient FHIR. A *browser* link sits next to each
   live report on `/fhir-quality-reporting`.
 
-## Verified end to end (August 9, 2026, vehu10)
+## Phase 5 (implemented) — live Individual MeasureReport (QRDA-I analogue)
 
+Extends the same `/fhir-quality-report*` surface with `dfn=`:
+
+| Route | What it does |
+|---|---|
+| `GET /fhir-quality-report?measure=CMS165v14&dfn=101115` | DEQM STU5 Individual MeasureReport from `^C0FQUAL("POP",CMS,DFN)` |
+| `…&bundle=1` | Transaction Bundle (reporter Organization + individual report) |
+| `POST /fhir-quality-report-validate\|submit?measure=&dfn=` | Same TaskMan → cds1 path; validate sends `profile=indv-measurereport-deqm` |
+| `GET /fhir-quality-report-outcome?measure=&op=&dfn=` | Full cds1 outcome for that patient run |
+
+- Status/outcome stored under `^C0FQUAL("REPORT",CMS,"INDV",DFN,op)`; evidence-log
+  rows carry an optional DFN piece.
+- Measure dashboard curated cohort table: per-row *report · Bundle · TJSON*,
+  Validate/Submit buttons, and status/details links.
+- Reporting page notes that Individual controls live on the measure dashboards.
+- TJSON browser: `source=qualityreport&dfn=` loads the individual Bundle.
+- Shape mirrors `build-deqm-individual.py` (no `measureScore`, no
+  `evaluatedResource`; evidence in `meta.tag`; honest `setpop-live` provenance).
+- Subject-List MeasureReport is deferred (no spike yet).
+
+## Verified end to end
+
+**Summary (August 9, 2026, vehu10):**
 - Validate: `pass` — 1 validator error, which is the known DEQM STU5 IG
   supplementalData noise also present on the IG's own golden example; 0
   actionable.
 - Submit: `accepted` — receiver returned 200/201 for the reporter Organization
   and MeasureReport entries.
 
-## Verification (Phase 1 gate)
+**Individual (August 10, 2026, vehu10, CMS165v14 DFN 1):**
+- Live report: `type=individual`, `indv-measurereport-deqm`, counts match POP.
+- Validate: `pass` — errors=1 warnings=2 actionable=0 knownNoise=1.
+- Submit: `accepted` — HTTP 200; entry statuses 200 OK, 201 Created.
+
+## Verification (Phase 1 / Phase 5 gate)
 
 1. Sync to vehu10 (`./scripts/vehu10-fhir-sync.sh`), XINDEX clean on
-   `C0FQRPT`, `C0FQUAL`, `SYNWEBRG`.
+   `C0FQRPT`, `C0FQUAL`, `C0FHIRWS`.
 2. `GET /fhir-quality-report?measure=CMS165v14` returns JSON whose population
    counts equal `^C0FQUAL("SUM","CMS165v14")` pieces 2–5; `python3 -m json.tool`
    parses it.
 3. `&bundle=1` returns a two-entry transaction Bundle that parses.
 4. `/fhir-quality-reporting` lists all active measures with working links.
+5. `GET /fhir-quality-report?measure=CMS165v14&dfn=<POP>` returns
+   `type=individual`, `indv-measurereport-deqm`, subject `Patient/<dfn>`, and
+   binary population counts matching the POP row; `&bundle=1` parses.
+6. Validate/Submit for that DFN reach `pass` / `accepted` (known IG noise only).

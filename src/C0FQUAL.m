@@ -323,7 +323,7 @@ CATALOG(RTN) ;
  ;
 MEASURE(RTN,CMS) ; HTML single-measure dashboard
  NEW CNT,DFN,FOCUS,IEN,NAME,NOTE,ROOT,ROW,STAT,TITLE,RAW
- NEW AURL,BURL,CURL,FURL,LURL,RURL
+ NEW AURL,BURL,CURL,FURL,LNK,LURL,RURL
  NEW IPP,DENOM,NUMER,DENEX,EVID,MODE,FLAG
  DO SEED
  SET RAW=$$NORM($GET(CMS))
@@ -375,7 +375,9 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"})();")
  DO ADDLN^C0FHIR(.RTN,"</script>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
- DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
+ DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th>")
+ DO ADDLN^C0FHIR(.RTN,"<th>Evidence</th><th>MeasureReport</th><th>Live DEQM indv</th><th>Validate</th>")
+ DO ADDLN^C0FHIR(.RTN,"<th>Submit</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
  SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=0
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:+DFN<1  DO
  . SET CNT=CNT+1
@@ -395,15 +397,41 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td class="""_$$PCLS(NUMER)_""">"_NUMER_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
- . SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
+ . SET ROW=ROW_"<td><a href="""_LURL_""">frozen</a></td>"
+ . SET LNK="<a href=""/fhir-quality-report?measure="_CMS_"&amp;dfn="_DFN_""">report</a>"
+ . SET LNK=LNK_" · <a href=""/fhir-quality-report?measure="_CMS_"&amp;dfn="_DFN_"&amp;bundle=1"">Bundle</a>"
+ . SET LNK=LNK_" "_$$TJBTN("/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS_"&amp;dfn="_DFN,"indv",1)
+ . SET ROW=ROW_"<td>"_LNK_"</td>"
+ . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-dfn="""_DFN_""" data-op=""validate"">"
+ . SET ROW=ROW_"Validate</button><br><span class=""muted"" id=""st-validate-"_CMS_"-"_DFN_""">"
+ . SET ROW=ROW_$$HTMLESC^C0FHIR($$OPSTAT^C0FQRPT(CMS,"validate",DFN))_"</span>"_$$OUTLNK^C0FQRPT(CMS,"validate",DFN)_"</td>"
+ . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-dfn="""_DFN_""" data-op=""submit"">"
+ . SET ROW=ROW_"Submit</button><br><span class=""muted"" id=""st-submit-"_CMS_"-"_DFN_""">"
+ . SET ROW=ROW_$$HTMLESC^C0FHIR($$OPSTAT^C0FQRPT(CMS,"submit",DFN))_"</span>"_$$OUTLNK^C0FQRPT(CMS,"submit",DFN)_"</td>"
  . SET ROW=ROW_"<td>"_$$TJBTN(BURL,"fhir",1)_"</td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
  . SET ROW=ROW_"<td>"_$$TJBTN(AURL,"quality ai",1)_"</td>"
  . IF FURL'="" SET ROW=ROW_"<td>"_$$TJBTN(FURL,"synthea",1)_"</td></tr>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
- IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
+ IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""15"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
+ DO ADDLN^C0FHIR(.RTN,"<script>")
+ DO ADDLN^C0FHIR(.RTN,"(function(){")
+ DO ADDLN^C0FHIR(.RTN,"function wire(b){b.addEventListener('click',async function(){")
+ DO ADDLN^C0FHIR(.RTN,"var m=b.getAttribute('data-m'),op=b.getAttribute('data-op'),dfn=b.getAttribute('data-dfn');")
+ DO ADDLN^C0FHIR(.RTN,"var sid='st-'+op+'-'+m+(dfn?'-'+dfn:'');")
+ DO ADDLN^C0FHIR(.RTN,"var s=document.getElementById(sid);")
+ DO ADDLN^C0FHIR(.RTN,"b.disabled=true;if(s)s.textContent='starting…';")
+ DO ADDLN^C0FHIR(.RTN,"try{var url='/fhir-quality-report-'+op+'?measure='+m+(dfn?'&dfn='+dfn:'');")
+ DO ADDLN^C0FHIR(.RTN,"var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});")
+ DO ADDLN^C0FHIR(.RTN,"var t=await r.text(),j={};try{j=JSON.parse(t)}catch(e){j={status:'error',message:t.slice(0,120)||('HTTP '+r.status)};}")
+ DO ADDLN^C0FHIR(.RTN,"if(!r.ok||j.status==='error'){if(s)s.textContent='error: '+(j.message||('HTTP '+r.status));b.disabled=false;return;}")
+ DO ADDLN^C0FHIR(.RTN,"if(s)s.textContent='running… (page reloads)';setTimeout(function(){location.reload();},5000);")
+ DO ADDLN^C0FHIR(.RTN,"}catch(e){if(s)s.textContent='error: '+e;b.disabled=false;}});}")
+ DO ADDLN^C0FHIR(.RTN,"var bs=document.querySelectorAll('.rptop');for(var i=0;i<bs.length;i++)wire(bs[i]);")
+ DO ADDLN^C0FHIR(.RTN,"})();")
+ DO ADDLN^C0FHIR(.RTN,"</script>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<h2>Patients (graph source)</h2>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Graph-linked patients (first 250). Flags show when POP is stored for that DFN.</p>")
