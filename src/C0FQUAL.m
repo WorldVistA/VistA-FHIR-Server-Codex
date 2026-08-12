@@ -397,10 +397,12 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td class="""_$$PCLS(NUMER)_""">"_NUMER_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
- . SET ROW=ROW_"<td><a href="""_LURL_""">frozen</a></td>"
+ . ; Frozen artifact is only published for the reviewed SETPOP freeze DFNs.
+ . IF $$HASQMR(CMS,DFN) SET ROW=ROW_"<td><a href="""_LURL_""">frozen</a></td>"
+ . ELSE  SET ROW=ROW_"<td class=""muted"" title=""No published freeze for this DFN — use Live DEQM indv"">—</td>"
  . SET LNK="<a href=""/fhir-quality-report?measure="_CMS_"&amp;dfn="_DFN_""">report</a>"
  . SET LNK=LNK_" · <a href=""/fhir-quality-report?measure="_CMS_"&amp;dfn="_DFN_"&amp;bundle=1"">Bundle</a>"
- . SET LNK=LNK_" "_$$TJBTN("/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS_"&amp;dfn="_DFN,"indv",1)
+ . SET LNK=LNK_" "_$$TJBTN("/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS_"&amp;dfn="_DFN,"TJSON",1)
  . SET ROW=ROW_"<td>"_LNK_"</td>"
  . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-dfn="""_DFN_""" data-op=""validate"">"
  . SET ROW=ROW_"Validate</button><br><span class=""muted"" id=""st-validate-"_CMS_"-"_DFN_""">"
@@ -463,7 +465,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td class="""_$$PCLS(NUMER)_""">"_NUMER_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
- . IF FLAG SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
+ . IF FLAG,$$HASQMR(CMS,DFN) SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td>"
  . SET ROW=ROW_"<td>"_$$TJBTN(BURL,"fhir",1)_"</td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
@@ -536,7 +538,7 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  ; Official CQL re-eval via cds1 /quality/evaluate-cohort (not AI Consult /analyze)
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
  DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Re-evaluate CQL</h2>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 for this server's curated POP DFNs (cds1 fetches /fhir when public; updates SETPOP/SETSUM). Separate from AI Consult.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 for this server's curated POP DFNs (cds1 fetches /fhir when public; localhost hosts send refreshed inline bundles so post-writeback Procedure evidence is included). Updates SETPOP/SETSUM. Separate from AI Consult.</p>")
  DO ADDLN^C0FHIR(.RTN,"<p><button type=""button"" class=""btn"" id=""reevalBtn"">Re-evaluate CQL</button> <span id=""reevalStatus"" class=""muted"">"_$$HTMLESC^C0FHIR($PIECE($GET(^C0FQUAL("REEVAL",CMS)),"^",1))_"</span></p>")
  DO ADDLN^C0FHIR(.RTN,"<script>")
  DO ADDLN^C0FHIR(.RTN,"(function(){var b=document.getElementById('reevalBtn'),s=document.getElementById('reevalStatus');")
@@ -606,6 +608,16 @@ QMRDIRX(DIR) ; $$ - true when index.html exists in DIR
  SET TMP=$NA(^TMP("C0FQMRX",$J))
  KILL @TMP
  SET OK=$$FTGOK^C0FHIRWS(DIR,"index.html",TMP)
+ KILL @TMP
+ QUIT +OK
+ ;
+HASQMR(CMS,DFN) ; $$ - true when frozen Patient-{DFN}.json is published for CMS
+ NEW DIR,OK,TMP
+ SET DIR=$$QMRDIR() IF DIR="" QUIT 0
+ SET CMS=$$FIND($GET(CMS)),DFN=+$GET(DFN) IF CMS=""!(DFN<1) QUIT 0
+ SET TMP=$NA(^TMP("C0FQMRF",$J))
+ KILL @TMP
+ SET OK=$$FTGOK^C0FHIRWS(DIR_CMS_"/","Patient-"_DFN_".json",TMP)
  KILL @TMP
  QUIT +OK
  ;
@@ -721,7 +733,7 @@ WSREEVAL(ARGS,BODY,RESULT) ; POST /fhir-quality-reeval?measure=
  QUIT ""
  ;
 WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy timeouts)
- NEW BASE,CMS,DFN,ERR,INLINE,N,TMP
+ NEW BASE,CMS,DFN,ERR,INLINE,N,REF,TMP
  SET U="^",HTTPRSP("mime")="application/json"
  KILL OUT
  DO SEED
@@ -732,11 +744,15 @@ WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy t
  IF $DATA(HTTPARGS("inline"))#2 DO
  . IF +$GET(HTTPARGS("inline")) SET INLINE=1
  . ELSE  SET INLINE=0
+ ; Inline bundles run in TaskMan — default refresh so post-writeback evidence is not stale.
+ ; ?refresh=0 keeps C0FWCAC; ?refresh=1 forces rebuild (explicit).
+ SET REF=1
+ IF $DATA(HTTPARGS("refresh"))#2 SET REF=+$GET(HTTPARGS("refresh"))
  ; Count POP only (do not build bundles on the request thread)
  SET N=0,DFN=0
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  SET N=N+1
  IF N<1 DO OO^C0FWAIS(.OUT,"error","invalid","No curated POP DFNs for "_CMS) QUIT
- SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT_"^"_BASE_"^"_$SELECT(INLINE:1,1:0)_"^"_+N
+ SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT_"^"_BASE_"^"_$SELECT(INLINE:1,1:0)_"^"_+N_"^"_REF
  ; Background task: large cohorts exceed ~60s edge/proxy limits (Failed to fetch)
  ; Queue via TaskMan (SAC): REEVT restores CMS from the task symbol table
  NEW ZTRTN,ZTDESC,ZTDTH,ZTIO,ZTSAVE,ZTSK
@@ -753,6 +769,7 @@ WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy t
  SET TMP("measure")=CMS
  SET TMP("fhirBase")=BASE
  SET TMP("inlineBundles")=$SELECT(INLINE:1,1:0)
+ SET TMP("refreshBundles")=+REF
  SET TMP("patients")=+N
  SET TMP("reeval")=$GET(^C0FQUAL("REEVAL",CMS))
  SET TMP("message")="Re-evaluate started in background; reload when status is done."
@@ -766,18 +783,20 @@ REEVT ; TaskMan entry: re-evaluate cohort; CMS restored via ZTSAVE
  QUIT
  ;
 REEVALJ(CMS) ; Background worker: cds1 evaluate-cohort → SETPOP/SETSUM
- NEW BASE,DFN,ERR,INLINE,N,PAYLOAD,REQ,RESP,SLOT,SUM,PARTS
+ NEW BASE,DFN,ERR,INLINE,N,PAYLOAD,REF,REQ,RESP,SLOT,SUM,PARTS
  SET CMS=$$FIND($GET(CMS)) QUIT:CMS=""
  SET PARTS=$GET(^C0FQUAL("REEVAL",CMS))
  SET BASE=$PIECE(PARTS,"^",3)
  SET INLINE=+$PIECE(PARTS,"^",4)
+ SET REF=+$PIECE(PARTS,"^",6)
+ IF $PIECE(PARTS,"^",6)="" SET REF=1 ; older running rows: prefer fresh bundles
  IF BASE="" SET BASE=$$FHIRBASE(.REQ)
  KILL REQ
  SET REQ("measureId")=CMS
  SET REQ("fhirBase")=BASE
  ; Use 0/1 so XLFJSON emits JSON boolean/number — string "false" is truthy in cds1
  SET REQ("inlineBundles")=$SELECT(INLINE:1,1:0)
- IF INLINE DO LOADBND(.REQ,CMS,.N,.ERR)
+ IF INLINE DO LOADBND(.REQ,CMS,.N,.ERR,REF)
  ELSE  DO LOADDFNS(.REQ,CMS,.N,.ERR)
  IF $GET(ERR)'="" SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80) QUIT
  IF +$GET(N)<1 SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^no POP rows" QUIT
@@ -810,7 +829,9 @@ FHIRBASE(BODY) ; $$ - FHIR base for THIS host (audit / override; remote cds1 fet
  SET PROTO=$GET(HTTPREQ("header","x-forwarded-proto"))
  IF PROTO="" SET PROTO=$GET(HTTPREQ("header","X-Forwarded-Proto"))
  IF PROTO="" SET PROTO=$S($$LOW^XLFSTR(HOST)["localhost":"http",$$LOW^XLFSTR(HOST)["127.0.0.1":"http",HOST[".vistaplex.org":"https",1:"http")
- IF HOST'="",$$LOW^XLFSTR(HOST)'["127.0.0.1",$$LOW^XLFSTR(HOST)'["localhost" Q PROTO_"://"_HOST_"/fhir"
+ ; Include localhost / 127.0.0.1 — NEEDINLINE forces inline bundles (cds1 cannot fetch private hosts).
+ ; Previously local Host fell through to fhirdev and re-eval scored the wrong patient graph.
+ IF HOST'="" Q PROTO_"://"_HOST_"/fhir"
  ; Last-resort defaults by profile / known public hosts
  IF $$ISRPMS^C0FWPOL() Q $S($G(^C0FQUAL("FHIRBASE"))'="":$$TRIMSL(^C0FQUAL("FHIRBASE")),1:"https://rpmsfhir.vistaplex.org/fhir")
  Q "https://devfhir.vistaplex.org/fhir"
@@ -842,12 +863,14 @@ LOADDFNS(REQ,CMS,N,ERR) ; patients[] only — cds1 fetches each DFN from fhirBas
  . SET REQ("patients",SLOT)=DFN
  QUIT
  ;
-LOADBND(REQ,CMS,N,ERR) ; Build patients[] + inline bundles[] for curated POP
- NEW BND,DFN,FIL,REF,SLOT
+LOADBND(REQ,CMS,N,ERR,REF) ; Build patients[] + inline bundles[] for curated POP
+ NEW BND,DFN,FIL,SLOT
  KILL ERR
- ; Default: use C0FWCAC cache. ?refresh=1 rebuilds every patient and can hang the
- ; %web worker for minutes on large lab graphs (browser shows Failed to fetch).
- SET REF=+$GET(HTTPARGS("refresh"))
+ ; REF comes from REEVALJ (stored on ^C0FQUAL("REEVAL")) — HTTPARGS is gone in TaskMan.
+ ; Default refresh on inline path so Quality AI Consult writebacks appear in CQL.
+ IF '$DATA(REF) DO
+ . IF $DATA(HTTPARGS("refresh"))#2 SET REF=+$GET(HTTPARGS("refresh"))
+ . ELSE  SET REF=1
  SET (N,SLOT,DFN)=0
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  DO  QUIT:$GET(ERR)'=""
  . SET SLOT=SLOT+1,N=SLOT

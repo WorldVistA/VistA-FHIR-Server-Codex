@@ -14,6 +14,10 @@ browser instead of a terminal.
 
 - `C0FQUAL.m` renders the summary dashboard, per-measure dashboards, and the
   **Re-evaluate CQL** button (official cqm-execution on cds1 → `SETPOP`/`SETSUM`).
+  Local/private hosts send **refreshed inline** `/fhir` bundles (so Quality AI
+  Consult writebacks are scored); public hosts let cds1 fetch `fhirBase`.
+  CMS125 mammo Procedure (SCT) is bridged to QDM Diagnostic Study / LOINC on cds1
+  — same path for VistA and RPMS; no radiology DiagnosticReport write required.
 - The workstation pipeline in `HL7-FHIR-quality-testing`
   (`build-deqm-summary.py`, `deqm-summary-receiver-smoke.sh`) builds, validates,
   and submits DEQM Summary MeasureReports; its **frozen artifacts** are

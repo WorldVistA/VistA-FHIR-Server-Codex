@@ -350,7 +350,7 @@ OUTPAGE(RTN,CMS,OP,DFN) ; Human-readable rendering of the stored outcome
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-dashboards/"_CMS_""">"_CMS_" dashboard</a>")
  SET TJURL="/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS
  IF DFN>0 SET TJURL=TJURL_"&amp;dfn="_DFN
- DO ADDLN^C0FHIR(.RTN,$$TJBTN^C0FQUAL(TJURL,"TJSON report"))
+ DO ADDLN^C0FHIR(.RTN,$$TJBTN^C0FQUAL(TJURL,"TJSON"))
  SET QDFN=$SELECT(DFN>0:"&amp;dfn="_DFN,1:"")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-report-outcome?measure="_CMS_"&amp;op="_OP_QDFN_""">raw JSON</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")

@@ -39,9 +39,11 @@ RPMS() ; $$ - true when RPMS PCC measurements are available
  Q 1
  ;
 GETRMSR(RTN,DFN,BEG,END,MAX) ; Add RPMS V MEASUREMENT resources
+ ; Walk newest-first: AC is ascending by IEN; large patients hit MAX on old vitals
+ ; and omit Quality AI Consult / recent writebacks (e.g. DFN 55 BP IEN 116851).
  N CNT,DATE,IEN,VIT
- S (CNT,IEN)=0
- F  S IEN=$O(^AUPNVMSR("AC",DFN,IEN)) Q:IEN<1!(CNT'<MAX)  D
+ S CNT=0,IEN=""
+ F  S IEN=$O(^AUPNVMSR("AC",+$G(DFN),IEN),-1) Q:IEN<1!(CNT'<MAX)  D
  . S DATE=$$MSRDT(IEN)
  . I (DATE<BEG)!(DATE>END) Q
  . K VIT

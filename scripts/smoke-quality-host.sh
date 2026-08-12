@@ -46,6 +46,11 @@ for m in CMS122v14 CMS125v14 CMS165v14; do
   else
     bad "$m missing Clean non-IPP / Delete cohort buttons"
   fi
+  if grep -q 'refreshed inline bundles' "/tmp/qsmoke-$m.html"; then
+    pass "$m re-eval mentions refreshed inline bundles"
+  else
+    bad "$m missing re-eval refreshed-inline-bundles copy"
+  fi
   # NUMER/DENEX must not exceed DENOM (patients outside DENOM must not inflate rate)
   python3 - "$m" "/tmp/qsmoke-$m.html" <<'PY' || fail=1
 import re, sys

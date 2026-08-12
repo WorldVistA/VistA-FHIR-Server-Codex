@@ -35,36 +35,41 @@ wsUpdatePatient(ARGS,BODY,RESULT) ; POST /updatepatient
  . S HTTPERR=400
  . D ERR(.RESULT,"JSON","Unable to decode updatepatient JSON")
  I NEWROW D
+ . ; New graph row: build local, full INDEX, then store
  . M GR(IEN,"json")=GR1
  . S LASTRIEN=0
  . S (ZI,CNT)=0
  . F  S ZI=$O(GR1("entry",ZI)) Q:+ZI=0  S CNT=CNT+1
+ . D INDEX^C0FWIDX(IEN,"GR")
+ . M @ROOT@(IEN)=GR(IEN)
  E  D
- . M GR(IEN)=@ROOT@(IEN)
- . S LASTRIEN=$O(GR(IEN,"json","entry"," "),-1)
- . S HASPAT=$$HASPAT^C0FWLNK($NA(GR(IEN)))
+ . ; Existing row: append only — never M-copy/reindex the whole graph
+ . ; (rpmsfhir DFN 55 is ~20k entries; full INDEX hung /updatepatient).
+ . S LASTRIEN=$O(@ROOT@(IEN,"json","entry"," "),-1)
+ . S HASPAT=$$HASPAT^C0FWLNK($NA(@ROOT@(IEN)))
  . S (ZI,CNT)=0
  . F  S ZI=$O(GR1("entry",ZI)) Q:+ZI=0  D
  . . I HASPAT,$G(GR1("entry",ZI,"resource","resourceType"))="Patient" Q
  . . S CNT=CNT+1
  . . S RIEN=LASTRIEN+CNT
- . . M GR(IEN,"json","entry",RIEN)=GR1("entry",ZI)
- D INDEX^C0FWIDX(IEN,"GR")
+ . . M @ROOT@(IEN,"json","entry",RIEN)=GR1("entry",ZI)
+ . I CNT>0 D INDEXADD^C0FWIDX(IEN,LASTRIEN+1,LASTRIEN+CNT,ROOT)
  S RETURN("status")="ok"
  I ICN="" D
- . N DFR S DFR=$O(GR(IEN,"SPO",IEN,"DFN",""))
+ . N DFR S DFR=$O(@ROOT@(IEN,"SPO",IEN,"DFN",""))
+ . I DFR="" S DFR=$O(@ROOT@("SPO",IEN,"DFN",""))
  . I DFR'="" S ICN=$$DFN2ICN^C0FWFUTL(DFR)
  S RETURN("icn")=ICN
  S RETURN("ien")=IEN
  I NEWROW S RETURN("createdGraph")=1
- N BUNDLE S BUNDLE=$$BUNDLE^C0FWIDX($NA(GR(IEN)))
+ N BUNDLE S BUNDLE=$$BUNDLE^C0FWIDX($NA(@ROOT@(IEN)))
  S RETURN("bundle")=BUNDLE
  S ARGS("bundle")=BUNDLE
  S ARGS("firstEntry")=LASTRIEN+1
  S ARGS("lastEntry")=LASTRIEN+CNT
  S C0FWBUNDLE=BUNDLE
- M @ROOT@(IEN)=GR(IEN)
  S RDFN=$S(DNX>0:DNX,1:$O(@ROOT@("SPO",IEN,"DFN","")))
+ I RDFN="" S RDFN=$O(@ROOT@(IEN,"SPO",IEN,"DFN",""))
  I RDFN'="" D LNKPAT^C0FWLNK(IEN,RDFN,.ICN,ROOT)
  I ICN'="" S RETURN("icn")=ICN
  I RDFN'="" D

@@ -47,7 +47,7 @@ Install these from `VistA-FHIR-Server-Codex/src/`.
 | `C0FHIR` | Core patient, encounter, bundle entry points, FHIR index, environment bootstrap. | `GET /fhir`, `GET /fhir?dfn=<dfn>`, patient-only and date-range bundle checks. |
 | `C0FHIRBU` | Bundle orchestration, domain selection, IDs, date conversion, JSON support helpers. | Domain-filtered bundles: `domains=patient`, `domains=encounter,labs`, `mode=daterange`. |
 | `C0FHIRWS` | HTTP `/fhir` web entry point and browser view. | `/fhir`, `/fhir?dfn=<dfn>`, `/fhir?dfn=<dfn>&view=browser`. |
-| `C0FHIRD` | Conditions, vitals, allergies. | `domains=condition`, `domains=vitals`, `domains=allergy`. |
+| `C0FHIRD`, `C0FWVIT` | Conditions, vitals, allergies. RPMS vitals read via `GETRMSR^C0FWVIT` (newest-first `^AUPNVMSR("AC")` so recent writebacks are not truncated by MAX). | `domains=condition`, `domains=vitals`, `domains=allergy`; after BP writeback `scripts/smoke-rpms-vitals-readback.sh <base> <dfn> <sys> <dia>`. |
 | `C0FHIRM` | Medications and immunizations. | `domains=medication`, `domains=immunization`; verify missing package behavior on RPMS. |
 | `C0FHIRL` | Lab observations and lab DiagnosticReports. | `domains=labs`; verify `LR7OR1` and/or RPMS lab fallback. |
 | `C0FHIRP` | Procedures, radiology, surgery, clinical procedures, V CPT. | `domains=procedure`; verify graceful skip of unavailable surgery/radiology/MD packages. |
