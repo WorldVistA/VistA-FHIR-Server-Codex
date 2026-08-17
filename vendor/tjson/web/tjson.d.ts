@@ -96,16 +96,19 @@ export function parse(input: string, options?: ParseOptions): any;
  * any size and precision pass through as exact text. */
 export function toJson(input: string): string;
 
+/** Parse a TJSON string and return an indented JSON string: two spaces per
+ * level, one element per line. Lossless on the same terms as `toJson` -- no
+ * JS number is on the path, so prefer this over
+ * `JSON.stringify(JSON.parse(tjson.toJson(x)), null, 2)`, which puts every
+ * number through an f64. */
+export function toJsonPretty(input: string): string;
+
 /** Render a JSON string as TJSON, with optional options. Never lossy:
  * numbers of any size and precision pass through as exact text. */
 export function fromJson(input: string, options?: StringifyOptions): string;
 
 /** Render a JavaScript value as TJSON, with optional options. */
 export function stringify(input: any, options?: StringifyOptions): string;
-
-/** The tjson version this module was built from, reported from inside the wasm
- * so it cannot disagree with the code actually running. */
-export function version(): string;
 
 
 
@@ -133,6 +136,7 @@ export interface InitOutput {
     readonly parse: (a: number, b: number, c: any) => [number, number, number];
     readonly stringify: (a: any, b: any) => [number, number, number, number];
     readonly toJson: (a: number, b: number) => [number, number, number, number];
+    readonly toJsonPretty: (a: number, b: number) => [number, number, number, number];
     readonly version: () => [number, number];
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;

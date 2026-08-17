@@ -1,5 +1,5 @@
 /* @ts-self-types="./tjson.d.ts" */
-import { jsonTextToValue, throwNamingIllFormedString, valueToJsonText } from './snippets/tjson-rs-243c38fd23ed5d84/src/js/value_transport.js';
+import { jsonTextToValue, throwNamingIllFormedString, valueToJsonText } from './snippets/tjson-rs-c7e8ebc0e46482a6/src/js/value_transport.js';
 
 
 /**
@@ -147,6 +147,39 @@ export function toJson(input) {
 }
 
 /**
+ * Parse a TJSON string and return an indented JSON string.
+ *
+ * The same data as `toJson`, laid out for a person to read. Numbers cross as
+ * exact text either way -- there is no JS number on the path, which is the
+ * whole reason this exists rather than `JSON.stringify(JSON.parse(x), null, 2)`
+ * on the caller's side, where every number becomes an f64.
+ *
+ * Throws an `Error` if the input is not valid TJSON.
+ * @param {string} input
+ * @returns {string}
+ */
+export function toJsonPretty(input) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(input, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.toJsonPretty(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
  * The tjson version this module was built from.
  *
  * Reported from inside the wasm rather than read from package metadata,
@@ -205,7 +238,7 @@ function __wbg_get_imports() {
             const ret = Array.isArray(arg0);
             return ret;
         },
-        __wbg_jsonTextToValue_e4fe19bdd27d9072: function() { return handleError(function (arg0, arg1, arg2) {
+        __wbg_jsonTextToValue_1c9ed312473b303f: function() { return handleError(function (arg0, arg1, arg2) {
             const ret = jsonTextToValue(getStringFromWasm0(arg0, arg1), arg2 !== 0);
             return ret;
         }, arguments); },
@@ -213,10 +246,10 @@ function __wbg_get_imports() {
             const ret = new Error(getStringFromWasm0(arg0, arg1));
             return ret;
         },
-        __wbg_throwNamingIllFormedString_ba978783c5e14470: function() { return handleError(function (arg0) {
+        __wbg_throwNamingIllFormedString_e0b147c0c1e70357: function() { return handleError(function (arg0) {
             throwNamingIllFormedString(arg0);
         }, arguments); },
-        __wbg_valueToJsonText_6c8ef6154215e48d: function() { return handleError(function (arg0, arg1) {
+        __wbg_valueToJsonText_fd857e4b97e09465: function() { return handleError(function (arg0, arg1) {
             const ret = valueToJsonText(arg1);
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
             const len1 = WASM_VECTOR_LEN;

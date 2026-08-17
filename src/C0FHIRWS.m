@@ -282,7 +282,7 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"else if(sourceMode==='showfhir')sourceLabel='Stored Synthea FHIR';")
  D ADDLN(.RTN,"else if(sourceMode==='qualityreport')sourceLabel=dfn>0?'Live DEQM Individual MeasureReport':'Live DEQM Summary MeasureReport';")
  D ADDLN(.RTN,"const bundleUrl='"_LOADURL_"';")
- D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson/web/index.js?v=0.8.0-58f28993';")
+ D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson/web/index.js?v=0.10.1-ab9e4b30';")
  D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")
  D ADDLN(.RTN,"try{const x=sessionStorage.getItem('c0fhirBrowserFmt');if(x==='json'||x==='tjson')st.fmt=x;}catch(e){}")
  D ADDLN(.RTN,"let tjsonMod=null;")

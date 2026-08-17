@@ -49,7 +49,7 @@ PY
 echo "==> vendor @rfanth/tjson $VERSION web/ into $V/web"
 rm -rf "$V/web"
 mkdir -p "$V/web"
-# JS + types + snippets only (wasm is inlined in index.js)
+# JS + types + snippets (index.js inlines wasm; 0.10+ also ships sibling .wasm)
 cp "$PKG/web/index.js" "$V/web/index.js"
 cp "$PKG/web/tjson.js" "$V/web/tjson.js"
 # Cache-bust the internal ./tjson.js imports: index.js is fetched with ?v=,
@@ -58,6 +58,8 @@ cp "$PKG/web/tjson.js" "$V/web/tjson.js"
 sed -i "s|from './tjson.js'|from './tjson.js?v=$VERSION'|g" "$V/web/index.js"
 [[ -f "$PKG/web/index.d.ts" ]] && cp "$PKG/web/index.d.ts" "$V/web/index.d.ts"
 [[ -f "$PKG/web/tjson.d.ts" ]] && cp "$PKG/web/tjson.d.ts" "$V/web/tjson.d.ts"
+[[ -f "$PKG/web/tjson_bg.wasm" ]] && cp "$PKG/web/tjson_bg.wasm" "$V/web/tjson_bg.wasm"
+[[ -f "$PKG/web/tjson_bg.wasm.d.ts" ]] && cp "$PKG/web/tjson_bg.wasm.d.ts" "$V/web/tjson_bg.wasm.d.ts"
 cp -a "$PKG/web/snippets" "$V/web/snippets"
 
 # Drop legacy patched loader / binary sidecar if present

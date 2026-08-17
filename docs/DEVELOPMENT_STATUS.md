@@ -38,7 +38,7 @@ provides:
 | Quality dashboards link DEQM Summary MeasureReports | `C0FQUAL` → `/filesystem/quality/measurereports/{CMS}/summary-deqm.json` (official-cql freeze) and DEQM-profiled SETPOP `summary.json` |
 | Multi-domain FHIR read with VPR parity workflow | `docs/TEST_SERVER_VALIDATION.md` (baseline DFN 1595) |
 | Encounter/procedure CPT happy path | `docs/CPT_HAPPY_PATH_VALIDATION_2026-03-15.md` |
-| FHIR browser with TJSON WASM **0.6.5** on vehu10/fhirdev22 | `docs/FHIR_BROWSER_TJSON_CODEX.md`; vendored `@rfanth/tjson` 0.6.5 |
+| FHIR browser with TJSON WASM **0.10.1** on vehu10/fhirdev | `docs/FHIR_BROWSER_TJSON_CODEX.md`; vendored `@rfanth/tjson` 0.10.1 |
 | reHMP bridge regression (`POST /rehmp` + `GET /fhir`) | `docs/RUNNING_DEMOS.md`, `scripts/demo-rehmp-regression.sh` |
 | Stage 1 diagnosis writeback (SNOMED POV, multi-code, problem-selection lists) | `docs/clinical-test-cases/stage1-diagnosis-cases.json`, `scripts/stage1-diagnosis-smoke.mjs` |
 | Encounter-note export/import round trip | `docs/FHIR_ENCOUNTER_NOTE_EXPORT_IMPORT.md` |
