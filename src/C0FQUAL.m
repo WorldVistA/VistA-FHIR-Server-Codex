@@ -378,8 +378,9 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th>")
  DO ADDLN^C0FHIR(.RTN,"<th>Evidence</th><th>MeasureReport</th><th>Live DEQM indv</th><th>Validate</th>")
  DO ADDLN^C0FHIR(.RTN,"<th>Submit</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
- SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=0
- FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:+DFN<1  DO
+ SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=""
+ ; Match /fhir-dashboard: highest DFN first (newest patients at top).
+ FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN),-1) QUIT:DFN=""  DO
  . SET CNT=CNT+1
  . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^") IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
  . SET IPP=$$YN($$POP(CMS,DFN,1)),DENOM=$$YN($$POP(CMS,DFN,2))
@@ -436,13 +437,13 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"</script>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<h2>Patients (graph source)</h2>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Graph-linked patients (first 250). Flags show when POP is stored for that DFN.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Graph-linked patients (highest DFN first, up to 250). Flags show when POP is stored for that DFN.</p>")
  IF ROOT="" DO  GOTO MDONE
  . DO ADDLN^C0FHIR(.RTN,"<p>No fhir-intake graph root is available.</p>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
  DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
- SET CNT=0,DFN=0
- FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN)) QUIT:+DFN<1!(CNT>250)  DO
+ SET CNT=0,DFN=""
+ FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN),-1) QUIT:DFN=""!(CNT>250)  DO
  . SET IEN=$ORDER(@ROOT@("DFN",DFN,""),-1) QUIT:+IEN<1
  . SET CNT=CNT+1
  . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^") IF NAME="" SET NAME="UNKNOWN ("_DFN_")"

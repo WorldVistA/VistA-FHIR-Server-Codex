@@ -51,6 +51,21 @@ for m in CMS122v14 CMS125v14 CMS165v14; do
   else
     bad "$m missing re-eval refreshed-inline-bundles copy"
   fi
+  # Curated POP patient table: DFN descending (same as /fhir-dashboard).
+  python3 - "$m" "/tmp/qsmoke-$m.html" <<'PY' || fail=1
+import re, sys
+m, path = sys.argv[1], sys.argv[2]
+html = open(path, encoding="utf-8", errors="replace").read()
+# POP table rows include Validate buttons with data-dfn=
+dfns = [int(x) for x in re.findall(r'data-dfn="(\d+)"\s+data-op="validate"', html)]
+if len(dfns) < 2:
+    print(f"  PASS  {m} POP DFN order skipped (<2 validate rows)")
+    raise SystemExit(0)
+if dfns != sorted(dfns, reverse=True):
+    print(f"  FAIL  {m} POP DFNs not descending: {dfns[:8]}…", file=sys.stderr)
+    raise SystemExit(1)
+print(f"  PASS  {m} POP patient table DFN descending ({dfns[0]}…{dfns[-1]})")
+PY
   # NUMER/DENEX must not exceed DENOM (patients outside DENOM must not inflate rate)
   python3 - "$m" "/tmp/qsmoke-$m.html" <<'PY' || fail=1
 import re, sys
