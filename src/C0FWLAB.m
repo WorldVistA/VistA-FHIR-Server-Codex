@@ -27,7 +27,11 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File lab Observation (ISI) or accept into fhir-inta
  I $$GET1^DIQ(2,DFN_",",.09,"I")="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Patient has no SSN; ISI lab import requires PAT_SSN",.RETURN) Q
  S LOINC=$$LOINC(ROOT,IEN,RIEN)
  S TEST=$$TEST(LOINC,ROOT,IEN,RIEN)
- I TEST="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Unable to map LOINC/code to VistA #60 lab test name"_$S(LOINC'="":" ("_LOINC_")",1:""),.RETURN) Q
+ I TEST="" D  Q
+ . ; Quality AI / unmapped LOINCs (PHQ, FIT, etc.): keep fhir-intake as lab-of-record
+ . ; instead of hard-failing when #60 has no ISI map.
+ . I LOINC'="" D GRAPHOK(ROOT,IEN,RIEN,TYPE,"Lab Observation retained in fhir-intake (no #60 map for LOINC "_LOINC_")",.RETURN) Q
+ . D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Unable to map LOINC/code to VistA #60 lab test name"_$S(LOINC'="":" ("_LOINC_")",1:""),.RETURN)
  S VAL=$$VALUE(ROOT,IEN,RIEN)
  I VAL="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Missing Observation valueQuantity/valueString",.RETURN) Q
  S HL7DT=$$HL7DT(ROOT,IEN,RIEN)
