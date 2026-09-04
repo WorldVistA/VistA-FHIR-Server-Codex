@@ -137,7 +137,7 @@ smoke_one() {
   local t="$1" base dfn
   case "$t" in
     fhirdev)  base=https://devfhir.vistaplex.org; dfn=101076 ;;
-    fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=101076 ;;
+    fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=1643 ;;  # fhirprod cohort = DFNs 1643-1661
     vehu10)   base=http://127.0.0.1:9085; dfn=101076 ;;
     rpms-candidate|rpms-rebuild-candidate|rpms) base=http://127.0.0.1:9088; dfn=4 ;;
     rpmsfhir|rpms-fhir) base=https://rpmsfhir.vistaplex.org; dfn=8 ;;
