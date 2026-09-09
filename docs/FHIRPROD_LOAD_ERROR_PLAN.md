@@ -47,12 +47,12 @@ Compare C0FW-to-C0FW, not mixed SYN leftovers.
 |---|---:|---:|---:|---|
 | Patient | 100% | 100% | 100% | OK everywhere |
 | Smoking | 100% | 100% (tiny n) | 0% (RPMS deferred) | RPMS adapter gap |
-| Observation (vitals) | 87% | 86% | 84% | Shared (BMI skipped) |
+| Observation (vitals) | **100%** | 86% | 84% | Day 2: skipped BMI counts as success |
 | Encounter | 75% | 56% | 50% | Shared; fhirdev/RPMS worse |
-| DocumentReference | 33% counted | 99% | 99.6% | Display + reload; see above |
-| Condition | 30% | 35% | 50% | Shared ICD map / findings |
-| Immunization | 27% | 31% | 89% | VistA CVX file; RPMS better |
-| Lab | **99.9%** | 17% | 3.7% (graph-of-record) | fhirprod Day 1 replay; leftover PTT length |
+| DocumentReference | **100%** | 99% | 99.6% | Day 2: skipped “already matched” counts |
+| Condition | **89%** | 35% | 50% | Day 2 skip social findings; leftover true ICD gaps |
+| Immunization | **86%** | 31% | 89% | Day 2 skip missing CVX / already-filed |
+| Lab | **100%** | 17% | 3.7% (graph-of-record) | Day 1 replay + PTT round |
 | Procedure | **99.4%** | 6.8% | **85%** | fhirprod OS5 + imaging allowlist |
 | Medication | 0% | 0% | 0% | Shared stub `C0FWMED` |
 | CarePlan | 0% | 0% | 0% | Shared stub `C0FWCP` |
@@ -205,7 +205,7 @@ replayed: cohort Lab errors **33 → 0**.
 3. Graph-ok unmapped LOINCs and DiagnosticReports — done.
 4. Replay Lab errors on DFNs 1643–1661 — done.
 
-### Day 2 — Condition / Immunization / display honesty
+### Day 2 — Condition / Immunization / display honesty — DONE
 
 1. `C0FWCON`: skip situation/social findings with no ICD (employment,
    education, “medication review due”, housing, IPV). Keep disorders.
@@ -214,6 +214,11 @@ replayed: cohort Lab errors **33 → 0**.
 4. `DOMSUM^C0FHIR`: count `skipped` as loaded-equivalent (TIU already
    matched, social findings, missing CVX). `not_implemented` still a miss.
 5. `C0FWVIT`: map LOINC `39156-5` to BMI when file 120.51 has that type.
+
+Replay DFNs 1643–1661 (2026-09-09): Colton Conditions **79 loaded / 154 error → 108 loaded / 114 skip / 11 error**.
+Dashboard C0FW: Condition **30% → 89%**, DocumentReference **33% → 100%**, Immunization **27% → 86%**, Observation **87% → 100%**.
+Leftover Condition errors are true ICD gaps (dental caries, gingival disease, back pain, imaging finding).
+Leftover Immunization errors are missing encounter visit pointers (not CVX).
 
 ### Days 3–4 — Medication and CarePlan (shared, large)
 
