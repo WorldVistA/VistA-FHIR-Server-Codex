@@ -226,11 +226,17 @@ Leftover Immunization errors are missing encounter visit pointers (not CVX).
    (policy today is native-only; wrappers are the faster closure).
 2. File outpatient meds that have a VistA drug match; skip the rest with a
    clear `skipped` reason, not `not_implemented`.
-3. CarePlan: either file as TIU/health-factor summary or officially
-   `skipped` / graph-only so the dashboard does not look like a crash.
+3. CarePlan write is native `C0FWCP`: reuse `SYNFHF` (`HFCPCAT` / `HFCP` /
+   `HFACT` / `HFADDR` / `HFGOAL`) and file V Health Factor via DATA2PCE
+   (VistA) or `RPMSHF^C0FWENC` (RPMS). Do **not** call `importCarePlan^SYNFCP`.
+   No visit or missing SYNFHF → `skipped`. Already on visit → `skipped`
+   (DOMSUM counts that as loaded). Read is already `GETCP^C0FHIRD`
+   (`SYN CP ` names, id `CP-{AUPNVHF}`). RPMS first-pass no longer defers
+   CarePlan.
 
-Verify: Medication and CarePlan leave `not_implemented`. A new Synthea
-patient shows those domains as skipped/loaded, never stub text.
+Verify: CarePlan leaves `not_implemented`. A new Synthea patient shows
+CarePlan as skipped/loaded and `GET /fhir/CarePlan?patient={dfn}` returns
+the filed plans. Medication may still be a stub.
 
 ### Day 5+ — map coverage and the loop
 
