@@ -52,8 +52,8 @@ Compare C0FW-to-C0FW, not mixed SYN leftovers.
 | DocumentReference | 33% counted | 99% | 99.6% | Display + reload; see above |
 | Condition | 30% | 35% | 50% | Shared ICD map / findings |
 | Immunization | 27% | 31% | 89% | VistA CVX file; RPMS better |
-| Lab | 14% | 17% | 3.7% (graph-of-record) | Shared LOINC + urine + panels |
-| Procedure | **1.7%** | 6.8% | **85%** | **fhirprod #81 seed + shared VEHU path** |
+| Lab | **99.9%** | 17% | 3.7% (graph-of-record) | fhirprod Day 1 replay; leftover PTT length |
+| Procedure | **99.4%** | 6.8% | **85%** | fhirprod OS5 + imaging allowlist |
 | Medication | 0% | 0% | 0% | Shared stub `C0FWMED` |
 | CarePlan | 0% | 0% | 0% | Shared stub `C0FWCP` |
 
@@ -183,22 +183,27 @@ patients are 15304/15304 procedures loaded (100%)**.
 
 UA `#60.03` / `#60.11` seeded on fhirprod for every `#60` name containing
 `URINE` plus `APPEARANCE` (URINE GLUCOSE 148, ketones 147, protein 149,
-nitrite 1194, LE 1195, etc.). Lab replay is the next live step.
+nitrite 1194, LE 1195, etc.).
 
-### Day 1 — urine / lab dictionary (fhirprod, then all VistA)
+### Day 1 — urine / lab dictionary (fhirprod) — DONE
 
-1. Seed `#60.03` collection sample and `#60.11` accession for UA tests
-   (`URINE GLUCOSE`, ketones, protein, bilirubin, nitrite, blood, LE,
-   appearance, color). Follow
-   `VistA-FHIR-Data-Loader/docs/LAB_ACCESSION_REMEDIATION_WORKFLOW.md`.
-2. Normalize Synthea UA strings in `C0FWLAB` / `SYNDHP63` (`negative`→`NEG`,
-   `trace`→`TRACE`, trim to field length).
-3. Map or graph-ok the high-volume LOINCs listed above.
-4. Replay Lab errors on DFN 1661 and 1643.
+Cohort DFNs 1643–1661 Lab replay (2026-09-09):
 
-Verify: `#60.03` collection-sample errors drop to ~0; UA validation errors
-drop sharply; Lab % on the 19-patient cohort moves from 14% toward fhirdev
-chemistry-level success.
+- Colton DFN 1661: **144/3126 → 3126/3126 (100%)**
+- All C0FW patients on fhirprod: **8473/61782 (13.7%) → 61725/61782 (99.9%)**
+- DiagnosticReport `not_implemented` → GRAPHOK (panels stay graph-of-record)
+- Unmapped LOINCs (PHQ etc.) → GRAPHOK
+- UA values: Synthea findings/`negative`/strip numbers → NEG/TRACE/1+…4+
+- ISI `COLLECTION_SAMPLE=BLOOD` rewrites to `RED TOP` (missing on FOIA #62).
+  `SYNDHP63` now omits empty CSAMP so ISI uses the test’s `#60.03` default.
+
+Leftover ~33 rows are PTT results longer than 5 characters (`32.479`).
+Round PTT to 1 decimal on the next replay.
+
+1. Seed `#60.03` / `#60.11` for UA tests — done.
+2. Normalize Synthea UA strings in `C0FWLAB` — done (`UANORM` / `UADIP`).
+3. Graph-ok unmapped LOINCs and DiagnosticReports — done.
+4. Replay Lab errors on DFNs 1643–1661 — done.
 
 ### Day 2 — Condition / Immunization / display honesty
 

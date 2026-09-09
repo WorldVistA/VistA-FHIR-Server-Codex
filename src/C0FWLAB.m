@@ -8,8 +8,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File lab Observation (ISI) or accept into fhir-inta
  S TYPE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))
  I TYPE="DiagnosticReport" D  Q
  . ; Panels stay in fhir-intake; C0FHIRLG GETGRPDR reads them as labs-of-record.
- . I $$USEGRAPH() D GRAPHOK(ROOT,IEN,RIEN,TYPE,"Lab DiagnosticReport retained in fhir-intake (RPMS graph labs-of-record)",.RETURN) Q
- . D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"DiagnosticReport lab panels are not filed by C0FWLAB yet; accept Observation actions for atomic results.",.RETURN)
+ . D GRAPHOK(ROOT,IEN,RIEN,TYPE,"Lab DiagnosticReport retained in fhir-intake (panels stay graph-of-record)",.RETURN)
  I TYPE'="Observation" D NI^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"C0FWLAB only files laboratory Observation resources",.RETURN) Q
  I $$ISVITAL^C0FWVIT(ROOT,IEN,RIEN) D SKIP^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Observation is a vital-sign; routed to C0FWVIT instead",.RETURN) Q
  I $$ISSMOK^C0FWSMOK(ROOT,IEN,RIEN) D SKIP^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Observation is smoking status; routed to C0FWSMOK instead",.RETURN) Q
@@ -32,13 +31,14 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File lab Observation (ISI) or accept into fhir-inta
  . ; instead of hard-failing when #60 has no ISI map.
  . I LOINC'="" D GRAPHOK(ROOT,IEN,RIEN,TYPE,"Lab Observation retained in fhir-intake (no #60 map for LOINC "_LOINC_")",.RETURN) Q
  . D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Unable to map LOINC/code to VistA #60 lab test name"_$S(LOINC'="":" ("_LOINC_")",1:""),.RETURN)
- S VAL=$$VALUE(ROOT,IEN,RIEN)
+ I '$D(^LAB(60,"B",TEST)) D GRAPHOK(ROOT,IEN,RIEN,TYPE,"Lab Observation retained in fhir-intake (no #60 IEN for "_TEST_")",.RETURN) Q
+ S VAL=$$VALUE(ROOT,IEN,RIEN,LOINC,TEST)
  I VAL="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Missing Observation valueQuantity/valueString",.RETURN) Q
  S HL7DT=$$HL7DT(ROOT,IEN,RIEN)
  I HL7DT="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Missing or invalid effectiveDateTime (time required)",.RETURN) Q
  S LOCN=$$LOCN(ROOT,IEN,RIEN)
  I LOCN="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Unable to resolve hospital location name",.RETURN) Q
- S CSAMP=$$CSAMP(LOINC)
+ S CSAMP=$$CSAMP(LOINC,TEST)
  ; LABADD / LRPARAM require Kernel DUZ(2) and IO context in web jobs.
  D DUZ^C0FWCTX(),IO^C0FWCTX()
  K RETSTA
@@ -105,13 +105,17 @@ TEST(LOINC,ROOT,IEN,RIEN) ; $$ - VistA #60 name for LOINC / display
  N NAME,TXT,TRY
  S NAME=""
  I $G(LOINC)'="" D
- . I $T(graphmap^SYNGRAPH)'="" D
- . . S TRY=$$graphmap^SYNGRAPH("loinc-lab-map",LOINC)
- . . I +TRY'=-1,TRY'="" S NAME=$$TRIM^XLFSTR(TRY)
- . I NAME="",$T(MAP^SYNQLDM)'="" D
+ . ; SYNQLDM first: fhirprod $$setroot^SYNWD can be ^SYNGRAPH(...,"") and
+ . ; graphmap^SYNGRAPH then aborts on a null subscript.
+ . I $T(MAP^SYNQLDM)'="" D
  . . S TRY=$$MAP^SYNQLDM(LOINC,"labs")
  . . I TRY'="",+TRY'=-1 S NAME=$$TRIM^XLFSTR(TRY)
  . I NAME="" S NAME=$$A1CMAP(LOINC)
+ . I NAME="",$T(graphmap^SYNGRAPH)'="" D
+ . . N $ETRAP
+ . . S $ETRAP="S TRY="""",$ECODE="""" Q"
+ . . S TRY=$$graphmap^SYNGRAPH("loinc-lab-map",LOINC)
+ . . I +TRY'=-1,TRY'="" S NAME=$$TRIM^XLFSTR(TRY)
  I NAME'="" Q NAME
  S TXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","text"))
  I TXT="" S TXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",1,"display"))
@@ -126,14 +130,62 @@ A1CMAP(LOINC) ; $$ - built-in HbA1c LOINC aliases used by Synthea/quality mode
  I LOINC="4549-2" Q "HEMOGLOBIN A1C"
  Q ""
  ;
-VALUE(ROOT,IEN,RIEN) ; $$ - result value
- N VAL,VTXT
+VALUE(ROOT,IEN,RIEN,LOINC,TEST) ; $$ - result value
+ N VAL
  S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","valueQuantity","value"))
- I VAL'="" Q VAL
- S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","valueString"))
- I VAL'="" Q VAL
- S VTXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","valueCodeableConcept","text"))
- I VTXT'="" Q VTXT
+ I VAL="" S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","valueString"))
+ I VAL="" S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","valueCodeableConcept","text"))
+ I VAL="" S VAL=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","valueCodeableConcept","coding",1,"display"))
+ I VAL="" Q ""
+ Q $$UANORM(VAL,$G(LOINC),$G(TEST))
+ ;
+UANORM(VAL,LOINC,TEST) ; $$ - Synthea UA / set-of-codes → VistA #60 answers
+ N DIP,U,X
+ S X=$$TRIM^XLFSTR($G(VAL))
+ I X="" Q ""
+ S DIP=$$UADIP($G(LOINC),$G(TEST),X)
+ I DIP'="" Q DIP
+ I $$UP($G(TEST))="PTT",X?1.N.1".".N!(X?1.N) Q $FN(+X,"",1)
+ I X?1.N.1".".N Q X
+ I X["^",$P(X,"^")?1.N S X=$P(X,"^",2)
+ S U=$$UP(X)
+ I U="NEGATIVE"!(U="NEG.")!(U="NEG")!(U="ABSENT")!(U="NONE") Q "NEG"
+ I U["NOT DETECTED" Q "NEG"
+ I U["NO CAST" Q "NoneObs"
+ I U="TRACE"!(U["TRACE") Q "TRACE"
+ I U["CLOUD"!(U["HAZY")!(U["TURBID") Q "CLOUDY"
+ I U="CLEAR"!(U="COLORLESS") Q "CLEAR"
+ I U["YELLOW" Q "YELLOW"
+ I U="AMBER"!(U["DARK") Q "AMBER"
+ I U="STRAW"!(U["PALE") Q "YELLOW"
+ I U["BROWN"!(U["TRANSLUCENT") Q "BROWN"
+ I U="RED"!(U="REDISH")!(U="REDDISH")!(U["RED") Q "RED"
+ I U="PINK"!(U["PINK") Q "PINK"
+ I U="ORANGE"!(U["ORANGE") Q "ORANGE"
+ I U="FOUL" Q "FOUL"
+ I U="POSITIVE"!(U="POS")!(U="PRESENT") Q "POS"
+ I U["DETECTED" Q "POS"
+ I U["BILIRUBIN" Q "1+"
+ I U["BACTERIA"!(U["MUCUS") Q "1+"
+ I U["++++"!(U="4+") Q "4+"
+ I U["+++"!(U="3+") Q "3+"
+ I U["++"!(U="2+") Q "2+"
+ I U["+"!(U="1+")!(U["ONE PLUS") Q "1+"
+ I $G(LOINC)="5778-6",$L(X)>7 S X=$E(X,1,7)
+ I $G(LOINC)="5767-9",$L(X)>7 S X=$E(X,1,7)
+ Q X
+ ;
+UADIP(LOINC,TEST,X) ; $$ - numeric strip result → NEG/TRACE/1+…4+
+ N N,UT
+ I $G(X)'?1.N.1".".N,X'?1".".N,X'?1.N Q ""
+ S N=+X,UT=$$UP($G(TEST)),LOINC=$G(LOINC)
+ I LOINC="5792-7"!(UT["URINE GLUCOSE") Q $S(N<100:"NEG",N<250:"TRACE",N<500:"1+",N<1000:"2+",N<2000:"3+",1:"4+")
+ I LOINC="5804-0"!(UT["URINE PROTEIN") Q $S(N<15:"NEG",N<30:"TRACE",N<100:"1+",N<300:"2+",N<1000:"3+",1:"4+")
+ I LOINC="5797-6"!(UT["URINE KETONE") Q $S(N<5:"NEG",N<15:"TRACE",N<40:"1+",N<80:"2+",N<160:"3+",1:"4+")
+ I LOINC="5770-3"!(UT["URINE BILIRUBIN") Q $S(N=0:"NEG",1:"1+")
+ I LOINC="5794-3"!(UT["URINE BLOOD") Q $S(N=0:"NEG",1:"1+")
+ I LOINC="5802-4"!(UT["NITRITE") Q $S(N=0:"NEG",1:"POS")
+ I LOINC="5799-2"!(UT["LEUCOCYTE")!(UT["LEUKOCYTE") Q $S(N=0:"NEG",1:"1+")
  Q ""
  ;
 HL7DT(ROOT,IEN,RIEN) ; $$ - compact HL7 date/time with required time component
@@ -157,17 +209,15 @@ LOCN(ROOT,IEN,RIEN) ; $$ - hospital location name for ISI LOCATION
  I LOC>0 Q $P($G(^SC(LOC,0)),U)
  Q ""
  ;
-CSAMP(LOINC) ; $$ - collection sample name
- N CSAMP
- S CSAMP=""
- I $G(LOINC)'="",$D(^LAB(95.3)) D
- . S CSAMP=$$GET1^DIQ(95.3,$P(LOINC,"-",1),4)
- . I CSAMP["SER/PLAS" S CSAMP="SERUM" Q
- . I CSAMP["Whole blood"!(CSAMP["Blood venous")!(CSAMP["Blood arterial") S CSAMP="BLOOD" Q
- . I CSAMP["Urine" S CSAMP="URINE" Q
- . I CSAMP["plasma"!(CSAMP["Plasma") S CSAMP="PLASMA" Q
- I CSAMP="" S CSAMP="BLOOD"
- Q CSAMP
+CSAMP(LOINC,TEST) ; $$ - collection sample name
+ N UTEST
+ ; Empty → SYNDHP63 omits COLLECTION_SAMPLE → ISI uses #60.03 default.
+ ; Do not send BLOOD: ISIIMPU7 rewrites BLOOD to RED TOP (often missing on FOIA).
+ S UTEST=$$UP($G(TEST))
+ I UTEST["URINE"!(UTEST["NITRITE")!(UTEST["LEUCOCYTE")!(UTEST["LEUKOCYTE") Q "URINE"
+ I UTEST["APPEARANCE" Q "URINE"
+ I $G(LOINC)'="",$D(^LAB(95.3)),$$GET1^DIQ(95.3,$P(LOINC,"-",1),4)["Urine" Q "URINE"
+ Q ""
  ;
 LOG(ROOT,IEN,RIEN,ICN,LOCN,TEST,VAL,HL7DT,LOINC,CSAMP,STATUS,RAW) ; Persist load details
  S @ROOT@(IEN,"load","Lab",RIEN,"engine")="SYN/ISI"
