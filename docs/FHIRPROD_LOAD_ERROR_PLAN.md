@@ -207,16 +207,13 @@ replayed: cohort Lab errors **33 → 0**.
 
 ### Day 2 — Condition / Immunization / display honesty
 
-1. `C0FWCON`: skip situation/finding SCTs that are not diagnoses
-   (employment, education, “medication review due”). Keep disorders.
-2. Fix `ADDPOV` so it only sets fields that exist on this DD (stop the
-   `#9000010.07` field-N error).
-3. Seed missing CVX rows or skip inactive immunizations cleanly.
-4. `DOMSUM^C0FHIR`: count `skipped` with “already matched” as loaded-equivalent
-   so DocumentReference/Immunization fractions stop lying.
-
-Verify: Condition errors on Colton lose the social-history pile; dashboard
-DocumentReference for reloaded patients is no longer 33% for “already there”.
+1. `C0FWCON`: skip situation/social findings with no ICD (employment,
+   education, “medication review due”, housing, IPV). Keep disorders.
+2. `ADDPOV` DD-guards already shipped (`1203`/`1216`/`1217`).
+3. `C0FWIMM`: missing/inactive CVX is `skipped`, not `error`.
+4. `DOMSUM^C0FHIR`: count `skipped` as loaded-equivalent (TIU already
+   matched, social findings, missing CVX). `not_implemented` still a miss.
+5. `C0FWVIT`: map LOINC `39156-5` to BMI when file 120.51 has that type.
 
 ### Days 3–4 — Medication and CarePlan (shared, large)
 

@@ -1305,6 +1305,9 @@ DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
  . . SET SRC=SRC+1
  . . SET ST=$$LOADST(ROOT,IEN,DOM,ZI)
  . . IF ST="LOADED" SET LD=LD+1
+ . . ; Intentional skips (TIU already matched, social findings, missing CVX)
+ . . ; are success-equivalent; not_implemented stays a miss.
+ . . IF ST="SKIPPED" SET LD=LD+1
  . ; Some domains (for example Patient) use only domain-level status nodes.
  . ; Prefer explicit status counters when present, then fallback to status/loadstatus.
  . SET DOMSRC=+$GET(@ROOT@(IEN,"load",DOM,"status","source"))

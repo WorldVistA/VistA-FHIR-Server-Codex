@@ -165,6 +165,7 @@ ABBRCD(CODE) ; $$ - LOINC/SNOMED to vital abbreviation
  I CODE="59408-5" Q "PO2"
  I CODE="2708-6" Q "PO2"
  I CODE="72514-3" Q "PN"
+ I CODE="39156-5" Q "BMI"
  I CODE=27113001 Q "WT"
  I CODE=50373000 Q "HT"
  I CODE=75367002 Q "BP"
@@ -187,6 +188,7 @@ ABBRNM(TXT) ; $$ - display/text to vital abbreviation
  I X["TEMP" Q "T"
  I X["OXIM" Q "PO2"
  I X["PAIN" Q "PN"
+ I X["BODY MASS"!(X["BMI") Q "BMI"
  Q ""
  ;
 VTIEN(ABBR) ; $$ - vital type ien from abbreviation or name index
