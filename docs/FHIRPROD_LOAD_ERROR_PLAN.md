@@ -197,8 +197,8 @@ Cohort DFNs 1643–1661 Lab replay (2026-09-09):
 - ISI `COLLECTION_SAMPLE=BLOOD` rewrites to `RED TOP` (missing on FOIA #62).
   `SYNDHP63` now omits empty CSAMP so ISI uses the test’s `#60.03` default.
 
-Leftover ~33 rows are PTT results longer than 5 characters (`32.479`).
-Round PTT to 1 decimal on the next replay.
+Leftover PTT rows (`32.479` > 5 chars) were rounded to 1 decimal and
+replayed: cohort Lab errors **33 → 0**.
 
 1. Seed `#60.03` / `#60.11` for UA tests — done.
 2. Normalize Synthea UA strings in `C0FWLAB` — done (`UANORM` / `UADIP`).
