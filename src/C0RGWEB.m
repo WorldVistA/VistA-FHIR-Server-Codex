@@ -38,7 +38,15 @@ WSREHMP2(RESULT,BODY) ; Core POST handler for old/new %web call conventions
  KILL RESP,JERR
  DO DECODE^XLFJSON($NA(RESULT),$NA(RESP),$NA(JERR))
  SET STATUS=$$HTTPSTAT($NA(RESP),$NA(JERR))
- IF STATUS>0 SET HTTPERR=STATUS
+ IF STATUS>0 DO
+ . ; Surface the ResponseEnvelope as the error body: when HTTPERR is set,
+ . ; the %web framework discards handler output and serializes the HTTPERR
+ . ; array (RSPBODY^_webrsp), so shape HTTPERR to be the envelope itself.
+ . SET HTTPERR=STATUS
+ . SET HTTPERR("apiVersion")=$GET(RESP("apiVersion"))
+ . SET HTTPERR("requestId")=$GET(RESP("requestId"))
+ . SET HTTPERR("status")="error"
+ . MERGE HTTPERR("error")=RESP("error")
  ELSE  SET HTTPERR=0
  QUIT ""
  ;
@@ -59,6 +67,10 @@ MAPSTAT(ECODE) ; Map C0RG error code to HTTP status
  IF CODE="FORBIDDEN" QUIT 403
  IF CODE="VALIDATION" QUIT 400
  IF CODE="VERSION" QUIT 400
+ IF CODE="NOT_FOUND" QUIT 404
+ ; DUPLICATE maps to 400 (not 409): the M webserver status-line table
+ ; (RSPLINE^_webrsp) lacks 409 and would emit 500. error.code is authoritative.
+ IF CODE="DUPLICATE" QUIT 400
  IF CODE="SIZE" QUIT 413
  IF CODE="NOT_IMPLEMENTED" QUIT 501
  IF CODE="TIMEOUT" QUIT 504
