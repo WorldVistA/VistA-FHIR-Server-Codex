@@ -161,8 +161,29 @@ through C0FW after the adapters exist.
 4. Harvest script + Synthea loop checked in (`scripts/harvest-load-errors.py`,
    `scripts/synthea-load-error-loop.sh`).
 
-Next on this track: replay Procedure errors for DFNs 1643–1660 (same seed),
-then classify the remaining ~2% true map gaps.
+Replay of DFNs 1643–1661 Procedure errors (2026-09-09):
+
+**1.7% → 96.8%** (267/15304 → 14812/15304 loaded). Errors 15037 → 492.
+
+Leftover SCTs (true `sct2os5` gaps, not #81):
+
+| n | SCT | Display |
+|---|---|---|
+| 321 | 241046008 | Dental plain X-ray bitewing |
+| 93 | 314971001 | Camera fundoscopy |
+| 66 | 700070005 | OCT of retina |
+| 3 | 713024005 | Plain X-ray of wrist |
+| 3 | 1290407002 | Plain X-ray of knee |
+| 3 | 713026007 | Plain X-ray of humerus |
+| 3 | 168594001 | Plain X-ray of clavicle |
+
+C0FWPRC allowlist maps these imaging SCTs to standard CPT (70300, 92250,
+92134, 73100, 73560, 73060, 73000). After the third replay pass, **all 19
+patients are 15304/15304 procedures loaded (100%)**.
+
+UA `#60.03` / `#60.11` seeded on fhirprod for every `#60` name containing
+`URINE` plus `APPEARANCE` (URINE GLUCOSE 148, ketones 147, protein 149,
+nitrite 1194, LE 1195, etc.). Lab replay is the next live step.
 
 ### Day 1 — urine / lab dictionary (fhirprod, then all VistA)
 

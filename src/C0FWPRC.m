@@ -191,6 +191,13 @@ SCT2OS5(SCT) ; $$ - map SNOMED CT to OS5/CPT code
  I SCT=73761001 Q "90471" ; Colonoscopy (screening proxy when CPT present)
  I SCT=444783004 Q "45378" ; Screening colonoscopy
  I SCT=171207006 Q "G0101" ; Depression screening (proxy HCPCS if present)
+ I SCT=241046008 Q "70300" ; Dental plain X-ray bitewing
+ I SCT=314971001 Q "92250" ; Camera fundoscopy / fundus photography
+ I SCT=700070005 Q "92134" ; Optical coherence tomography of retina
+ I SCT=713024005 Q "73100" ; Plain X-ray of wrist region
+ I SCT=1290407002 Q "73560" ; Plain X-ray of knee region
+ I SCT=713026007 Q "73060" ; Plain X-ray of humerus
+ I SCT=168594001 Q "73000" ; Plain X-ray of clavicle
  Q ""
  ;
 CPTNAME(ROOT,IEN,RIEN,OS5,SCT) ; $$ - display for seeded CPT
