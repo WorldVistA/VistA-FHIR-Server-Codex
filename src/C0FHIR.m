@@ -1840,7 +1840,12 @@ DOMTOK(X) ; Normalize domain alias to canonical token
  IF Y="LAB"!(Y="LABS")!(Y="LABORATORY")!(Y="LABORATORIES") QUIT "LAB"
  IF Y="REM"!(Y="REMS")!(Y="REMINDER")!(Y="REMINDERS")!(Y="CLINICALREMINDER")!(Y="CLINICALREMINDERS") QUIT "REMINDER"
  IF Y="CAREPLAN"!(Y="CAREPLANS")!(Y="CP") QUIT "CAREPLAN"
- QUIT
+ ; TIU notes ride the ENCOUNTER domain (GETENC emits DocumentReference)
+ IF Y="DOC"!(Y="DOCS")!(Y="DOCUMENT")!(Y="DOCUMENTS")!(Y="DOCUMENTREFERENCE")!(Y="NOTE")!(Y="NOTES")!(Y="TIU") QUIT "ENCOUNTER"
+ ; Unknown alias: return empty (caller skips). A valueless QUIT here is an
+ ; M17 <COMMAND> error on IRIS ("Function must return a value") and crashed
+ ; GET /fhir?domain=DocumentReference before 2026-09-10.
+ QUIT ""
  ;
 REQMODE(REQ) ; Resolve request mode from mapped parameters
  NEW MODE

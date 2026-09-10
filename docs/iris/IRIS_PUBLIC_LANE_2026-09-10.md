@@ -84,7 +84,7 @@ button works unattended (it also affects the validate-report task).
 |---|---|
 | Public TLS + UI up | `scripts/iris-public-setup.sh` |
 | Web listener + routes | `scripts/iris-web-setup.sh` |
-| Lane green (15 checks incl. rehmp + dashboard counts) | `scripts/iris-lane-smoke.sh` |
+| Lane green (17 checks incl. rehmp, dashboard counts, SYN/gtree) | `scripts/iris-lane-smoke.sh` |
 | Six-lane fleet, no GT.M regression | `QUALITY_SKIP_DEPLOY=1 scripts/deploy-quality-all.sh` |
 | rehmp gateway | `curl -X POST -d '{"apiVersion":"1.0","operation":"patient.search","payload":{"searchType":"auto","searchString":"MARQ"}}' https://irisfhir.vistaplex.org/rehmp` |
 | One dashboard w/ live counts | `curl https://irisfhir.vistaplex.org/fhir-quality-dashboards/CMS138v14` |
@@ -92,9 +92,59 @@ button works unattended (it also affects the validate-report task).
 Full fleet smoke 2026-09-10: `OK fhirdev / vehu10 / rpms-candidate / rpmsfhir /
 fhirprod` + `OK irisfhir (non-blocking lane)`, exit 0.
 
+## Blank-note bug (evening): missing SYN routines on IRIS
+
+User report: AI Consult text did not appear in the signed note (rehmp CPRS
+demo, DFN 11) — the note read back with an empty body.
+
+**Diagnosis path (each step ruled a layer out):**
+
+1. The saved writeback artifact (`GET /writebacksaves/wbs-67823-82750-101350`)
+   showed the client **had** submitted the full note text in
+   `Encounter.note[0].text` — UI exonerated.
+2. `^TIU(8925,1,"TEXT",1..18)` held all 18 lines — C0FW TIU filing exonerated.
+3. The FHIR read returned `attachment.data=""` — read-side.
+4. Root cause: `$$B64^C0FHIR` delegates to `$$ENCODE64^SYNWEBUT` and silently
+   returns `""` when that routine is absent. Only `SYNWEBRG` had been imported
+   to IRIS; the other 55 `SYN*` support routines from
+   `VistA-FHIR-Data-Loader/src` (present on every GT.M fleet server) were
+   never imported. Same root cause as the `/gtree` 500
+   (`<NOROUTINE> *SYNVPR`) and the cohort-load `"SYNFHF is not installed;
+   cannot file CarePlan health factors"` skips.
+
+**Fixes:**
+
+- Imported all 56 `SYN*.m` via UDL `ImportDir` (53 clean; SYNYOTTA /
+  SYNLINIT / two GT.M-guarded `tstart ():serial` lines in SYNWEBUT fail
+  compile, none load-bearing — `$$ENCODE64^SYNWEBUT` verified working).
+  Folded into `iris-web-setup.sh` step 1c so a snapshot restore
+  re-establishes it; new lane-smoke check (`/gtree/DD(0)` via SYNVPR) guards
+  the class.
+- Second, latent cross-platform bug found on the way: `$$DOMTOK^C0FHIR` had
+  no `DOCUMENTREFERENCE` alias and ended in a **valueless `QUIT`** — an M17
+  `<COMMAND>` error on IRIS (and a `QUITARGREQD` on GT.M) for any
+  unrecognized `domain=` value. Fixed: document aliases map to `ENCOUNTER`
+  (GETENC emits DocumentReference) and unknown aliases return `""`.
+- `iris-web-setup.sh` now multiplexes all ssh/scp over one ControlMaster
+  connection — the droplet's `ufw limit 22/tcp` (~6 conn/30s) was refusing
+  the script's burst of sequential connections.
+
+**Verified:** `refresh=1` rebuild then cached read both return the full
+944-byte note body over `/fhir` and over the rehmp gateway
+(`patient.fhir.bundle`); `domain=DocumentReference` returns HTTP 200 with the
+attachment; lane smoke 17/17; vehu10 full deploy + smoke green (no GT.M
+regression from the C0FHIR change).
+
 ## Follow-ups
 
 - Configure TaskMan site parameters on IRIS (unattended re-eval / validate).
 - Cache or parallelize per-measure dashboard bundle builds (the 12s/patient cost).
 - The stale pre-cohort `SUM`/`REEVAL` rows carried in the FOIA image are now
   overwritten with real cohort results; no action, noted for provenance.
+- Cohort loads before the SYN import skipped CarePlan health-factor filing
+  (`SYNFHF is not installed` in the load log). FHIR-side measure scoring was
+  unaffected, but VistA-side reminders that key on health factors will miss
+  them — re-file or reload if needed.
+- The current droplet snapshot predates the SYN import and the `^%webhome`
+  fix; `scripts/iris-web-setup.sh` re-establishes both after a restore
+  (or retake the snapshot).

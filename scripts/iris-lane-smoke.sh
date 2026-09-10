@@ -109,6 +109,17 @@ else
   bad "CMS122v14 dashboard HTTP $code or missing IPP/NUMER counts"
 fi
 
+# SYN loader/support routines must be imported (2026-09-10 bug: without
+# SYNWEBUT, $$B64^C0FHIR silently blanks every DocumentReference note body;
+# without SYNVPR, /gtree 500s <NOROUTINE>). gtree of the DD header exercises
+# wsGtree^SYNVPR end to end.
+code=$(curl -sS -o /tmp/irissmoke-gtree.html -w "%{http_code}" --max-time 20 "$BASE/gtree/DD(0)" || echo 000)
+if [[ "$code" == "200" ]] && grep -q "\^DD(0)" /tmp/irissmoke-gtree.html; then
+  pass "SYN routines imported (/gtree via SYNVPR; note-text base64 intact)"
+else
+  bad "SYN routines missing: /gtree HTTP $code (DocumentReference bodies will read back blank)"
+fi
+
 if timeout 10 bash -c "exec 3<>/dev/tcp/$HOSTNAME_ONLY/$BROKERPORT" 2>/dev/null; then
   pass "RPC broker port $BROKERPORT accepting (CPRS)"
 else
