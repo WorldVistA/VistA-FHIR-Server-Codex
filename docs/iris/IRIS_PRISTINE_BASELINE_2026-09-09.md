@@ -4,6 +4,13 @@ A "come back to" snapshot point for `irisfhir.vistaplex.org`: VistA-on-IRIS
 that is **both FHIR-ready and CPRS-ready**, with all bring-up fixes applied and
 **no patient data yet** (file 2 empty) — a clean demo base.
 
+**Snapshot captured:** DigitalOcean droplet snapshot
+`iris-docker-s-2vcpu-4gb-120gb-intel-…` (14.79 GB, region NYC1, 2026-09-09).
+Droplet spec: 2 vCPU / 4 GB / 120 GB (within IRIS Community's ≤8-core limit).
+Taken live; on restore IRIS does a brief automatic journal recovery and the
+`iris-broker.timer` re-establishes the 9430 listener within ~45s. Health at
+capture: `iris-smoke` 5/5 and broker sign-on `DUZ=1`.
+
 ## Host / container
 
 - Host: `irisfhir.vistaplex.org` (Ubuntu Docker host, root).
