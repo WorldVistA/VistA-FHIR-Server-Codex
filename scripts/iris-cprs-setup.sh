@@ -23,6 +23,11 @@ set -euo pipefail
 
 NAME="iris"
 PORT="${1:-9430}"
+# CPRS enforces a server/client version match (ORWU VERSRV vs the client exe's
+# "required server"). Set this to your CPRS client's version, e.g. 1.33.109.1
+# for CPRS1_33_109_1. When server and client differ and the division is not the
+# default, the GUI hard-blocks ("Server/Client Incompatibility").
+CPRS_VER="${CPRS_VER:-1.33.109.1}"
 
 # --- 1. map the Kernel %Z* routines into FOIA (idempotent) ------------------
 docker exec -i "$NAME" iris session IRIS -U %SYS <<'MSYS'
@@ -68,6 +73,15 @@ K ^VA(200,1,51) S ^VA(200,1,51,0)="^200.051^^"
 N C S C=0 F K=K1,K2,K3 I K S C=C+1,^VA(200,1,51,K,0)=K,^VA(200,1,51,"B",K,K)=""
 S $P(^VA(200,1,51,0),U,3)=$O(^VA(200,1,51,"B",""),-1),$P(^VA(200,1,51,0),U,4)=C
 W "USER,ONE bootstrapped; keys granted: ",C,!
+H
+MFOIA
+
+# --- 3b. align the OR CPRS GUI CHART option version to the client ----------
+docker exec -i "$NAME" iris session IRIS -U FOIA <<MFOIA
+S U="^"
+N I S I=\$O(^DIC(19,"B","OR CPRS GUI CHART",0))
+I I S \$P(^DIC(19,I,0),U,2)="CPRSChart version ${CPRS_VER}" W "option version set: ",^DIC(19,I,0),!
+N VAL D VERSRV^ORWU(.VAL,"OR CPRS GUI CHART","${CPRS_VER}") W "ORWU VERSRV now: ",VAL,!
 H
 MFOIA
 

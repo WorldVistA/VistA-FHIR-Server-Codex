@@ -74,3 +74,11 @@ sprint transcript for the reference probe.
   enabled (`^VA(200,1,200)` piece 4 = 1) so it should not recur.
 - **"VERIFY CODE must be changed"**: VC-never-expires (`^VA(200,1,0)` piece 8)
   is set by the bootstrap to avoid the first-login change prompt.
+- **"Server/Client Incompatibility ... running server version is X"**: CPRS
+  calls `ORWU VERSRV`, which returns the version string from the
+  `OR CPRS GUI CHART` option (`^DIC(19,ien,0)` piece 2 =
+  `CPRSChart version N.N.N.N`). If the server version differs from the client
+  exe's required version and the division isn't the default, the GUI
+  hard-blocks. Fix: set that option's version to the client build (step 3b of
+  `iris-cprs-setup.sh`, `CPRS_VER`). This FOIA image shipped `1.33.112.1`; the
+  client here is `1.33.109.1`.
