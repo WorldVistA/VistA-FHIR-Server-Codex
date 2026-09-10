@@ -48,12 +48,12 @@ Compare C0FW-to-C0FW, not mixed SYN leftovers.
 | Patient | 100% | 100% | 100% | OK everywhere |
 | Smoking | 100% | 100% (tiny n) | 0% (RPMS deferred) | RPMS adapter gap |
 | Observation (vitals) | **100%** | 86% | 84% | Day 2: skipped BMI counts as success |
-| Encounter | 75% | 56% | 50% | Shared; fhirdev/RPMS worse |
+| Encounter | **100%** | 56% | 50% | Day 5: DOMSUM ignores TIU log stubs |
 | DocumentReference | **100%** | 99% | 99.6% | Day 2: skipped “already matched” counts |
-| Condition | **89%** | 35% | 50% | Day 2 skip social findings; leftover true ICD gaps |
-| Immunization | **86%** | 31% | 89% | Day 2 skip missing CVX / already-filed |
+| Condition | **97%** | 35% | 50% | Day 5 SCT→ICD leftovers + education skip |
+| Immunization | **99.6%** | 31% | 89% | Day 2 skip missing CVX; leftover visit pointers |
 | Lab | **100%** | 17% | 3.7% (graph-of-record) | Day 1 replay + PTT round |
-| Procedure | **99.4%** | 6.8% | **85%** | fhirprod OS5 + imaging allowlist |
+| Procedure | **100%** | 6.8% | **85%** | Day 5 replayed stale SYNDHP65 NI |
 | Medication | **100%*** | 0% | 0% | *fhirprod C0FW cohort skip/loaded; RPMS still deferred |
 | CarePlan | **100%*** | (adapter) | (adapter) | *fhirprod GETCP `CP-*`; HF write shipped |
 
@@ -105,7 +105,7 @@ this DD does not have. Shared code; surfaces more on fhirprod’s C0FW loads.
 These are **not** fhirprod configuration. They will recur on vehu10,
 fhirdev, and any new VistA host.
 
-1. **Medication 0%** — `C0FWMED` is a placeholder; no `SYNFMED` call.
+1. **Medication** — outpatient Rx via `C0FWMED` / `WRITERXPS^SYNFMED`.
 2. **CarePlan** — filed as SYN CP health factors (`C0FWCP` / `GETCP`).
 3. **DiagnosticReport panels** — `C0FWLAB` marks them `not_implemented`
    (540 on Colton). Atomic Observations are the filing path.
@@ -253,9 +253,21 @@ return the filed rows.
 
 ### Day 5+ — map coverage and the loop
 
-1. Regenerate `sct2os5` from current Synthea + Codex `codes/` for the
-   remaining unmapped procedure SCTs.
-2. Run the protocol below on fhirprod, fhirdev, and vehu10 with the same
+1. fhirprod C0FW index (2026-09-09 harvest after this pass): Encounter
+   **75% → 100%** (`DOMSUM` no longer counts TIU `log`/`tiu` stubs copied
+   onto DocumentReference RIENs). Procedure **99.4% → 100%** (replayed
+   92 stale `SYNDHP65 is not installed` NI). Condition **89% → 97%**
+   (Lexicon fallback `SCTMAP` for caries/LBP/imaging; skip `Educated to
+   high school`). Colton/Adam now **233/233** and **180/180** Condition.
+   Remaining Condition errors are more SCT leftovers (pharyngitis,
+   metabolic syndrome, CKD3, dental-filling findings) plus **87**
+   `DATA2PCE -1` on already-mapped diagnoses (HTN, anemia, prediabetes).
+   Extra `SCTMAP`/`NOSDX` rows are in `C0FWCON` locally; fhirprod SSH
+   dropped before that deploy.
+2. `sct2os5` regen is not the fhirprod Procedure gap anymore (allowlist
+   + `#81` seed already 100% on the C0FW cohort). Still useful before
+   the next raw Synthea load on a host without the allowlist.
+3. Run the protocol below on fhirprod, fhirdev, and vehu10 with the same
    seed. Compare harvest JSON. Close only when the same error class is
    gone on all three, or is documented as host-policy (RPMS lab graph,
    RPMS smoking deferred).
