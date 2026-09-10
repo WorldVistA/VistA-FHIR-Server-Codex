@@ -30,6 +30,23 @@ S P("Database")="FOIA" W "map %Z*: ",##class(Config.MapRoutines).Create("FOIA","
 H
 MSYS
 
+# --- 1b. install the STANDARD RPC Broker cipher pad ------------------------
+# This FOIA extract shipped a NON-standard cipher pad in XUSRB1, so a stock
+# CPRS client (which uses the canonical XWBHash pad) fails sign-on with
+# "Not a valid ACCESS CODE/VERIFY CODE pair" — the encrypted A/V decrypts to
+# garbage. src/iris-kernel/XUSRB1.mac carries the canonical pad (regenerate
+# with scripts/gen-xusrb1-stdpad.py). Import + compile it so the server and a
+# stock client agree. (Verified by capturing a real CPRS handshake: the client
+# bytes decode to the plaintext A/V only under the canonical pad.)
+KDIR="$(cd "$(dirname "$0")/.." && pwd)/src/iris-kernel"
+docker exec "$NAME" mkdir -p /tmp/xusimport
+docker cp "$KDIR/XUSRB1.mac" "$NAME":/tmp/xusimport/XUSRB1.mac
+docker exec -i "$NAME" iris session IRIS -U FOIA <<'MFOIA'
+K err S sc=$SYSTEM.OBJ.ImportDir("/tmp/xusimport","XUSRB1.mac","ck-d",.err,1)
+W "XUSRB1 import: ",$SYSTEM.Status.GetOneStatusText(sc),!
+H
+MFOIA
+
 # --- 3. bootstrap the CPRS sign-on account (before starting the listener) ---
 docker exec -i "$NAME" iris session IRIS -U FOIA <<'MFOIA'
 S U="^",DUZ=.5,DUZ(0)="@"

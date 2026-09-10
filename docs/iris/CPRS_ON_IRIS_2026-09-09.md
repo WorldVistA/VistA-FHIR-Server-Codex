@@ -59,9 +59,16 @@ sprint transcript for the reference probe.
 
 - **`<NOROUTINE> ... *%ZIS`** on `STRT^XWBTCP`: the `%Z*` routine mapping is
   missing — re-run step 1 of `iris-cprs-setup.sh`.
-- **"Not a valid ACCESS CODE/VERIFY CODE pair"**: the client and server cipher
-  pads disagree. Real CPRS fetches the server pad at runtime, so this only bites
-  hand-rolled probes that hardcode the client's built-in pad.
+- **"Not a valid ACCESS CODE/VERIFY CODE pair"**: the client and server RPC
+  Broker cipher pads disagree, so the encrypted Access;Verify string decrypts to
+  garbage. This FOIA extract shipped a **non-standard pad** in `XUSRB1` (the
+  `Z` table), while a stock CPRS uses the canonical pad baked into the client
+  (`XWBHash.pas`). Fix: import the canonical pad —
+  `src/iris-kernel/XUSRB1.mac` (regenerate with
+  `scripts/gen-xusrb1-stdpad.py`), applied automatically by step 1b of
+  `iris-cprs-setup.sh`. Diagnosed by capturing a real handshake with
+  `XWBDEBUG=3` (`^XTMP("XWBLOG"_$J)`): the client's bytes decode to the
+  plaintext A/V only under the canonical pad, never under the shipped `Z` pad.
 - **"MULTIPLE SIGNONS NOT ALLOWED"**: a stale signed-on flag
   (`^VA(200,1,1.1)` piece 3) — cleared by the bootstrap; multiple sign-on is
   enabled (`^VA(200,1,200)` piece 4 = 1) so it should not recur.
