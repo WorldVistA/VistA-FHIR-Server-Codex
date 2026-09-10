@@ -7,6 +7,18 @@ that is **both FHIR-ready and CPRS-ready**, with all bring-up fixes applied and
 **Snapshot captured:** DigitalOcean droplet snapshot
 `irisfhir-pristine-cprs+fhir-2026-09-09` (14.79 GB, region NYC1, 2026-09-09;
 created from droplet `iris-docker-s-2vcpu-4gb-120gb-intel`).
+
+**Successor snapshot (2026-09-10):** `irisfhir-cprs-fhir-patient-2026-09-10`
+(15.07 GB, NYC1, same droplet). Everything in this baseline **plus** the
+sixth-lane state: M-Web-Server routes registered (`^%web(17.6001)`, 100
+routes, `$TEST`-fixed `SYNWEBRG` compiled), web listener durable on 9080 via
+the dual-port ensure script, and the Aaron697 test patient (DFN 1, filed over
+FHIR `/addpatient`, visible in CPRS and served by `GET /fhir?dfn=1`). Health
+at capture: iris-lane-smoke 12/12 (including the live FHIR round trip) about
+ten minutes before the snapshot. Restoring this image needs **no** post-restore
+steps beyond the timer re-establishing the listeners; restoring the older
+pristine image additionally needs `scripts/iris-web-setup.sh` and the
+addpatient POST (see `IRIS_SIXTH_LANE_2026-09-10.md`).
 Droplet spec: 2 vCPU / 4 GB / 120 GB (within IRIS Community's ≤8-core limit).
 Taken live; on restore IRIS does a brief automatic journal recovery and the
 `iris-broker.timer` re-establishes the 9430 listener within ~45s. Health at
