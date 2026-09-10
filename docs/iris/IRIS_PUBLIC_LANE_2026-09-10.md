@@ -57,6 +57,18 @@ curated POP = cohort of interest), which is also what keeps dashboards fast.
   table bundles or parallelize; today it is correct-but-slow, not a hang (a full
   12-patient POP rendered correctly at 144s direct on :9080).
 
+## C0FHIR browser static assets (`^%webhome`)
+
+The C0FHIR browser core works (632 resources rendered for DFN 12), but its
+TJSON syntax-highlight view fetches `/filesystem/tjson/web/index.js` — a static
+ESM module, not an allowlisted `WSASSET` blob. `FILESYS^%webapi` serves
+`/filesystem/*` from the `^%webhome` docroot (Cache/IRIS via `$ZU(168)`), which
+was unset. Fixed to fleet parity: deployed the vendored `tjson/web` bundle to
+`/opt/iris/durable/www/filesystem/tjson/web/` (durable mount) and set
+`^%webhome="/durable/www/"`. `index.js` now serves as `application/javascript`.
+Folded into `iris-web-setup.sh` (asset deploy + `^%webhome`) and asserted by the
+lane smoke, so a snapshot restore re-establishes it.
+
 ## TaskMan note
 
 `D ^ZTMB` fails on IRIS with `PLA:IRIS is the wrong type in taskman site

@@ -30,6 +30,22 @@ W "routes: ",C,!
 H
 EOF
 
+# --- 1b. static docroot for the C0FHIR browser assets (tjson ESM module) ----
+# FILESYS^%webapi serves /filesystem/* from ^%webhome via $ZU(168); the browser
+# TJSON view loads /filesystem/tjson/web/index.js. Deploy the vendored bundle to
+# the durable mount and point ^%webhome at it. (Fleet parity: ^%webhome=~/www/.)
+TJSON_WEB="$(cd "$(dirname "$0")/../vendor/tjson/web" 2>/dev/null && pwd || true)"
+if [[ -n "$TJSON_WEB" && -f "$TJSON_WEB/index.js" ]]; then
+  tar -czf /tmp/tjson-web.tgz -C "$TJSON_WEB" .
+  scp -q /tmp/tjson-web.tgz "$HOST:/tmp/"
+  ssh -o BatchMode=yes -o ConnectTimeout=20 "$HOST" "mkdir -p /opt/iris/durable/www/filesystem/tjson/web && tar -C /opt/iris/durable/www/filesystem/tjson/web -xzf /tmp/tjson-web.tgz && docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+S ^%webhome=\"/durable/www/\"
+W \"webhome=\",^%webhome,!
+EOF"
+else
+  echo "WARN: vendor/tjson/web not found; skipped browser asset deploy" >&2
+fi
+
 # --- 2. upgrade the self-healing ensure script to cover both listeners ------
 ssh -o BatchMode=yes -o ConnectTimeout=20 "$HOST" "cat > /opt/iris/ensure-broker.sh <<SH
 #!/usr/bin/env bash

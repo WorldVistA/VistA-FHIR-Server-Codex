@@ -40,6 +40,14 @@ code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 "$BASE/fhir/metadat
 code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 "$DIRECT/fhir/metadata" || echo 000)
 [[ "$code" == "200" ]] && pass "fhir/metadata direct :${IRIS_WEB_PORT:-9080} (listener)" || bad "direct listener HTTP $code"
 
+# C0FHIR browser TJSON ESM module — static FILESYS serving from ^%webhome.
+ctype=$(curl -sS -o /dev/null -w "%{http_code} %{content_type}" --max-time 20 "$BASE/filesystem/tjson/web/index.js" || echo 000)
+if [[ "$ctype" == 200*javascript* ]]; then
+  pass "static /filesystem tjson browser module"
+else
+  bad "static /filesystem tjson module ($ctype)"
+fi
+
 code=$(curl -sS -o /tmp/irissmoke-dash.html -w "%{http_code}" --max-time 30 "$BASE/fhir-quality-dashboards" || echo 000)
 if [[ "$code" == "200" ]] && grep -q "CMS125\|CMS122\|CMS165" /tmp/irissmoke-dash.html; then
   pass "fhir-quality-dashboards (measure links)"
