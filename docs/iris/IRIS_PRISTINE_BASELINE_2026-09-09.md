@@ -19,6 +19,17 @@ ten minutes before the snapshot. Restoring this image needs **no** post-restore
 steps beyond the timer re-establishing the listeners; restoring the older
 pristine image additionally needs `scripts/iris-web-setup.sh` and the
 addpatient POST (see `IRIS_SIXTH_LANE_2026-09-10.md`).
+
+**Public-demo snapshot (2026-09-10):** `irisfhir-public-rehmp-cohort-2026-09-10`
+(15.6 GB, NYC1, same droplet) — the richest restore point. Everything in the
+patient snapshot **plus**: Caddy/TLS front (`https://irisfhir.vistaplex.org`,
+Let's Encrypt cert), the rehmp CPRS demo UI at `/demos/cprs/`, 19 imported
+`C0RG*` routines, the `%WC` IRIS `%Net.HttpRequest` branch + `C0SSL` config,
+the 12-patient common cohort (DFN 1–12) with official-CQL scores per measure
+(CMS138 3/3/3, CMS165 2/2/1, CMS2 4/4/0, …), and POP curated to IPP members.
+Health at capture: iris-lane-smoke 15/15 and six-lane fleet smoke green.
+Restore is turnkey (Caddy is a host systemd service; the IRIS timer restores
+both listeners). Details: `IRIS_PUBLIC_LANE_2026-09-10.md`.
 Droplet spec: 2 vCPU / 4 GB / 120 GB (within IRIS Community's ≤8-core limit).
 Taken live; on restore IRIS does a brief automatic journal recovery and the
 `iris-broker.timer` re-establishes the 9430 listener within ~45s. Health at
