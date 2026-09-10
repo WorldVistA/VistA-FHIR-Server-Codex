@@ -135,3 +135,4 @@ UNIT
 systemctl daemon-reload
 systemctl enable --now iris-broker.timer
 echo "iris-cprs-setup complete. Connect CPRS to <host>:$PORT with USER.1 / VISTA.99"
+echo "next: scripts/iris-web-setup.sh brings up the FHIR/quality HTTP lane (9080)"

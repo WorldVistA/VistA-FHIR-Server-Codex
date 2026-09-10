@@ -65,6 +65,10 @@ listener + durability, `CPRS_VER` alignment) → `scripts/iris-smoke.sh` (5/5).
 - No patients (file 2 empty). Add a FileMan stub, or load via the Synthea →
   `/addpatient` pipeline once IRIS is wired into the FHIR lane.
 - IRIS not yet a FHIR fleet lane (still the five GT.M servers + this host).
+  **Update 2026-09-10:** the sixth lane landed the day after this snapshot —
+  web routes in `^%web(17.6001)` + the 9080 listener + the dual-port ensure
+  script are NOT in this image. After restoring, re-run
+  `scripts/iris-web-setup.sh` (see `IRIS_SIXTH_LANE_2026-09-10.md`).
 
 ## Taking the snapshot consistently
 
