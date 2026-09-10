@@ -101,7 +101,7 @@ ASSETOK(FILE) ; $$ - true for browser asset names this route may serve
  ;
 ASSETDIR(FILE,TMP) ; $$ - first readable browser asset directory
  N DIR,HOME,OK
- S HOME=$ZTRNLNM("HOME")
+ S HOME=$$ENV^C0FWOS("HOME")
  I HOME'="" D  I OK Q DIR
  . S DIR=HOME_"/www/filesystem/"
  . K @TMP S OK=$$FTGOK(DIR,FILE,TMP)

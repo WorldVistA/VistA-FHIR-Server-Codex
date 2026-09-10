@@ -598,7 +598,7 @@ QMRPATH(PATH) ; $$ - measure id from /filesystem/quality/measurereports/{measure
  ;
 QMRDIR() ; $$ - filesystem root for published MeasureReports
  NEW DIR,HOME
- SET HOME=$ZTRNLNM("HOME")
+ SET HOME=$$ENV^C0FWOS("HOME")
  IF HOME'="" SET DIR=HOME_"/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
  SET DIR="/home/vehu/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
  SET DIR="/home/osehra/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR

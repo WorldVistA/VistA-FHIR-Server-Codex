@@ -4,17 +4,20 @@ C0FWDOM ; VEHU/Codex - C0FW update domain dispatcher ;May 09, 2026
  Q
  ;
 LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
- N ROOT,BUNDLE,RIEN,TYPE,DOMAIN,COUNT,FIRST,LAST
+ ; Loop-control vars are C0FW-namespaced: Kernel code reached via the
+ ; domain filers (PSO/TIU/PCE) can KILL common names like LAST without
+ ; NEWing them (seen: %YDB-E-LVUNDEF on LAST mid-bundle via LOAD^C0FWMED).
+ N ROOT,BUNDLE,RIEN,TYPE,DOMAIN,COUNT,C0FWFST,C0FWLST
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
  Q:ROOT=""
  S BUNDLE=$G(ARGS("bundle"))
- S FIRST=+$G(ARGS("firstEntry"))
- S LAST=+$G(ARGS("lastEntry"))
+ S C0FWFST=+$G(ARGS("firstEntry"))
+ S C0FWLST=+$G(ARGS("lastEntry"))
  S COUNT=0
  ; Encounters are filed first so later domains can resolve a visit pointer.
  ; Notes/TIU filing is visit-linked; C0FWTIU will skip/error until the visit resolves.
- S RIEN=$S(FIRST>0:FIRST-1,1:0)
- F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
+ S RIEN=$S(C0FWFST>0:C0FWFST-1,1:0)
+ F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(C0FWLST>0)&(RIEN>C0FWLST)  D
  . I '$$INBUND(ROOT,IEN,RIEN,BUNDLE) Q
  . S TYPE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))
  . S DOMAIN=$$DOMAIN(ROOT,IEN,RIEN,TYPE)
@@ -23,8 +26,8 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  . D DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,.ARGS,.RETURN)
  . D PERSIST(ROOT,IEN,RIEN,"Encounter",.RETURN)
  . D LOADENC^C0FWTIU(ROOT,IEN,RIEN,.RETURN)
- S RIEN=$S(FIRST>0:FIRST-1,1:0)
- F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
+ S RIEN=$S(C0FWFST>0:C0FWFST-1,1:0)
+ F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(C0FWLST>0)&(RIEN>C0FWLST)  D
  . I '$$INBUND(ROOT,IEN,RIEN,BUNDLE) Q
  . S TYPE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))
  . S DOMAIN=$$DOMAIN(ROOT,IEN,RIEN,TYPE)
