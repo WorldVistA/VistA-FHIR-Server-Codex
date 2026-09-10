@@ -59,6 +59,13 @@ sprint transcript for the reference probe.
 
 - **`<NOROUTINE> ... *%ZIS`** on `STRT^XWBTCP`: the `%Z*` routine mapping is
   missing — re-run step 1 of `iris-cprs-setup.sh`.
+- **`<NOROUTINE> EVAL+6^%ZTLOAD1 *%RCR`** (seen via `ORWTIU START` at CPRS
+  startup): TaskMan's `%ZTLOAD1` copies the task's saved-variable array with
+  `%XY^%RCR`, and `%RCR` isn't a `%Z*` routine, so it needs its own mapping
+  (`Routine_%RCR→FOIA`). FOIA has exactly 85 `%`-routines (`%DT %DTC %RCR
+  %XUCI %ZIS* %ZOSV* %ZT* %web*`) — all covered by the mappings in step 1 plus
+  the host-setup `%DT/%DTC/%XUCI/%web*`. Do **not** blanket-map `%*→FOIA`: base
+  IRIS `%`-routines live in IRISLIB and would be shadowed.
 - **"Not a valid ACCESS CODE/VERIFY CODE pair"**: the client and server RPC
   Broker cipher pads disagree, so the encrypted Access;Verify string decrypts to
   garbage. This FOIA extract shipped a **non-standard pad** in `XUSRB1` (the

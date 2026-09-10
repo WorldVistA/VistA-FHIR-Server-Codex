@@ -37,7 +37,7 @@ docker exec -i "$NAME" iris session IRIS -U %SYS <<'MSYS'
 S P("Directory")="/data/foia" W "FOIA db: ",##class(Config.Databases).Create("FOIA",.P),!
 K P S P("Directory")="/data/sys" W "OLDSYS db: ",##class(Config.Databases).Create("OLDSYS",.P),!
 K P S P("Globals")="FOIA",P("Routines")="FOIA",P("Library")="IRISLIB" W "FOIA ns: ",##class(Config.Namespaces).Create("FOIA",.P),!
-K P S P("Database")="FOIA" F R="%","%DT","%DTC","%XUCI","%web*","%C0*","%Z*" W R," rtn: ",##class(Config.MapRoutines).Create("FOIA",R,.P),!
+K P S P("Database")="FOIA" F R="%","%DT","%DTC","%XUCI","%web*","%C0*","%Z*","%RCR" W R," rtn: ",##class(Config.MapRoutines).Create("FOIA",R,.P),!
 K P S P("Database")="FOIA" F G="%Serenj*","%Z*","%ut*" W G," gbl: ",##class(Config.MapGlobals).Create("FOIA",G,.P),!
 K P S P("Database")="IRISTEMP" F G="HLTMP","TMP","UTILITY","XTMP","XUTL" W G," gbl: ",##class(Config.MapGlobals).Create("FOIA",G,.P),!
 H

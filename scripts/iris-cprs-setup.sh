@@ -29,9 +29,13 @@ PORT="${1:-9430}"
 # default, the GUI hard-blocks ("Server/Client Incompatibility").
 CPRS_VER="${CPRS_VER:-1.33.109.1}"
 
-# --- 1. map the Kernel %Z* routines into FOIA (idempotent) ------------------
+# --- 1. map the Kernel %-routines into FOIA (idempotent) --------------------
+# FOIA carries the VistA Kernel %-routines (%ZIS device handler, %ZTLOAD
+# TaskMan + %RCR its var-array copy helper, %ZOSV, %ZISTCPS listener) compiled
+# in its own routine db; unmapped %-calls otherwise fall through to base IRIS
+# and fail <NOROUTINE>. %Z* covers %ZIS/%ZOSV/%ZT*; %RCR must be added by name.
 docker exec -i "$NAME" iris session IRIS -U %SYS <<'MSYS'
-S P("Database")="FOIA" W "map %Z*: ",##class(Config.MapRoutines).Create("FOIA","%Z*",.P),!
+S P("Database")="FOIA" F R="%Z*","%RCR" W "map ",R,": ",##class(Config.MapRoutines).Create("FOIA",R,.P),!
 H
 MSYS
 
