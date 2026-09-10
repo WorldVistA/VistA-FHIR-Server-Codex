@@ -213,13 +213,18 @@ ADDALTREAD(RT) ; Register one concrete altfhir read route
  ;
 LOADDEF ; Same routes as SYNINIT LOADHAND^SYNINIT (master) when branch has no LOADHAND
  ; addpatient: new bundle -> new graph row. updatepatient: merge bundle into existing row (use ?ien=&dfn=&icn=).
- IF $T(WSPAT^C0FWADD)'="" DO addService^%webutils("POST","addpatient","WSPAT^C0FWADD")
- E  DO addService^%webutils("POST","addpatient","wsPostFHIR^SYNFHIR")
- IF $T(wsUpdatePatient^C0FWUPD)'="" DO addService^%webutils("POST","updatepatient","wsUpdatePatient^C0FWUPD")
- E  DO addService^%webutils("POST","updatepatient","wsUpdatePatient^SYNFHIRU")
+ ; NOTE: choose the entry point with $SELECT, not IF/ELSE around addService —
+ ; $TEST is not stacked across a parameterized DO, and addService's last
+ ; internal IF ($P($SY,",")=47, i.e. "am I GT.M") leaves $TEST=0 on IRIS,
+ ; which made the ELSE fallback overwrite the correct route (found 2026-09-10).
+ NEW C0FWEP
+ SET C0FWEP=$SELECT($T(WSPAT^C0FWADD)'="":"WSPAT^C0FWADD",1:"wsPostFHIR^SYNFHIR")
+ DO addService^%webutils("POST","addpatient",C0FWEP)
+ SET C0FWEP=$SELECT($T(wsUpdatePatient^C0FWUPD)'="":"wsUpdatePatient^C0FWUPD",1:"wsUpdatePatient^SYNFHIRU")
+ DO addService^%webutils("POST","updatepatient",C0FWEP)
  DO addService^%webutils("GET","loadstatus","wsLoadStatus^SYNFHIR")
- IF $T(wsShow^C0FHIR)'="" DO addService^%webutils("GET","showfhir","wsShow^C0FHIR")
- E  DO addService^%webutils("GET","showfhir","wsShow^SYNFHIR")
+ SET C0FWEP=$SELECT($T(wsShow^C0FHIR)'="":"wsShow^C0FHIR",1:"wsShow^SYNFHIR")
+ DO addService^%webutils("GET","showfhir",C0FWEP)
  DO addService^%webutils("GET","vpr/{dfn}","wsVPR^SYNVPR")
  DO addService^%webutils("GET","vpr?icn={icn}","wsVPR^SYNVPR")
  DO addService^%webutils("GET","vpr?ien={ien}","wsVPR^SYNVPR")

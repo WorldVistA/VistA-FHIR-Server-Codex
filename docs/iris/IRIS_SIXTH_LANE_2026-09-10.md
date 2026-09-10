@@ -51,8 +51,55 @@ The DigitalOcean snapshot `irisfhir-pristine-cprs+fhir-2026-09-09` predates
 this work. Restoring it requires re-running `scripts/iris-web-setup.sh` to
 re-register routes (`^%web` global) and reinstall the dual-port ensure script.
 
+## First patient: the full Synthea round trip runs on IRIS (same day)
+
+POSTed the standard read-parity fixture
+(`FHIR-source-files/Aaron697_Marquardt819_*.json`, 1,016-entry Synthea Bundle,
+1.8 MB) to `/addpatient` — **HTTP 201 in 1.7 s**, and the whole VistA clinical
+filing stack ran on IRIS: Patient filed by FileMan (DFN 1,
+`MARQUARDT819,AARON697`, ICN assigned), 13/13 Encounters through `DATA2PCE`,
+122 vitals through `GMVDCSAV`, 7 Immunizations, 16/20 Conditions (4 ICD-10
+resolution errors), 686 labs retained in fhir-intake, smoking health factors
+filed. Skips are the un-ported loader-repo routines (`SYNFHF`, `SYNFMED`,
+`SYNDHP65`) — same as any Codex-only box.
+
+Read side: `GET /fhir?dfn=1` generated a live 178-entry Bundle in 0.4 s;
+`GET /fhir/Patient/1` and `GET /fhir/Condition?patient=1` (30 hits) serve from
+the warmed cache. The lane smoke now asserts this round trip.
+
+And the closing shot: **CPRS 1.33.109.1 shows `Marquardt819,Aaron697` in
+Patient Selection** on irisfhir (screenshot, 2026-09-10 2:51 PM) — the patient
+loaded over FHIR is served to a stock CPRS client over the RPC broker from the
+same IRIS globals. FHIR write → FileMan → CPRS read, one server, no middle
+tier.
+
+Rerunnable evidence:
+
+```
+curl -X POST -H 'Content-Type: application/json' -H 'Expect:' \
+  --data-binary @FHIR-source-files/Aaron697_Marquardt819_*.json \
+  http://irisfhir.vistaplex.org:9080/addpatient
+curl http://irisfhir.vistaplex.org:9080/fhir?dfn=1
+```
+
+### Two port bugs found on the way
+
+- **`$TEST` bleed in `SYNWEBRG` LOADDEF** (fixed in `src/SYNWEBRG.m`): the
+  `IF $T(handler)'="" DO addService(...) / E DO addService(fallback)` pairs
+  relied on `$TEST` surviving a parameterized `DO` — it doesn't. The last
+  internal `IF` in `addService^%webutils` is `$P($SY,",")=47` ("am I GT.M"),
+  so on GT.M `$TEST` came back 1 (else never fired, by luck) and on IRIS it
+  came back 0, making the fallback overwrite the correct route — `addpatient`
+  pointed at the absent `wsPostFHIR^SYNFHIR`. Now uses `$SELECT` into a
+  variable. vehu10 full deploy + 30-check smoke green after the change.
+- **`Expect: 100-continue` handshake garbled on the IRIS listener**: curl's
+  default for large POST bodies; the M-Web-Server's `100 Continue` reply comes
+  out malformed on the IRIS TCP device and curl aborts ("Received HTTP/0.9").
+  Workaround: send `-H 'Expect:'`. Worth a look in `%webreq` someday.
+
 ## Deferred
 
-- Deploy the C0X triple store to IRIS (needs patients first).
-- Add a test patient (FileMan stub or Synthea → `/addpatient`).
+- Deploy the C0X triple store to IRIS.
+- Chase the 4 Condition ICD-10 resolution errors from the Aaron697 load.
+- Fix the `100 Continue` reply on the IRIS device path in `%webreq`.
 - Point the Day-2 CI round-trip lane at IRIS as an optional target.

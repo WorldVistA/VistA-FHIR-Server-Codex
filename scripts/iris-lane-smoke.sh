@@ -48,6 +48,20 @@ else
   bad "fhir-quality-reporting HTTP $code or missing Active measures"
 fi
 
+# Live FHIR round trip (needs the Aaron697 test patient, DFN 1, loaded
+# 2026-09-10; after a pristine-snapshot restore re-run the addpatient POST —
+# see docs/iris/IRIS_SIXTH_LANE_2026-09-10.md).
+code=$(curl -sS -o /tmp/irissmoke-bundle.json -w "%{http_code}" --max-time 60 "$BASE/fhir?dfn=1" || echo 000)
+if [[ "$code" == "200" ]] && python3 -c "
+import json,sys
+b=json.load(open('/tmp/irissmoke-bundle.json'))
+kinds=[e['resource']['resourceType'] for e in b.get('entry',[]) if 'resource' in e]
+sys.exit(0 if b.get('resourceType')=='Bundle' and 'Patient' in kinds else 1)" 2>/dev/null; then
+  pass "live FHIR bundle for DFN 1 (read server on IRIS)"
+else
+  bad "live FHIR bundle dfn=1 HTTP $code or no Patient entry (test patient missing?)"
+fi
+
 if timeout 10 bash -c "exec 3<>/dev/tcp/$HOSTNAME_ONLY/$BROKERPORT" 2>/dev/null; then
   pass "RPC broker port $BROKERPORT accepting (CPRS)"
 else
