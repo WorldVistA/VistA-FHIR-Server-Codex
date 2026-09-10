@@ -54,8 +54,8 @@ Compare C0FW-to-C0FW, not mixed SYN leftovers.
 | Immunization | **86%** | 31% | 89% | Day 2 skip missing CVX / already-filed |
 | Lab | **100%** | 17% | 3.7% (graph-of-record) | Day 1 replay + PTT round |
 | Procedure | **99.4%** | 6.8% | **85%** | fhirprod OS5 + imaging allowlist |
-| Medication | 0% | 0% | 0% | Shared stub `C0FWMED` |
-| CarePlan | 0% | 0% | 0% | Shared stub `C0FWCP` |
+| Medication | **100%*** | 0% | 0% | *fhirprod C0FW cohort skip/loaded; RPMS still deferred |
+| CarePlan | **100%*** | (adapter) | (adapter) | *fhirprod GETCP `CP-*`; HF write shipped |
 
 fhirdev’s matching showcase patients (SCHMELER, GUSIKOWSKI, …) were loaded
 with **older C0FW stubs** (`Procedure filing requires a C0FW PCE adapter`).
@@ -106,7 +106,7 @@ These are **not** fhirprod configuration. They will recur on vehu10,
 fhirdev, and any new VistA host.
 
 1. **Medication 0%** — `C0FWMED` is a placeholder; no `SYNFMED` call.
-2. **CarePlan 0%** — `C0FWCP` is a placeholder.
+2. **CarePlan** — filed as SYN CP health factors (`C0FWCP` / `GETCP`).
 3. **DiagnosticReport panels** — `C0FWLAB` marks them `not_implemented`
    (540 on Colton). Atomic Observations are the filing path.
 4. **Urine set-of-codes** — Synthea `negative` / `cloud` / etc. fail VistA
@@ -222,10 +222,22 @@ Leftover Immunization errors are missing encounter visit pointers (not CVX).
 
 ### Days 3–4 — Medication and CarePlan (shared, large)
 
-1. Decide engine: native C0FW vs temporary `SYNFMED2` / `SYNFCP` wrappers
-   (policy today is native-only; wrappers are the faster closure).
-2. File outpatient meds that have a VistA drug match; skip the rest with a
-   clear `skipped` reason, not `not_implemented`.
+1. Medication write is native `C0FWMED`: resolve RxNorm from
+   MedicationRequest (or referenced Medication), map to file 50 via
+   `RXNCONV`/`ADDDRUG^SYNFMED`, then `WRITERXPS^SYNFMED` (do **not** call
+   `importMeds^SYNFMED2` or `RXN2MEDS`, which can trap). No RxNorm, no
+   file-50 match, missing PSO, same drug already on the patient profile,
+   or DEA schedule/narcotic (SYNFMED default refill=1 hangs) → `skipped`.
+   Companion `Medication` resources are skipped. Read is already
+   `GETMED^C0FHIRM` (`OCL^PSOORRL` / `M{ORIFN}`). RPMS first-pass still
+   defers Medication (no APSP writer yet).
+
+   fhirprod replay 1643–1661 (2026-09-09): **0 NI / 0 error** after
+   `DRUG+4` trap fix; almost all MRs already on profile from prior SYN
+   (DOMSUM Medication **294/294** DFN 1643, **552/552** DFN 1661). Unmatched
+   RxNorms (fluoride gel, abuse-deterrent oxycodone, aspirin 81) stay
+   skipped. `GET /fhir/MedicationRequest?patient=1661&refresh=1` returns
+   12 `M*` rows.
 3. CarePlan write is native `C0FWCP`: reuse `SYNFHF` (`HFCPCAT` / `HFCP` /
    `HFACT` / `HFADDR` / `HFGOAL`) and file V Health Factor via DATA2PCE
    (VistA) or `RPMSHF^C0FWENC` (RPMS). Do **not** call `importCarePlan^SYNFCP`.
@@ -234,9 +246,10 @@ Leftover Immunization errors are missing encounter visit pointers (not CVX).
    (`SYN CP ` names, id `CP-{AUPNVHF}`). RPMS first-pass no longer defers
    CarePlan.
 
-Verify: CarePlan leaves `not_implemented`. A new Synthea patient shows
-CarePlan as skipped/loaded and `GET /fhir/CarePlan?patient={dfn}` returns
-the filed plans. Medication may still be a stub.
+Verify: CarePlan and Medication leave `not_implemented`. A new Synthea
+patient shows those domains as skipped/loaded and
+`GET /fhir/CarePlan?patient={dfn}` / `GET /fhir/MedicationRequest?patient={dfn}`
+return the filed rows.
 
 ### Day 5+ — map coverage and the loop
 
