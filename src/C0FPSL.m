@@ -2,7 +2,7 @@ C0FPSL ; VEHU/Codex - Problem Selection List JSON endpoints
  ;;0.1;C0FHIR PROJECT;;May 28, 2026
  ;
  ; Read-only endpoints for CPRS-style Problem Selection Lists:
-;   /problemselection/lists
+ ;   /problemselection/lists
  ;   /problemselection/categories?duz=&clinic=&list=
  ;   /problemselection/problems?category=
  ;
