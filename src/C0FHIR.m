@@ -1302,8 +1302,11 @@ DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
  . SET (LD,SRC)=0
  . SET ZI=0
  . FOR  SET ZI=$ORDER(@ROOT@(IEN,"load",DOM,ZI)) Q:+ZI<1  DO
- . . SET SRC=SRC+1
  . . SET ST=$$LOADST(ROOT,IEN,DOM,ZI)
+ . . ; TIU copies DocumentReference RIENs under Encounter as log/tiu
+ . . ; stubs with no loadStatus; do not count those as Encounter source.
+ . . IF ST="" QUIT
+ . . SET SRC=SRC+1
  . . IF ST="LOADED" SET LD=LD+1
  . . ; Intentional skips (TIU already matched, social findings, missing CVX)
  . . ; are success-equivalent; not_implemented stays a miss.

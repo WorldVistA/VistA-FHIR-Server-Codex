@@ -171,10 +171,31 @@ SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien via Lexicon map 5217
  S MAPVUID=5217693
  K LEX S Y=$$GETASSN^LEXTRAN1(SCT,MAPVUID)
  S ICDTX="" S ICDTX=$O(LEX(1,ICDTX))
- I ICDTX="" Q 0
+ S RET=0
+ I ICDTX'="" S RET=$$ICDDX^ICDEX(ICDTX,30)
+ I +RET<1,ICDTX'="",ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
+ I +RET>0 Q +RET
+ S ICDTX=$$SCTMAP(SCT) I ICDTX="" Q 0
  S RET=$$ICDDX^ICDEX(ICDTX,30)
  I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
  Q $S(+RET>0:+RET,1:0)
+ ;
+SCTMAP(SCT) ; $$ - Synthea SCT leftovers that Lexicon 5217693 does not map
+ I SCT=109570002 Q "K02.9" ; Primary dental caries
+ I SCT=80967001 Q "K02.9" ; Dental caries
+ I SCT=278598003 Q "K08.59" ; Leaking dental filling
+ I SCT=278860009 Q "M54.5" ; Chronic low back pain
+ I SCT=274531002 Q "R93.1" ; Abnormal cardiac diagnostic imaging
+ I SCT=66383009 Q "K05.10" ; Gingivitis
+ I SCT=18718003 Q "K05.6" ; Gingival disease
+ I SCT=195662009 Q "J02.9" ; Acute viral pharyngitis
+ I SCT=237602007 Q "E88.81" ; Metabolic syndrome
+ I SCT=433144002 Q "N18.3" ; Chronic kidney disease stage 3
+ I SCT=1255252008 Q "K08.20" ; Alveolar process resorption
+ I SCT=278558000 Q "K08.59" ; Dental filling lost
+ I SCT=278588009 Q "K08.59" ; Fractured dental filling
+ I SCT=278602001 Q "K08.59" ; Loose dental filling
+ Q ""
  ;
 ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only
  N EI,FND,VB,VS
@@ -201,6 +222,7 @@ NOSDX(ROOT,IEN,RIEN) ; $$ - Synthea situation/social finding, not a diagnosis
  I TXT["UNEMPLOY" Q 1
  I TXT["LABOR FORCE" Q 1
  I TXT["EDUCATION" Q 1
+ I TXT["EDUCATED" Q 1
  I TXT["HOUSING" Q 1
  I TXT["SOCIAL CONTACT" Q 1
  I TXT["SOCIAL ISOLATION" Q 1
@@ -210,6 +232,12 @@ NOSDX(ROOT,IEN,RIEN) ; $$ - Synthea situation/social finding, not a diagnosis
  I TXT["MEDICATION REVIEW" Q 1
  I TXT["ALCOHOL DRINKING" Q 1
  I TXT["RECEIVED HIGHER" Q 1
+ I TXT["MILITARY SERVICE" Q 1
+ I TXT["RISK ACTIVITY" Q 1
+ I TXT["CRIMINAL RECORD" Q 1
+ I TXT["REFUGEE" Q 1
+ I TXT["TRANSPORTATION" Q 1
+ I TXT["(MORPHOLOGIC" Q 1
  Q 0
  ;
 CAND(ROOT,IEN,RIEN) ; $$ - true if reminder generated a non-fileable candidate Condition

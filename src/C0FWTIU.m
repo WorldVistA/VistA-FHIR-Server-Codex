@@ -56,6 +56,7 @@ FILENOTE(ROOT,IEN,RIEN,NI,DFN,VISIT,TXT,TITLE) ; File one Encounter.note/Documen
  I +RES>0 D  Q
  . S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"status")="filed"
  . S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"ien")=+RES
+ . I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="Encounter" Q
  . S @ROOT@(IEN,"load","Encounter",RIEN,"tiu",NI,"status")="filed"
  . S @ROOT@(IEN,"load","Encounter",RIEN,"tiu",NI,"ien")=+RES
  . S @ROOT@(IEN,"load","Encounter",RIEN,"tiu",NI,"result")=RES
