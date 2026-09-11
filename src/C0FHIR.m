@@ -926,8 +926,24 @@ DOCAUTH(DA) ; $$ - TIU author display
  Q ""
  ;
 B64(TXT) ; $$ - base64 text for DocumentReference attachment
+ ; Prefer the loader's encoder, but never blank the note body when it is
+ ; absent: on IRIS (2026-09-10) the silent "" here made every filed TIU note
+ ; read back empty while the write side was fine. Pure-M fallback below.
  I $T(ENCODE64^SYNWEBUT)'="" Q $$ENCODE64^SYNWEBUT($G(TXT))
- Q ""
+ Q $$ENC64($G(TXT))
+ ;
+ENC64(IN) ; $$ - pure-M base64 (RFC 4648), no external dependencies
+ N A,OUT,I,B1,B2,B3
+ S A="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+ S OUT=""
+ F I=1:3:$L(IN) D
+ . S B1=$A(IN,I),B2=$A(IN,I+1),B3=$A(IN,I+2)
+ . S OUT=OUT_$E(A,B1\4+1)
+ . I B2<0 S OUT=OUT_$E(A,B1#4*16+1)_"==" Q
+ . S OUT=OUT_$E(A,B1#4*16+(B2\16)+1)
+ . I B3<0 S OUT=OUT_$E(A,B2#16*4+1)_"=" Q
+ . S OUT=OUT_$E(A,B2#16*4+(B3\64)+1)_$E(A,B3#64+1)
+ Q OUT
  ;
 VISITIEN(ENC,VIEN) ; Numeric visit ien for ^TIU(8925,"V",...) / FIND^DIC index
  IF +$GET(VIEN)>0 QUIT VIEN

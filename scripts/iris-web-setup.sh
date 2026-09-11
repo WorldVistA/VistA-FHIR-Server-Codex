@@ -32,6 +32,29 @@ trap 'command ssh -o "ControlPath=$SSHCTL" -O exit "$HOST" 2>/dev/null || true' 
 
 echo "== iris-web-setup: $HOST (container $NAME, web $WEBPORT, broker $BROKERPORT) =="
 
+# --- 0. current Codex sources (this repo's src/) -----------------------------
+# A droplet snapshot restore reverts the container's routines to whatever the
+# image held; re-import the CURRENT workstation sources first so route
+# registration below uses today's code. _-prefixed files become %-routines
+# (same convention as iris-host-setup.sh).
+CODEX_SRC="$(cd "$(dirname "$0")/../src" && pwd)"
+tar -czf /tmp/codex-src.tgz -C "$CODEX_SRC" $(cd "$CODEX_SRC" && ls *.m)
+scp -q /tmp/codex-src.tgz "$HOST:/tmp/"
+ssh "$HOST" "
+mkdir -p /opt/iris/durable/import/codex-src /opt/iris/durable/import/codex-mac
+rm -f /opt/iris/durable/import/codex-src/*.m /opt/iris/durable/import/codex-mac/*.mac
+tar -C /opt/iris/durable/import/codex-src -xzf /tmp/codex-src.tgz
+for f in /opt/iris/durable/import/codex-src/*.m; do
+  b=\$(basename \"\$f\" .m); nb=\$(echo \"\$b\" | sed 's/^_/%/')
+  printf 'ROUTINE %s [Type=MAC]\n' \"\$nb\" | cat - \"\$f\" > /opt/iris/durable/import/codex-mac/\$nb.mac
+done
+docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+K ERR S SC=\$SYSTEM.OBJ.ImportDir(\"/durable/import/codex-mac\",\"*.mac\",\"ck-d\",.ERR,0)
+N K,C S (K,C)=\"\" S C=0 F  S K=\$O(ERR(K)) Q:K=\"\"  S C=C+1
+W \"codex import errors: \",C,!
+H
+EOF"
+
 # --- 1. register (or refresh) HTTP routes -----------------------------------
 ssh -o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=15 "$HOST" "docker exec -i $NAME iris session IRIS -U FOIA" <<'EOF'
 D EN^SYNWEBRG

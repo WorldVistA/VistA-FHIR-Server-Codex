@@ -10,6 +10,7 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  N ROOT,BUNDLE,RIEN,TYPE,DOMAIN,COUNT,C0FWFST,C0FWLST
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
  Q:ROOT=""
+ D DEPCHK(ROOT,IEN,.RETURN)
  S BUNDLE=$G(ARGS("bundle"))
  S C0FWFST=+$G(ARGS("firstEntry"))
  S C0FWLST=+$G(ARGS("lastEntry"))
@@ -40,6 +41,30 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  S RETURN("load","profile")=$$PROFILE^C0FWPOL(.ARGS)
  S RETURN("load","clinicalFiling")=$S($G(RETURN("loadStatus"))="loaded":"partial",1:$G(RETURN("loadStatus")))
  I $T(INV^C0FWCAC)'="" D INV^C0FWCAC(IEN,ROOT)
+ Q
+ ;
+DEPCHK(ROOT,IEN,RETURN) ; Surface missing filer routines once, up front
+ ; The per-domain filers each guard their own dependency and skip resource-by-
+ ; resource, so a missing routine drowns in thousands of per-resource rows
+ ; (IRIS 2026-09-10: 4,162 of 4,834 losses were four uninstalled SYN routines).
+ ; This puts one loud line per missing routine into the load response and the
+ ; graph load log BEFORE filing starts. Advisory only — filing proceeds and
+ ; the per-resource guards still record exact skips.
+ N C0FDEP,C0FI,C0FRTN,C0FMSG,C0FN,C0FX
+ S C0FDEP(1)="SYNWEBUT^DocumentReference attachment decode"
+ S C0FDEP(2)="SYNFHF^CarePlan/HealthFactor filing"
+ S C0FDEP(3)="SYNFMED^outpatient prescription filing"
+ S C0FDEP(4)="SYNDHP65^procedure filing"
+ S C0FDEP(5)="SYNDHP63^lab filing"
+ S C0FDEP(6)="TIUSRVP^TIU note filing"
+ S C0FN=0
+ F C0FI=1:1:6 D
+ . S C0FRTN=$P(C0FDEP(C0FI),"^"),C0FMSG=$P(C0FDEP(C0FI),"^",2)
+ . S C0FX="+0^"_C0FRTN
+ . Q:$T(@C0FX)'=""
+ . S C0FN=C0FN+1
+ . S RETURN("load","missingRoutines",C0FN)=C0FRTN_" is not installed; "_C0FMSG_" will be skipped"
+ . S @ROOT@(IEN,"load","_dependencies",C0FRTN)="missing"
  Q
  ;
 DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,ARGS,RETURN) ; Policy-aware domain dispatch
