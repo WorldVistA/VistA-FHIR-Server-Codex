@@ -4,7 +4,7 @@ C0FHIRL ; VAMC/JS - Laboratory observation builders
  QUIT  ; No default action
  ;
 GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
- NEW CNT,FILLMAX,LRDFN,PAN
+ NEW CNT,FILLMAX,GRAPHON,LRDFN,PAN
  DO ENVINIT^C0FHIR
  SET DFN=+$GET(DFN)
  IF DFN<1 QUIT
@@ -17,9 +17,15 @@ GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
  SET CNT=0
  ; RPMS: fhir-intake graph is lab-of-record. Emit graph labs FIRST so writeback
  ; / Quality AI Consult results are not starved when ^LR already fills MAX.
- IF $TEXT(ON^C0FHIRLG)'="",$$ON^C0FHIRLG() DO
+ SET GRAPHON=0
+ IF $TEXT(ON^C0FHIRLG)'="" SET GRAPHON=$$ON^C0FHIRLG()
+ IF GRAPHON DO
  . DO GETGRPLAB^C0FHIRLG(.RTN,DFN,BEG,END,MAX)
  . SET CNT=$$LABOCNT(.RTN)
+ ; VistA hosts (graph labs off): labs-of-record are ^LR, but panel
+ ; DiagnosticReports exist only in fhir-intake — merge the panels alone
+ ; (no graph Observations, so ISI-filed labs are not duplicated).
+ IF 'GRAPHON,$TEXT(GETGRPNL^C0FHIRLG)'="" DO GETGRPNL^C0FHIRLG(.RTN,DFN,BEG,END)
  SET LRDFN=+$GET(^DPT(DFN,"LR"))
  IF LRDFN>0,CNT<MAX DO
  . ; Reserve 2 slots so LABMSFILL showcase rows are not crowded out at MAX.

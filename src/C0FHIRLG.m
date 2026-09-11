@@ -55,6 +55,21 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  D GETGRPDR(.RTN,ROOT,IEN,DFN,BEG,END)
  Q
  ;
+GETGRPNL(RTN,DFN,BEG,END) ; Append graph panel DiagnosticReports ONLY (VistA hosts)
+ ; ^LR stores individual results, not panel groupings, so lab panels exist
+ ; only in fhir-intake (C0FWLAB GRAPHOK). When graph labs are OFF (labs-of-
+ ; record are ^LR), merge just the panels: no graph Observations are added,
+ ; so ISI-filed labs are not duplicated. result[] references keep their graph
+ ; Observation ids and may not resolve inside the returned bundle.
+ N IEN,ROOT
+ S DFN=+$G(DFN) Q:DFN<1
+ S ROOT=$$ROOT^C0FWFUTL() Q:ROOT=""
+ S IEN=$$DFN2IEN^C0FWFUTL(DFN) Q:IEN<1
+ S BEG=+$G(BEG) S:BEG<1 BEG=1410101
+ S END=+$G(END) S:END<1 END=4141015 S:END'["." END=END_".24"
+ D GETGRPDR(.RTN,ROOT,IEN,DFN,BEG,END)
+ Q
+ ;
 GETGRPDR(RTN,ROOT,IEN,DFN,BEG,END) ; Append graph lab DiagnosticReports
  N RIEN
  S RIEN=0
