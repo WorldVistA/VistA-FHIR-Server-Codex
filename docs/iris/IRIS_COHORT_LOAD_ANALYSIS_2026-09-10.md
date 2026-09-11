@@ -190,14 +190,67 @@ Also fixed: `iris-public-setup.sh` now waits for unattended-upgrades to
 release the dpkg lock (a freshly restored droplet holds it for minutes and
 the Caddy install died silently), and multiplexes ssh like the web setup.
 
+## ISI VistA DataLoader KIDS install (2026-09-11 evening)
+
+Installed the **ISI VistA DataLoader 3.1** KIDS distribution
+(`VistA-DataLoader/VistA/VISTA_DATALOADER_3P1.KID`, 663 KB, self-contained —
+no required builds) so `$$LAB^ISIIMP12` (the engine `LABADD^SYNDHP63` calls)
+is present. 77 `ISI*` routines, file #9001 (ISI PT IMPORT TEMPLATE), RPCs, and
+options loaded; install status 3. Now folded into `iris-web-setup.sh` step 1f
+(idempotent: skips when `ISIIMP12` is present).
+
+The install is a normal two-step KIDS flow (`D ^XPDIL` load, `D ^XPDI`
+install) with one IRIS-only prerequisite:
+
+- **HOME device for a piped session.** A piped `iris session` runs on
+  principal device `"00"`, which `HOME^%ZIS` resolves through the
+  sign-on/virtual-terminal path — `^%ZIS(1,"G","SYS.<vol>.<$I>")` plus the
+  device's field `TYPE="VTRM"`. The stock FOIA device file has no such entry,
+  so KIDS aborts with `HOME DEVICE (00) DOES NOT EXIST IN THE DEVICE FILE`.
+  Fix: file a virtual-terminal device (#3.5) with `$I="00"`, set its `TYPE`
+  node to `VTRM`, and add the `G` cross-references (`SYS..00` and
+  `SYS.PLA.00`). `HOME^%ZIS` then returns `POP=0`. Automated in step 1f.
+
+Getting the lab import path to actually run then surfaced three more
+IRIS-portability fixes (all shipped):
+
+1. **SYN import needs two passes + first-line-label repair.** `SYNGRAPH`
+   (first-line label `SYNFGRAPH`) and `SYNHTM` (`%yottahtm`) were UNENTERABLE
+   on IRIS — GT.M keys a routine by filename, but IRIS needs the INT
+   first-line label to equal the routine name, else `$$label^RTN` throws
+   `<SUBSCRIPT>`/`<COMMAND>`. And several SYN routines only compile on a
+   second `ImportDir` pass (inter-routine ordering). Step 1c now rewrites the
+   first-line label to the routine name and compiles twice.
+2. **`$$TEST^C0FWLAB` graphmap guard.** The third LOINC→#60 lookup calls
+   `$$graphmap^SYNGRAPH("loinc-lab-map",…)`. When the SYN loader graph store
+   (file 2002.801) is absent — as on FOIA — `setroot^SYNGRAF` builds a null
+   subscript and throws `<SUBSCRIPT>`; the inline `$ETRAP` there cannot unwind
+   it from an extrinsic frame (cascades to an uncatchable `<FRAMESTACK>`).
+   Added `$$LMAPOK()` — only call graphmap when
+   `^SYNGRAPH(2002.801,"B","loinc-lab-map")` exists. The primary map
+   (`$$MAP^SYNQLDM`) is unaffected.
+3. **Lab-key privileges for the filing user.** ISI files each result with
+   `ENTERED_BY=DUZ`; USER,ONE (DUZ 1) lacked lab keys → `Invalid ENTERED_BY
+   (#200,.01). Insufficient privilages.` Step 1e now grants DUZ 1 `LRVERIFY`,
+   `LRLAB`, `LRSUPER`.
+
+**Result:** the ISI import path is live end-to-end — a GLUCOSE result filed
+through `LABADD^SYNDHP63 / $$LAB^ISIIMP12` for DFN 1. **But full lab filing is
+still blocked by VistA Lab-package accessioning**, which the FOIA image does
+not configure: most #60 tests have no accession area (`<test> does not have an
+appropriate accession area`) and the daily `LRTASK ROLLOVER` has never run
+(`ROLLOVER HAS NOT RUN`). Only the handful of tests that happen to have an
+accession area (e.g. GLUCOSE) file. Configuring Lab accessioning (accession
+areas per test in file #68 + rollover) is the next lab workstream — separate
+from the ISI install, which is done.
+
 ## Remaining known gaps (accepted)
 
-- **Labs into `^LR`**: 7,172 individual lab Observations are graph-only —
-  their filer path wants `ISIIMP12` (ISI VistA-DataLoader import engine, a
-  full KIDS build, not just routines). DiagnosticReport panels stay
+- **Labs into `^LR`**: ISI engine is now installed and the import path works,
+  but VistA Lab **accessioning** on FOIA is unconfigured (see above), so most
+  lab Observations stay graph-only for now. DiagnosticReport panels stay
   graph-of-record by design; FHIR reads and all six measures work from the
-  graph (CMS122's HbA1c numerator proves it). Installing the ISI engine on
-  IRIS is a follow-up if CPRS lab-tab display matters.
+  graph (CMS122's HbA1c numerator proves it).
 - The 29 mapping-gap errors above; the 9/10 vital-type list still applies
   to skips inside Observation.
 - Let's Encrypt issuance hit the known 01:00–02:00 UTC secondary-validation

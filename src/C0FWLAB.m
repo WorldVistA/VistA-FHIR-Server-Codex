@@ -111,12 +111,21 @@ TEST(LOINC,ROOT,IEN,RIEN) ; $$ - VistA #60 name for LOINC / display
  . . S TRY=$$MAP^SYNQLDM(LOINC,"labs")
  . . I TRY'="",+TRY'=-1 S NAME=$$TRIM^XLFSTR(TRY)
  . I NAME="" S NAME=$$A1CMAP(LOINC)
- . I NAME="",$T(graphmap^SYNGRAPH)'="" D
+ . I NAME="",$T(graphmap^SYNGRAPH)'="",$$LMAPOK() D
  . . N $ETRAP
  . . S $ETRAP="S TRY="""",$ECODE="""" Q"
  . . S TRY=$$graphmap^SYNGRAPH("loinc-lab-map",LOINC)
  . . I +TRY'=-1,TRY'="" S NAME=$$TRIM^XLFSTR(TRY)
  I NAME'="" Q NAME
+ G TESTX
+LMAPOK() ; $$ - 1 only when the SYNGRAPH loinc-lab-map graph is actually loaded.
+ ; Guards the graphmap^SYNGRAPH path. On IRIS, calling it when the SYN
+ ; loader graph store (file 2002.801) is absent makes setroot^SYNGRAF build
+ ; a null subscript and throw <SUBSCRIPT>; the inline $ETRAP above cannot
+ ; unwind that from an extrinsic frame (it cascades to an uncatchable
+ ; <FRAMESTACK>). No graph -> skip straight to text/A1C heuristics.
+ Q $S($D(^SYNGRAPH(2002.801,"B","loinc-lab-map")):1,1:0)
+TESTX ;
  S TXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","text"))
  I TXT="" S TXT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",1,"display"))
  I $$UP(TXT)["A1C"!($$UP(TXT)["HEMOGLOBIN A1") Q "HEMOGLOBIN A1C"

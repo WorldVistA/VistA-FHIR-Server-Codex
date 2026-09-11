@@ -89,10 +89,20 @@ fi
 # --- 1c. SYN loader/support routines (sibling VistA-FHIR-Data-Loader repo) --
 # The C0F read server leans on SYN helpers at runtime: $$ENCODE64^SYNWEBUT
 # (DocumentReference note bodies — without it every note reads back BLANK),
-# SYNVPR (gtree/VPR views), SYNFHF (CarePlan health-factor filing), etc.
-# Import the whole set; ImportDir is idempotent. Known non-blocking compile
-# errors: SYNYOTTA (YottaDB-only ZWR syntax), SYNLINIT, and two GT.M-guarded
-# "tstart ():serial" lines in SYNWEBUT (its ENCODE64/DECODE64 still compile).
+# SYNVPR (gtree/VPR views), SYNFHF (CarePlan health-factor filing),
+# graphmap^SYNGRAPH (LOINC lab-map), etc.
+#
+# Two IRIS-only conversion rules (2026-09-11):
+#  1. Force each .mac first code line's label to the routine name. GT.M keys a
+#     routine by filename regardless of the first-line label, but IRIS makes a
+#     routine whose first-line label differs from its name UNENTERABLE
+#     (calling any $$label^RTN throws <SUBSCRIPT>/<COMMAND>). Two SYN files
+#     trip this: SYNGRAPH (label SYNFGRAPH) and SYNHTM (label %yottahtm).
+#  2. Compile in TWO passes. Several SYN routines fail to compile on the first
+#     pass due to inter-routine ordering (e.g. SYNGRAPH before its deps); a
+#     second ImportDir resolves them. After pass 2 only SYNYOTTA (YottaDB ZWR),
+#     SYNLINIT, and SYNWEBUT's two GT.M-guarded "tstart ():serial" lines remain
+#     (all non-blocking; SYNWEBUT ENCODE64/DECODE64 still work).
 SYN_SRC="$(cd "$(dirname "$0")/../../VistA-FHIR-Data-Loader/src" 2>/dev/null && pwd || true)"
 if [[ -n "$SYN_SRC" && -f "$SYN_SRC/SYNWEBUT.m" ]]; then
   tar -czf /tmp/syn-src.tgz -C "$SYN_SRC" $(cd "$SYN_SRC" && ls SYN*.m)
@@ -101,10 +111,14 @@ if [[ -n "$SYN_SRC" && -f "$SYN_SRC/SYNWEBUT.m" ]]; then
 mkdir -p /opt/iris/durable/import/syn /opt/iris/durable/import/syn-mac
 rm -f /opt/iris/durable/import/syn/*.m /opt/iris/durable/import/syn-mac/*.mac
 tar -C /opt/iris/durable/import/syn -xzf /tmp/syn-src.tgz
-for f in /opt/iris/durable/import/syn/*.m; do b=\$(basename \"\$f\" .m); printf 'ROUTINE %s [Type=MAC]\n' \"\$b\" | cat - \"\$f\" > /opt/iris/durable/import/syn-mac/\$b.mac; done
+for f in /opt/iris/durable/import/syn/*.m; do b=\$(basename \"\$f\" .m); awk -v n=\"\$b\" 'NR==1{sub(/^[^ \t;]+/, n)} {print}' \"\$f\" > /tmp/synfix.m; printf 'ROUTINE %s [Type=MAC]\n' \"\$b\" | cat - /tmp/synfix.m > /opt/iris/durable/import/syn-mac/\$b.mac; done
 docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
 K ERR S SC=\$SYSTEM.OBJ.ImportDir(\"/durable/import/syn-mac\",\"*.mac\",\"ck-d\",.ERR,0)
+K ERR S SC=\$SYSTEM.OBJ.ImportDir(\"/durable/import/syn-mac\",\"*.mac\",\"ck-d\",.ERR,0)
+N K,C S (K,C)=\"\" S C=0 F  S K=\$O(ERR(K)) Q:K=\"\"  S C=C+1
+W \"SYN compile errors after 2 passes: \",C,\" (expect ~3: SYNYOTTA/SYNLINIT/SYNWEBUT)\",!
 W \"SYN base64 check: \",\$\$ENCODE64^SYNWEBUT(\"ok\"),!
+W \"SYNGRAPH enterable: \",\$S(\$T(graphmap^SYNGRAPH)'=\"\":\"yes\",1:\"NO\"),!
 H
 EOF"
 else
@@ -165,9 +179,66 @@ D EN^SYNGBLLD
 W \"sct2os5 map: \",\$S(\$D(^SYN(\"2002.030\",\"sct2os5\",\"direct\")):\"built\",1:\"MISSING\"),!
 I '\$\$ACTIVEPC^C0FWENC(1) N FDA,ERR S FDA(200.05,\"+1,1,\",.01)=\$O(^USC(8932.1,0)),FDA(200.05,\"+1,1,\",2)=3200101 D UPDATE^DIE(\"\",\"FDA\",\"\",\"ERR\")
 S ^XUSEC(\"PROVIDER\",1)=\"\"
+S ^XUSEC(\"LRVERIFY\",1)=\"\",^XUSEC(\"LRLAB\",1)=\"\",^XUSEC(\"LRSUPER\",1)=\"\"
 W \"filing user (want 1): \",\$\$USER^C0FWENC(),!
 H
 EOF"
+
+# --- 1f. ISI VistA DataLoader KIDS build (labs into #60/#63 via ISIIMP12) ----
+# The SYN lab filer (LABADD^SYNDHP63) calls $$LAB^ISIIMP12, which ships in the
+# ISI VistA DataLoader 3.1 KIDS distribution — not present on the FOIA image.
+# Installing it headlessly on IRIS needs one prerequisite the GT.M fleet never
+# does: a HOME device. A piped `iris session` has principal device "00", which
+# HOME^%ZIS resolves through the sign-on/virtual-terminal path
+# (^%ZIS(1,"G","SYS..<$I>") + field TYPE="VTRM"); the stock device file has no
+# such entry, so KIDS aborts with "HOME DEVICE (00) DOES NOT EXIST". We create
+# a VTRM device for "00" (idempotent) so ^XPDIL/^XPDI can run.
+# NOTE: filing labs end-to-end ALSO needs VistA Lab accessioning configured
+# (accession areas per #60 test + the LRTASK ROLLOVER) — a separate Lab-package
+# setup the FOIA image lacks; without it most tests fail "no appropriate
+# accession area". This step gets ISIIMP12 present and the import path live.
+KID_SRC="$(cd "$(dirname "$0")/../../VistA-DataLoader/VistA" 2>/dev/null && pwd || true)"
+if [[ -n "$KID_SRC" && -f "$KID_SRC/VISTA_DATALOADER_3P1.KID" ]]; then
+  scp -q "$KID_SRC/VISTA_DATALOADER_3P1.KID" "$HOST:/opt/iris/durable/import/"
+  ssh "$HOST" "docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+S DUZ=1,DUZ(0)=\"@\" D DT^DICRW
+I \$T(+0^ISIIMP12)'=\"\" W \"ISI already installed; skipping\",! H
+; ensure a HOME device for principal \$I=\"00\" (virtual terminal)
+I '\$D(^%ZIS(1,\"C\",\"00\")) N FDA,IEN S FDA(3.5,\"?+1,\",.01)=\"IRIS-00\",FDA(3.5,\"?+1,\",.02)=\"IRIS SESSION\",FDA(3.5,\"?+1,\",1)=\"00\",FDA(3.5,\"?+1,\",2)=\"VIRTUAL TERMINAL\",FDA(3.5,\"?+1,\",3)=\"P-OTHER\" D UPDATE^DIE(\"E\",\$NA(FDA),\$NA(IEN))
+N DN S DN=+\$O(^%ZIS(1,\"C\",\"00\",0)) I DN S ^%ZIS(1,DN,\"TYPE\")=\"VTRM\",^%ZIS(1,\"G\",\"SYS..00\",DN)=\"\",^%ZIS(1,\"G\",\"SYS.\"_\$G(^%ZOSF(\"VOL\"))_\".00\",DN)=\"\"
+W \"HOME device for 00: ien \",DN,!
+H
+EOF"
+  # load + install (fresh session so HOME re-resolves via the new device)
+  ssh "$HOST" "docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+S DUZ=1,DUZ(0)=\"@\" D DT^DICRW
+I \$T(+0^ISIIMP12)'=\"\" H
+D ^XPDIL
+/durable/import/VISTA_DATALOADER_3P1.KID
+
+
+H
+EOF"
+  ssh "$HOST" "docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+S DUZ=1,DUZ(0)=\"@\" D DT^DICRW
+I \$T(+0^ISIIMP12)'=\"\" W \"ISI present after load; installing\",!
+D ^XPDI
+VISTA DATALOADER 3.1
+NO
+NO
+NO
+
+
+
+H
+EOF"
+  ssh "$HOST" "docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+W \"ISIIMP12 installed: \",\$S(\$T(+0^ISIIMP12)'=\"\":\"yes\",1:\"NO\"),!
+H
+EOF"
+else
+  echo "WARN: ../VistA-DataLoader/VistA/VISTA_DATALOADER_3P1.KID not found; skipped ISI KIDS install" >&2
+fi
 
 # --- 2. upgrade the self-healing ensure script to cover both listeners ------
 ssh -o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=15 "$HOST" "cat > /opt/iris/ensure-broker.sh <<SH
