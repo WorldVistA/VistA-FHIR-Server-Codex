@@ -27,7 +27,13 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR MedicationRequest as an outpatient Rx
  I $$HASRX(DFN,DRUG) D SKIP(ROOT,GIEN,GRIEN,TYPE,DRUG,RXN,"Medication already on patient outpatient profile: "_NAME,.RETURN) Q
  I $$ISNARC(DRUG) D SKIP(ROOT,GIEN,GRIEN,TYPE,DRUG,RXN,"Scheduled/narcotic drug skipped; SYNFMED default refill is not allowed: "_NAME,.RETURN) Q
  D DUZ^C0FWCTX(),IO^C0FWCTX()
+ ; The PSO/Kernel chain under FILEPS KILLs common local names (seen on IRIS
+ ; 2026-09-11: RXN gone at the success log). Snapshot into C0FW-namespaced
+ ; storage and restore after - same defense as the Sept sprint LAST fix.
+ N C0FWSAV
+ S C0FWSAV("ROOT")=ROOT,C0FWSAV("RXN")=RXN,C0FWSAV("NAME")=NAME,C0FWSAV("TYPE")=TYPE,C0FWSAV("DRUG")=DRUG,C0FWSAV("GIEN")=GIEN,C0FWSAV("GRIEN")=GRIEN
  S RET=$$FILEPS(DFN,DRUG,FMDT)
+ S ROOT=C0FWSAV("ROOT"),RXN=C0FWSAV("RXN"),NAME=C0FWSAV("NAME"),TYPE=C0FWSAV("TYPE"),DRUG=C0FWSAV("DRUG"),GIEN=C0FWSAV("GIEN"),GRIEN=C0FWSAV("GRIEN")
  S IEN=GIEN,RIEN=GRIEN
  I +RET>1 D  Q
  . D LOADED(ROOT,GIEN,GRIEN,TYPE,+RET,RXN,"Medication filed as outpatient Rx "_RET_": "_NAME,.RETURN)

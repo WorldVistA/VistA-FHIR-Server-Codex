@@ -17,6 +17,14 @@ set -euo pipefail
 HOST="${1:-root@irisfhir.vistaplex.org}"
 HOSTNAME_ONLY="${HOST#*@}"
 
+# Multiplex ssh/scp over one connection (droplet runs `ufw limit 22/tcp`).
+SSHCTL="/tmp/ssh-irispub-$$"
+SSHMUX=(-o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=15 \
+        -o ControlMaster=auto -o "ControlPath=$SSHCTL" -o ControlPersist=180)
+ssh() { command ssh "${SSHMUX[@]}" "$@"; }
+scp() { command scp "${SSHMUX[@]}" "$@"; }
+trap 'command ssh -o "ControlPath=$SSHCTL" -O exit "$HOST" 2>/dev/null || true' EXIT
+
 echo "== iris-public-setup: $HOST =="
 
 ssh -o BatchMode=yes -o ConnectTimeout=20 "$HOST" "bash -s" <<'REMOTE'
@@ -32,6 +40,13 @@ fi
 
 # Caddy from the official repo (idempotent).
 if ! command -v caddy >/dev/null; then
+  # A freshly restored/booted droplet runs unattended-upgrades, which holds the
+  # dpkg lock for several minutes. Wait it out rather than failing silently.
+  for i in $(seq 1 60); do
+    fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break
+    [ "$i" = 1 ] && echo "waiting for unattended-upgrades to release dpkg lock..."
+    sleep 10
+  done
   apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https curl gnupg >/dev/null 2>&1
   curl -1sLf "https://dl.cloudsmith.io/public/caddy/stable/gpg.key" | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   curl -1sLf "https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt" > /etc/apt/sources.list.d/caddy-stable.list

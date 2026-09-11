@@ -122,8 +122,12 @@ NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Native C0FW adapter dispatch
  Q
  ;
 DERR(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Trap one domain adapter failure and continue
+ ; $ZS is $ZSTATUS (error text) on GT.M but $ZSTORAGE (memory limit) on
+ ; IRIS/Cache - a bare $ZS here reported every IRIS adapter error as
+ ; "2147483647". XECUTE keeps each platform's special variable compilable.
  N MSG
- S MSG=$ZS
+ S MSG=""
+ X $S($P($SY,",")=47:"S MSG=$ZSTATUS",1:"S MSG=$ZE")
  I MSG="" S MSG=$ECODE
  I MSG="" S MSG="unknown M error"
  D ERR^C0FWSTAT(ROOT,IEN,RIEN,$G(DOMAIN),$G(TYPE),"C0FW "_$G(DOMAIN)_" adapter error: "_MSG,.RETURN)

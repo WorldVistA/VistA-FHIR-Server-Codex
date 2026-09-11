@@ -118,3 +118,89 @@ skips remain).
 | Note read-back intact | `curl 'https://irisfhir.vistaplex.org/fhir?dfn=11&format=json&refresh=1'` → 944-byte attachment |
 | IRIS lane green | `scripts/iris-lane-smoke.sh` (17/17) |
 | No GT.M regression | `QUALITY_DEPLOY_TARGETS=vehu10 scripts/deploy-quality-all.sh` (SMOKE OK) |
+
+---
+
+# Reload results (2026-09-11, after pristine-snapshot restore)
+
+The runbook above was executed against a fresh restore of
+`irisfhir-pristine-cprs+fhir-2026-09-09`. Outcome, same log, same counter:
+
+| Outcome | Rows | Share |
+|---|---:|---:|
+| loaded | 8,474 | 48.6% |
+| lab rows graph-only (`ISIIMP12` not installed — see below) | 7,172 | 41.1% |
+| skipped by design (dedupe, code companions, non-diagnosis) | 1,794 | 10.3% |
+| error | **29** | **0.17%** |
+
+The 29 errors are all known mapping gaps: 18 Conditions with no resolvable
+ICD-10 (same SNOMED map gaps as before), 10 Procedures on two unmapped SNOMED
+codes (169690007 antenatal RhD screening, 167271000 urine protein), and 1
+ServiceRequest with no SNOMED coding. **Every domain that was dead on 9/10
+now files**: 2,071 Procedures, 804 DocumentReferences (TIU notes), 82
+outpatient Medications (+1,410 correct dedupe/no-NDF skips), 54 CarePlan
+health-factor sets. `load.missingRoutines` was empty on every POST.
+
+All 804 TIU notes carry author DUZ 1 (USER,ONE) — the POSTMASTER (.5) filing
+problem is gone.
+
+Official-CQL re-eval (foreground `REEVALJ^C0FQUAL`, cds1, refresh=1)
+reproduced the 9/10 numbers exactly:
+CMS122v14 1/1/1 · CMS125v14 1/1/0 · CMS130v14 2/2/0 · CMS138v14 3/3/3 ·
+CMS165v14 2/2/1 · CMS2v15 4/4/0. POP curated to IPP members afterward.
+
+## What the pristine image was missing (all now in `iris-web-setup.sh`)
+
+The 9/09 snapshot predates the whole 9/10 sixth-lane build-out. Each gap
+found tonight is folded into the setup script so the *next* restore is one
+command:
+
+1. **`%WC` routine mapping** (`Config.MapRoutines` FOIA→FOIA) — without it
+   `%WC.mac` import fails with "mapped from a database that you do not have
+   write permission on" (step 0 now creates it).
+2. **`C0SSL` TLS config** (`Security.SSLConfigs`) — needed by `%WC` for
+   https calls to cds1 (step 0).
+3. **rehmp `C0RG*` routines** — new step 1d imports them from the sibling
+   `rehmp/C0RG` and re-registers routes (104 with rehmp, 100 without).
+4. **`^C0FQUAL("FHIRBASE")`** — set in step 1d (must include `/fhir`).
+5. **Loader environment init** — new step 1e mirrors `EN^SYNINIT` (KIDS-time
+   init the GT.M fleet images got at build): creates the `SYNMENU` option
+   (PROV points field 201 at it), synthetic provider + pharmacist,
+   `IBACTION` (fixes IB ACTION TYPE 350.1 → required by the OUTPATIENT SITE
+   field-1003 input transform), the pharmacy site, `ALBUL`, and
+   `EN^SYNGBLLD` (builds the `^SYN("2002.030")` mapping globals —
+   `sct2os5` is what `PRCADD^SYNDHP65` needs). Two SYNINIT steps are
+   deliberately skipped on FOIA: `HL` (crashes in `VISN^SDTMPHLB`,
+   `^DIC(4,1,7,1,0)` absent) and `ACRPBUL` (DIERR; bulletin noise only).
+   Step 1e also makes USER,ONE provider-capable (runbook step 2b).
+
+## Two portability bugs found and fixed (the predicted budget)
+
+1. **`$ZS` in `DERR^C0FWDOM`** — `$ZS` is `$ZSTATUS` (error text) on GT.M
+   but `$ZSTORAGE` (memory limit) on IRIS, so every trapped IRIS adapter
+   error reported as `2147483647`. Now XECUTE-dispatched per platform
+   (`$ZSTATUS` on GT.M, `$ZE` on IRIS).
+2. **Kernel KILLs `RXN` under `FILEPS^C0FWMED`** — the PSO chain kills
+   common local names; the med filer crashed at its own success-log line
+   (`<UNDEFINED> *RXN`) *after* filing the Rx. Same class as the September
+   sprint `LAST` bug; fixed by snapshotting into `C0FWSAV(...)` around the
+   Kernel call.
+
+Also fixed: `iris-public-setup.sh` now waits for unattended-upgrades to
+release the dpkg lock (a freshly restored droplet holds it for minutes and
+the Caddy install died silently), and multiplexes ssh like the web setup.
+
+## Remaining known gaps (accepted)
+
+- **Labs into `^LR`**: 7,172 individual lab Observations are graph-only —
+  their filer path wants `ISIIMP12` (ISI VistA-DataLoader import engine, a
+  full KIDS build, not just routines). DiagnosticReport panels stay
+  graph-of-record by design; FHIR reads and all six measures work from the
+  graph (CMS122's HbA1c numerator proves it). Installing the ISI engine on
+  IRIS is a follow-up if CPRS lab-tab display matters.
+- The 29 mapping-gap errors above; the 9/10 vital-type list still applies
+  to skips inside Observation.
+- Let's Encrypt issuance hit the known 01:00–02:00 UTC secondary-validation
+  DNS window during setup; Caddy retries until it lands. `FHIRBASE` ran the
+  re-eval via `http://…:9080/fhir`; flip back to https once the cert is up.
+- TaskMan still unconfigured on IRIS (foreground `REEVALJ` remains the path).

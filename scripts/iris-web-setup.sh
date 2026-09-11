@@ -49,6 +49,13 @@ for f in /opt/iris/durable/import/codex-src/*.m; do
   printf 'ROUTINE %s [Type=MAC]\n' \"\$nb\" | cat - \"\$f\" > /opt/iris/durable/import/codex-mac/\$nb.mac
 done
 docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+ZN \"%SYS\"
+K P S P(\"Database\")=\"FOIA\"
+S SC=##class(Config.MapRoutines).Create(\"FOIA\",\"%WC\",.P)
+W \"%WC mapping: \",\$S(+SC=1:\"created\",1:\"exists/err (ok if exists)\"),!
+S SC=##class(Security.SSLConfigs).Create(\"C0SSL\")
+W \"C0SSL config: \",\$S(+SC=1:\"created\",1:\"exists/err (ok if exists)\"),!
+ZN \"FOIA\"
 K ERR S SC=\$SYSTEM.OBJ.ImportDir(\"/durable/import/codex-mac\",\"*.mac\",\"ck-d\",.ERR,0)
 N K,C S (K,C)=\"\" S C=0 F  S K=\$O(ERR(K)) Q:K=\"\"  S C=C+1
 W \"codex import errors: \",C,!
@@ -103,6 +110,64 @@ EOF"
 else
   echo "WARN: ../VistA-FHIR-Data-Loader/src not found; skipped SYN routine import" >&2
 fi
+
+# --- 1d. rehmp C0RG gateway routines (sibling rehmp repo) --------------------
+# POST /rehmp (WSREHMP^C0RGWEB -> HTTP^C0RGAPI) needs the C0RG set; SYNWEBRG
+# registers the rehmp routes only when these are present. Re-register routes
+# afterward and set the quality re-eval FHIR base (cds1 fetches {base}?dfn=N —
+# it must include /fhir).
+C0RG_SRC="$(cd "$(dirname "$0")/../../rehmp/C0RG" 2>/dev/null && pwd || true)"
+if [[ -n "$C0RG_SRC" && -f "$C0RG_SRC/C0RGAPI.m" ]]; then
+  tar -czf /tmp/c0rg-src.tgz -C "$C0RG_SRC" $(cd "$C0RG_SRC" && ls *.m)
+  scp -q /tmp/c0rg-src.tgz "$HOST:/tmp/"
+  ssh "$HOST" "
+mkdir -p /opt/iris/durable/import/rehmp-src /opt/iris/durable/import/rehmp
+rm -f /opt/iris/durable/import/rehmp-src/*.m /opt/iris/durable/import/rehmp/*.mac
+tar -C /opt/iris/durable/import/rehmp-src -xzf /tmp/c0rg-src.tgz
+for f in /opt/iris/durable/import/rehmp-src/*.m; do b=\$(basename \"\$f\" .m); printf 'ROUTINE %s [Type=MAC]\n' \"\$b\" | cat - \"\$f\" > /opt/iris/durable/import/rehmp/\$b.mac; done
+docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+K ERR S SC=\$SYSTEM.OBJ.ImportDir(\"/durable/import/rehmp\",\"*.mac\",\"ck-d\",.ERR,0)
+N K,C S (K,C)=\"\" S C=0 F  S K=\$O(ERR(K)) Q:K=\"\"  S C=C+1
+W \"c0rg import errors: \",C,!
+D EN^SYNWEBRG
+N C,I S C=0,I=0 F  S I=\$O(^%web(17.6001,I)) Q:'I  S C=C+1
+W \"routes after c0rg: \",C,!
+S ^C0FQUAL(\"FHIRBASE\")=\"https://${HOST#*@}/fhir\"
+W \"FHIRBASE: \",^C0FQUAL(\"FHIRBASE\"),!
+H
+EOF"
+else
+  echo "WARN: ../rehmp/C0RG not found; skipped C0RG import" >&2
+fi
+
+# --- 1e. loader environment init (one-time data; a snapshot restore keeps it,
+# but a PRISTINE image has none of it) ----------------------------------------
+# Mirrors what EN^SYNINIT does at KIDS install time on the GT.M fleet images,
+# minus two steps that break on the FOIA image:
+#   * HL^SYNINIT     — crashes in VISN^SDTMPHLB (^DIC(4,1,7,1,0) absent);
+#                      C0FW encounter filing does not need the generic location.
+#   * ACRPBUL^SYNINIT — DIERR on FOIA; bulletin noise only.
+# SYNMENU must exist first (PROV points field 201 at it; the loader's KIDS
+# build normally creates it). EN^SYNGBLLD builds the ^SYN("2002.030") mapping
+# globals (sct2os5 etc.) that PRCADD^SYNDHP65 needs. Finally make USER,ONE
+# (DUZ 1) provider-capable so notes file as a real user instead of POSTMASTER.
+# Every piece checks before creating, so this step is idempotent.
+ssh "$HOST" "docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+D ENVINIT^C0FHIR
+I \$\$FIND1^DIC(19,\"\",\"QX\",\"SYNMENU\",\"B\")<1 N FDA,IEN S FDA(19,\"?+1,\",.01)=\"SYNMENU\",FDA(19,\"?+1,\",1)=\"Synthea Loader Menu\",FDA(19,\"?+1,\",4)=\"M\" D UPDATE^DIE(\"E\",\$NA(FDA),\$NA(IEN))
+W \"syn provider: \",\$\$PROV^SYNINIT(0),!
+W \"syn pharmacist: \",\$\$PHARM^SYNINIT(0),!
+D AMIE^SYNINIT
+D IBACTION^SYNINIT
+W \"pharmacy site: \",\$\$PSOSITE^SYNINIT(),!
+D ALBUL^SYNINIT
+D EN^SYNGBLLD
+W \"sct2os5 map: \",\$S(\$D(^SYN(\"2002.030\",\"sct2os5\",\"direct\")):\"built\",1:\"MISSING\"),!
+I '\$\$ACTIVEPC^C0FWENC(1) N FDA,ERR S FDA(200.05,\"+1,1,\",.01)=\$O(^USC(8932.1,0)),FDA(200.05,\"+1,1,\",2)=3200101 D UPDATE^DIE(\"\",\"FDA\",\"\",\"ERR\")
+S ^XUSEC(\"PROVIDER\",1)=\"\"
+W \"filing user (want 1): \",\$\$USER^C0FWENC(),!
+H
+EOF"
 
 # --- 2. upgrade the self-healing ensure script to cover both listeners ------
 ssh -o BatchMode=yes -o ConnectTimeout=20 -o ConnectionAttempts=15 "$HOST" "cat > /opt/iris/ensure-broker.sh <<SH
