@@ -124,7 +124,9 @@ echo "==> ZLINK + EN^SYNWEBRG + %webreq restart in $FHIRDEV_CONTAINER"
   printf '%s\n' 'd EN^SYNWEBRG' 'h'
 } | "${SSH[@]}" "$FHIRDEV_SSH" "docker exec -i -u '${FHIRDEV_M_USER}' '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; cd $REMOTE_P && $MUMPS -dir'"
 
-"${SSH[@]}" "$FHIRDEV_SSH" "docker exec -u '${FHIRDEV_M_USER}' '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; $MUMPS -run %XCMD \"d stop^%webreq d go^%webreq\"'"
+# cd /tmp: JOB'd listener needs a writable cwd or it dies with
+# %GTM-E-JOBFAIL "Job error in creating STDERR" (seen on fhirprod).
+"${SSH[@]}" "$FHIRDEV_SSH" "docker exec -u '${FHIRDEV_M_USER}' '$FHIRDEV_CONTAINER' bash -lc 'source $VEHU_ENV >/dev/null 2>&1; cd /tmp && $MUMPS -run %XCMD \"d stop^%webreq d go^%webreq\"'"
 
 echo "==> Smoke: GET $HTTP_BASE/filesystem/tjson/web/index.js"
 curl -sS -o /tmp/fhirdev-tjson-smoke.js -w "HTTP %{http_code}\n" "$HTTP_BASE/filesystem/tjson/web/index.js" | tail -1

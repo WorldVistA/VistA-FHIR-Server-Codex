@@ -4,17 +4,21 @@ C0FWDOM ; VEHU/Codex - C0FW update domain dispatcher ;May 09, 2026
  Q
  ;
 LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
- N ROOT,BUNDLE,RIEN,TYPE,DOMAIN,COUNT,FIRST,LAST
+ ; Loop-control vars are C0FW-namespaced: Kernel code reached via the
+ ; domain filers (PSO/TIU/PCE) can KILL common names like LAST without
+ ; NEWing them (seen: %YDB-E-LVUNDEF on LAST mid-bundle via LOAD^C0FWMED).
+ N ROOT,BUNDLE,RIEN,TYPE,DOMAIN,COUNT,C0FWFST,C0FWLST
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
  Q:ROOT=""
+ D DEPCHK(ROOT,IEN,.RETURN)
  S BUNDLE=$G(ARGS("bundle"))
- S FIRST=+$G(ARGS("firstEntry"))
- S LAST=+$G(ARGS("lastEntry"))
+ S C0FWFST=+$G(ARGS("firstEntry"))
+ S C0FWLST=+$G(ARGS("lastEntry"))
  S COUNT=0
  ; Encounters are filed first so later domains can resolve a visit pointer.
  ; Notes/TIU filing is visit-linked; C0FWTIU will skip/error until the visit resolves.
- S RIEN=$S(FIRST>0:FIRST-1,1:0)
- F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
+ S RIEN=$S(C0FWFST>0:C0FWFST-1,1:0)
+ F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(C0FWLST>0)&(RIEN>C0FWLST)  D
  . I '$$INBUND(ROOT,IEN,RIEN,BUNDLE) Q
  . S TYPE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))
  . S DOMAIN=$$DOMAIN(ROOT,IEN,RIEN,TYPE)
@@ -23,8 +27,8 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  . D DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,.ARGS,.RETURN)
  . D PERSIST(ROOT,IEN,RIEN,"Encounter",.RETURN)
  . D LOADENC^C0FWTIU(ROOT,IEN,RIEN,.RETURN)
- S RIEN=$S(FIRST>0:FIRST-1,1:0)
- F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(LAST>0)&(RIEN>LAST)  D
+ S RIEN=$S(C0FWFST>0:C0FWFST-1,1:0)
+ F  S RIEN=$O(@ROOT@(IEN,"json","entry",RIEN)) Q:+RIEN=0  Q:(C0FWLST>0)&(RIEN>C0FWLST)  D
  . I '$$INBUND(ROOT,IEN,RIEN,BUNDLE) Q
  . S TYPE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))
  . S DOMAIN=$$DOMAIN(ROOT,IEN,RIEN,TYPE)
@@ -37,6 +41,30 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  S RETURN("load","profile")=$$PROFILE^C0FWPOL(.ARGS)
  S RETURN("load","clinicalFiling")=$S($G(RETURN("loadStatus"))="loaded":"partial",1:$G(RETURN("loadStatus")))
  I $T(INV^C0FWCAC)'="" D INV^C0FWCAC(IEN,ROOT)
+ Q
+ ;
+DEPCHK(ROOT,IEN,RETURN) ; Surface missing filer routines once, up front
+ ; The per-domain filers each guard their own dependency and skip resource-by-
+ ; resource, so a missing routine drowns in thousands of per-resource rows
+ ; (IRIS 2026-09-10: 4,162 of 4,834 losses were four uninstalled SYN routines).
+ ; This puts one loud line per missing routine into the load response and the
+ ; graph load log BEFORE filing starts. Advisory only — filing proceeds and
+ ; the per-resource guards still record exact skips.
+ N C0FDEP,C0FI,C0FRTN,C0FMSG,C0FN,C0FX
+ S C0FDEP(1)="SYNWEBUT^DocumentReference attachment decode"
+ S C0FDEP(2)="SYNFHF^CarePlan/HealthFactor filing"
+ S C0FDEP(3)="SYNFMED^outpatient prescription filing"
+ S C0FDEP(4)="SYNDHP65^procedure filing"
+ S C0FDEP(5)="SYNDHP63^lab filing"
+ S C0FDEP(6)="TIUSRVP^TIU note filing"
+ S C0FN=0
+ F C0FI=1:1:6 D
+ . S C0FRTN=$P(C0FDEP(C0FI),"^"),C0FMSG=$P(C0FDEP(C0FI),"^",2)
+ . S C0FX="+0^"_C0FRTN
+ . Q:$T(@C0FX)'=""
+ . S C0FN=C0FN+1
+ . S RETURN("load","missingRoutines",C0FN)=C0FRTN_" is not installed; "_C0FMSG_" will be skipped"
+ . S @ROOT@(IEN,"load","_dependencies",C0FRTN)="missing"
  Q
  ;
 DISPATCH(ROOT,IEN,RIEN,DOMAIN,TYPE,ARGS,RETURN) ; Policy-aware domain dispatch
@@ -94,8 +122,12 @@ NATIVE(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Native C0FW adapter dispatch
  Q
  ;
 DERR(ROOT,IEN,RIEN,DOMAIN,TYPE,RETURN) ; Trap one domain adapter failure and continue
+ ; $ZS is $ZSTATUS (error text) on GT.M but $ZSTORAGE (memory limit) on
+ ; IRIS/Cache - a bare $ZS here reported every IRIS adapter error as
+ ; "2147483647". XECUTE keeps each platform's special variable compilable.
  N MSG
- S MSG=$ZS
+ S MSG=""
+ X $S($P($SY,",")=47:"S MSG=$ZSTATUS",1:"S MSG=$ZE")
  I MSG="" S MSG=$ECODE
  I MSG="" S MSG="unknown M error"
  D ERR^C0FWSTAT(ROOT,IEN,RIEN,$G(DOMAIN),$G(TYPE),"C0FW "_$G(DOMAIN)_" adapter error: "_MSG,.RETURN)

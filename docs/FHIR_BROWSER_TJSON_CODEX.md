@@ -11,7 +11,7 @@ A copy is mirrored under **`~/work/vista-stack/tjson-tooling/docs/`** (repo
 Render selected FHIR resources with **`@rfanth/tjson`** instead of
 pretty-printed JSON only.
 
-## Current approach (0.6.5+): `@rfanth/tjson/web`
+## Current approach (0.6.5+ / current **0.10.1**): `@rfanth/tjson/web`
 
 From **0.6.5**, the package ships a zero-setup browser entry under **`web/`**:
 
@@ -19,23 +19,25 @@ From **0.6.5**, the package ships a zero-setup browser entry under **`web/`**:
 |------|------|
 | `web/index.js` | Inlined wasm (base64) + top-level `await init(...)`; re-exports API |
 | `web/tjson.js` | Glue / exports (`fromJson`, `stringify`, …) |
+| `web/tjson_bg.wasm` | Sibling wasm (0.10+); needed if importing `tjson.js` directly |
 | `web/snippets/…/value_transport.js` | Required sibling import |
 
-**No** custom loader, **no** `.wasm` MIME games, **no** `.b64` sidecar.
+**No** custom loader, **no** `.wasm` MIME games for the `web/index.js` entry.
 
 ### Vendoring
 
 ```bash
-./scripts/update-vendored-tjson.sh 0.6.5
+./scripts/update-vendored-tjson.sh 0.10.1
 ```
 
 Writes **`vendor/tjson/web/`**, **`vendor/tjson/VERSION`**, and updates
-`TJSON_PKG` in **`src/C0FHIRWS.m`** to:
+`TJSON_PKG` in **`src/C0FHIRWS.m`** to a cache-busted URL such as:
 
 ```text
-/filesystem/tjson/web/index.js?v=0.6.5
+/filesystem/tjson/web/index.js?v=0.10.1-<token>
 ```
 
+(Current vendored release: **`@rfanth/tjson` 0.10.1** — post-fuzzer fixes.)
 ### Serve / sync
 
 Sync copies `vendor/tjson/web` → M user www as **`…/tjson/web/`**:
@@ -49,7 +51,7 @@ Scripts: `local-fhir-container-sync.sh`, `vehu10-fhir-sync.sh`,
 Browser import (embedded in `C0FHIRWS`):
 
 ```js
-const TJSON_PKG = location.origin + '/filesystem/tjson/web/index.js?v=0.6.5';
+const TJSON_PKG = location.origin + '/filesystem/tjson/web/index.js?v=0.10.1-<token>';
 const m = await import(TJSON_PKG);
 // m.fromJson(JSON.stringify(obj), {})
 ```
@@ -95,6 +97,6 @@ you still need a binary sidecar for non-web consumers.
 
 ## References
 
-- npm: `@rfanth/tjson` **0.6.5+** — export `@rfanth/tjson/web`
+- npm: `@rfanth/tjson` **0.10.1** (requires **0.6.5+** `web/` entry)
 - [textjson.com](https://textjson.com/)
 - FHIR browser: `/fhir?dfn=<dfn>&view=browser`

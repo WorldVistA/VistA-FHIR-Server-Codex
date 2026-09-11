@@ -30,7 +30,7 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  . S HTTPRSP("mime")="text/html"
  ;
  ; Mode 2: Interactive browser (HTML) for one patient or stored source bundle
- I VIEW="BROWSER",(DFN'=""!(IEN>0)) D  Q
+ I VIEW="BROWSER",(DFN'=""!(IEN>0)!($$UPCASE^C0FHIR($G(FILTER("source")))="QUALITYREPORT")) D  Q
  . S FILTER("type")="text/html"
  . D BROWSER(.RTN,.FILTER)
  . S HTTPRSP("mime")="text/html"
@@ -101,7 +101,7 @@ ASSETOK(FILE) ; $$ - true for browser asset names this route may serve
  ;
 ASSETDIR(FILE,TMP) ; $$ - first readable browser asset directory
  N DIR,HOME,OK
- S HOME=$ZTRNLNM("HOME")
+ S HOME=$$ENV^C0FWOS("HOME")
  I HOME'="" D  I OK Q DIR
  . S DIR=HOME_"/www/filesystem/"
  . K @TMP S OK=$$FTGOK(DIR,FILE,TMP)
@@ -167,6 +167,15 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  . S RAWURL=LOADURL
  . S ALTRAW=$S(D>0:"/fhir?dfn="_D,1:"")
  . S ALTLBL=$S(ALTRAW'="":"generated fhir",1:"")
+ E  I SRC="QUALITYREPORT" D
+ . S THEME="theme-light"
+ . S BADGE=$S(D>0:"Quality report (individual)",1:"Quality report")
+ . S SRCNOTE=$S(D>0:"Live DEQM Individual MeasureReport via /fhir-quality-report?dfn=",1:"Live DEQM Summary MeasureReport via /fhir-quality-report")
+ . S LOADURL="/fhir-quality-report?measure="_MEAS_"&bundle=1"_$S(D>0:"&dfn="_D,1:"")
+ . S RAWLBL="raw report"
+ . S RAWURL="/fhir-quality-report?measure="_MEAS_$S(D>0:"&dfn="_D,1:"")
+ . S ALTRAW=$S(D>0:"/fhir-quality-dashboards/"_MEAS,1:"/fhir-quality-reporting")
+ . S ALTLBL=$S(D>0:"measure dashboard",1:"reporting page")
  E  I SRC="SHOWFHIR" D
  . S THEME="theme-light"
  . S BADGE="Synthea source"
@@ -266,10 +275,14 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  D ADDLN(.RTN,"<script>")
  D ADDLN(.RTN,"const dfn="_D_";")
  D ADDLN(.RTN,"const graphIen="_IEN_";")
- D ADDLN(.RTN,"const sourceMode='"_$S(SRC="AICONSULT":"aiconsult",SRC="ALTFHIR":"altfhir",SRC="SHOWFHIR":"showfhir",1:"fhir")_"';")
- D ADDLN(.RTN,"const sourceLabel=sourceMode==='aiconsult'?'AI Consult':(sourceMode==='altfhir'?'altfhir graph source':(sourceMode==='showfhir'?'Stored Synthea FHIR':'VistA-generated FHIR'));")
+ D ADDLN(.RTN,"const sourceMode='"_$S(SRC="AICONSULT":"aiconsult",SRC="ALTFHIR":"altfhir",SRC="SHOWFHIR":"showfhir",SRC="QUALITYREPORT":"qualityreport",1:"fhir")_"';")
+ D ADDLN(.RTN,"let sourceLabel='VistA-generated FHIR';")
+ D ADDLN(.RTN,"if(sourceMode==='aiconsult')sourceLabel='AI Consult';")
+ D ADDLN(.RTN,"else if(sourceMode==='altfhir')sourceLabel='altfhir graph source';")
+ D ADDLN(.RTN,"else if(sourceMode==='showfhir')sourceLabel='Stored Synthea FHIR';")
+ D ADDLN(.RTN,"else if(sourceMode==='qualityreport')sourceLabel=dfn>0?'Live DEQM Individual MeasureReport':'Live DEQM Summary MeasureReport';")
  D ADDLN(.RTN,"const bundleUrl='"_LOADURL_"';")
- D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson/web/index.js?v=0.6.5';")
+ D ADDLN(.RTN,"const TJSON_PKG=location.origin+'/filesystem/tjson/web/index.js?v=0.10.1-ab9e4b30';")
  D ADDLN(.RTN,"const st={all:[],rows:[],tree:[],visible:[],pick:null,q:'',type:'all',fmt:'tjson'};")
  D ADDLN(.RTN,"try{const x=sessionStorage.getItem('c0fhirBrowserFmt');if(x==='json'||x==='tjson')st.fmt=x;}catch(e){}")
  D ADDLN(.RTN,"let tjsonMod=null;")

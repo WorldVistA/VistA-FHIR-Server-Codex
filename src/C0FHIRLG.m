@@ -12,9 +12,9 @@ C0FHIRLG ; Codex - RPMS labs from fhir-intake graph ;Aug 03, 2026
  ;   @ROOT@(IEN,"type","Observation",RIEN)
  ;   @ROOT@(IEN,"type","DiagnosticReport",RIEN)
  ;   @ROOT@(IEN,"POS","code",LOINC,purl) / SPO(purl,"rien",RIEN)
- ; Always includes LOINC 72166-2 (tobacco) and 44249-1 (PHQ-9) when present,
- ; and other Observations with category laboratory. Panel DiagnosticReports
- ; keep graph ids/fullUrls so result[] links resolve in the FHIR browser.
+ ; Always includes LOINC 72166-2 (tobacco), 44249-1 (PHQ-9), 73832-8 / 73831-0
+ ; (CMS2 depression assessment), and other Observations with category laboratory.
+ ; Panel DiagnosticReports keep graph ids/fullUrls so result[] links resolve.
  ;
  Q
  ;
@@ -39,6 +39,9 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  ; Required LOINCs via code index
  D KEEPCODE(ROOT,IEN,"72166-2",.KEEP)
  D KEEPCODE(ROOT,IEN,"44249-1",.KEEP)
+ D KEEPCODE(ROOT,IEN,"73832-8",.KEEP)
+ D KEEPCODE(ROOT,IEN,"73831-0",.KEEP)
+ D KEEPCODE(ROOT,IEN,"44261-6",.KEEP)
  ; All Observation entries that WANT() accepts
  S RIEN=0
  F  S RIEN=$O(@ROOT@(IEN,"type","Observation",RIEN)) Q:'RIEN  D
@@ -71,15 +74,17 @@ KEEPCODE(ROOT,IEN,CODE,KEEP) ; Mark entry IENs that have POS code index
  ;
 WANT(ROOT,IEN,RIEN) ; $$ - include this Observation from graph
  N CAT,CODE,I,J
- ; Required experiment LOINCs (any coding slot)
+ ; Required experiment / quality LOINCs (any coding slot)
  S I=0 F  S I=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",I)) Q:'I  D  Q:$G(CAT)
  . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",I,"code"))
- . I CODE="72166-2"!(CODE="44249-1") S CAT=1
+ . I CODE="72166-2"!(CODE="44249-1")!(CODE="73832-8")!(CODE="73831-0")!(CODE="44261-6") S CAT=1
  Q:$G(CAT) 1
  ; Other lab-category Observations
  S I=0 F  S I=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","category",I)) Q:'I  D  Q:$G(CAT)
  . S J=0 F  S J=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","category",I,"coding",J)) Q:'J  D  Q:$G(CAT)
  . . I $$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","category",I,"coding",J,"code")))="LABORATORY" S CAT=1
+ . . ; Survey assessments (CMS2 depression) also surface via graph labs
+ . . I $$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","category",I,"coding",J,"code")))="SURVEY" S CAT=1
  Q +$G(CAT)
  ;
 INWIN(ROOT,IEN,RIEN,BEG,END) ; $$ - effective time in window (FM)

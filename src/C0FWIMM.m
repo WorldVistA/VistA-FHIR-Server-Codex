@@ -10,10 +10,10 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Immunization on an existing visit
  S DFN=+$O(@ROOT@("SPO",IEN,"DFN",""))
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
  S VISIT=$$VISIT(ROOT,IEN,RIEN)
- I VISIT<1 D ERR(ROOT,IEN,RIEN,"Immunization has no resolved encounter visit pointer",.RETURN) Q
+ I VISIT<1 D SKIP(ROOT,IEN,RIEN,0,0,"Immunization has no resolved encounter visit; skipped.",.RETURN) Q
  S IMMIEN=$$IMMIEN(ROOT,IEN,RIEN)
- I IMMIEN<1 D ERR(ROOT,IEN,RIEN,"Immunization CVX code not found in ^AUTTIMM",.RETURN) Q
- I +$$GET1^DIQ(9999999.14,IMMIEN_",",.07,"I") D ERR(ROOT,IEN,RIEN,"Immunization is inactive in ^AUTTIMM",.RETURN) Q
+ I IMMIEN<1 D SKIP(ROOT,IEN,RIEN,0,0,"Immunization CVX code not found in ^AUTTIMM; skipped.",.RETURN) Q
+ I +$$GET1^DIQ(9999999.14,IMMIEN_",",.07,"I") D SKIP(ROOT,IEN,RIEN,VISIT,IMMIEN,"Immunization is inactive in ^AUTTIMM; skipped.",.RETURN) Q
  I $$HASIMM(VISIT,IMMIEN) D SKIP(ROOT,IEN,RIEN,VISIT,IMMIEN,"Immunization already filed on visit",.RETURN) Q
  S FMDT=$$FMDT(ROOT,IEN,RIEN)
  I FMDT<1 S FMDT=+$P($G(^AUPNVSIT(VISIT,0)),"^")

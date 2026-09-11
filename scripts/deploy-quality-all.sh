@@ -3,6 +3,9 @@
 #
 # Active servers (default):
 #   fhirdev  vehu10  rpms-candidate  rpmsfhir  fhirprod
+# plus irisfhir, the NON-BLOCKING sixth lane (VistA-on-IRIS): it is deployed
+# and smoked like the others but can never gate the five GT.M servers — a
+# failure there reports WARN in the summary and does not affect the exit code.
 #
 # Usage:
 #   ./scripts/deploy-quality-all.sh
@@ -19,7 +22,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 C0X_ROOT="${C0X_ROOT:-$ROOT/../fhir-triple-store}"
 SMOKE="$ROOT/scripts/smoke-quality-host.sh"
-TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir fhirprod}"
+TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir fhirprod irisfhir}"
 SKIP_DEPLOY="${QUALITY_SKIP_DEPLOY:-0}"
 REINDEX="${QUALITY_REINDEX:-0}"
 
@@ -126,6 +129,11 @@ M
       run_seedcrit_remote root@rpmsfhir.vistaplex.org rpms-fhir rpms /home/rpms/r /home/rpms/lib/gtm/mumps /home/rpms/etc/env || true
       maybe_reindex https://rpmsfhir.vistaplex.org
       ;;
+    irisfhir|iris)
+      # Non-blocking sixth lane: refresh routes + ensure listeners, never fail.
+      "$ROOT/scripts/iris-web-setup.sh" \
+        || echo "WARN: irisfhir web setup failed (non-blocking lane)" >&2
+      ;;
     *)
       echo "unknown target: $t" >&2
       return 1
@@ -135,9 +143,19 @@ M
 
 smoke_one() {
   local t="$1" base dfn
+  # irisfhir is the non-blocking sixth lane: right-sized smoke, WARN on failure,
+  # and it must never gate the five GT.M servers (exit code untouched).
+  if [[ "$t" == "irisfhir" || "$t" == "iris" ]]; then
+    if "$ROOT/scripts/iris-lane-smoke.sh"; then
+      RESULTS+=("OK  irisfhir (non-blocking lane)")
+    else
+      RESULTS+=("WARN irisfhir (non-blocking lane, does not gate)")
+    fi
+    return 0
+  fi
   case "$t" in
     fhirdev)  base=https://devfhir.vistaplex.org; dfn=101076 ;;
-    fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=101076 ;;
+    fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=1643 ;;  # fhirprod cohort = DFNs 1643-1661
     vehu10)   base=http://127.0.0.1:9085; dfn=101076 ;;
     rpms-candidate|rpms-rebuild-candidate|rpms) base=http://127.0.0.1:9088; dfn=4 ;;
     rpmsfhir|rpms-fhir) base=https://rpmsfhir.vistaplex.org; dfn=8 ;;
