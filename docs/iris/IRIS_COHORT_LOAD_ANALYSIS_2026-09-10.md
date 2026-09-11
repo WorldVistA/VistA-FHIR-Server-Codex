@@ -235,22 +235,47 @@ IRIS-portability fixes (all shipped):
    `LRLAB`, `LRSUPER`.
 
 **Result:** the ISI import path is live end-to-end — a GLUCOSE result filed
-through `LABADD^SYNDHP63 / $$LAB^ISIIMP12` for DFN 1. **But full lab filing is
-still blocked by VistA Lab-package accessioning**, which the FOIA image does
-not configure: most #60 tests have no accession area (`<test> does not have an
-appropriate accession area`) and the daily `LRTASK ROLLOVER` has never run
-(`ROLLOVER HAS NOT RUN`). Only the handful of tests that happen to have an
-accession area (e.g. GLUCOSE) file. Configuring Lab accessioning (accession
-areas per test in file #68 + rollover) is the next lab workstream — separate
-from the ISI install, which is done.
+through `LABADD^SYNDHP63 / $$LAB^ISIIMP12` for DFN 1.
+
+## Lab accessioning configured (2026-09-11)
+
+The FOIA image ships the 22 file #68 accession areas but leaves the Lab
+package unconfigured: almost no #60 test is linked to an area (subfile 60.11
+empty → `<test> does not have an appropriate accession area`), no area has a
+numeric identifier (#68 field .4 → `You must enter a 'Numeric Identifier' in
+field .4 of the Accession file!!`), and rollover has never run. Fixed by
+mirroring the working vehu10 reference config (file #60 node 8, inst 500) onto
+FOIA institution 1 (PLATINUM) via the committed artifact
+`scripts/artifacts/C0FZLACC.mac`, applied by `iris-web-setup.sh` step 1g:
+
+1. **EN** — 522 subfile 60.11 rows added via `UPDATE^DIE`
+   (`INSTITUTION=1, ACCESSION AREA=<vehu10's area>` per test); 45 vehu-only
+   areas and 198 name-mismatched tests skipped safely.
+2. **IDS** — numeric identifier (#68 .4 = ien) on all 22 areas, per
+   `SetAccessionIDs^SYNLINIT`.
+3. **FIX2** — LDL CHOLESTEROL (#60 ien 901) had an **empty SUBSCRIPT** (ISI
+   requires `CH`); eight tests (EOSINO, BASO, RDW, PCO2, PO2, BICARBONATE,
+   TCO2, LDL) had no collection sample (#60.03) at all → added BLOOD /
+   ARTERIAL BLOOD rows (per `docs/LAB_ACCESSION_REMEDIATION_WORKFLOW.md` in
+   VistA-FHIR-Data-Loader).
+4. **ROLL** — foreground `D ^LROLOVER` (Taskman does not run on IRIS): all 22
+   areas rolled over; the `ROLLOVER HAS NOT RUN` spam is gone.
+5. **`UANORM^C0FWLAB`** — Synthea urinalysis qualitative results arrive as
+   long SNOMED finding displays (`"Urine nitrite negative (finding)"`) that
+   overflow VistA's 8-char free-text / set-of-codes answers; added
+   contains-based `NEGATIVE→NEG` / `POSITIVE→POS` rules (XINDEX clean).
+
+**Evidence (rerunnable):** re-filing labs for all 12 cohort bundles via
+`RELAB^C0FZLACC` ended with **zero lab errors** (~8,900 loaded; DFN 1 went
+53 errors → 0, `^LR` CH nodes 6 → 318+). FHIR read-back for DFN 1 returns
+123 Observations over https. `iris-web-setup.sh` re-run is idempotent
+(`added=0 alreadyHad=532`, `ROLLOVER NOT REQUIRED`); `iris-lane-smoke.sh`
+passes; vehu10 sync + smoke unaffected.
 
 ## Remaining known gaps (accepted)
 
-- **Labs into `^LR`**: ISI engine is now installed and the import path works,
-  but VistA Lab **accessioning** on FOIA is unconfigured (see above), so most
-  lab Observations stay graph-only for now. DiagnosticReport panels stay
-  graph-of-record by design; FHIR reads and all six measures work from the
-  graph (CMS122's HbA1c numerator proves it).
+- The 29 mapping-gap errors above; the 9/10 vital-type list still applies
+  to skips inside Observation.
 - The 29 mapping-gap errors above; the 9/10 vital-type list still applies
   to skips inside Observation.
 - Let's Encrypt issuance hit the known 01:00–02:00 UTC secondary-validation

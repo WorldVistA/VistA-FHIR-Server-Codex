@@ -193,10 +193,8 @@ EOF"
 # (^%ZIS(1,"G","SYS..<$I>") + field TYPE="VTRM"); the stock device file has no
 # such entry, so KIDS aborts with "HOME DEVICE (00) DOES NOT EXIST". We create
 # a VTRM device for "00" (idempotent) so ^XPDIL/^XPDI can run.
-# NOTE: filing labs end-to-end ALSO needs VistA Lab accessioning configured
-# (accession areas per #60 test + the LRTASK ROLLOVER) — a separate Lab-package
-# setup the FOIA image lacks; without it most tests fail "no appropriate
-# accession area". This step gets ISIIMP12 present and the import path live.
+# Filing labs end-to-end ALSO needs VistA Lab accessioning configured —
+# step 1g below handles that.
 KID_SRC="$(cd "$(dirname "$0")/../../VistA-DataLoader/VistA" 2>/dev/null && pwd || true)"
 if [[ -n "$KID_SRC" && -f "$KID_SRC/VISTA_DATALOADER_3P1.KID" ]]; then
   scp -q "$KID_SRC/VISTA_DATALOADER_3P1.KID" "$HOST:/opt/iris/durable/import/"
@@ -238,6 +236,35 @@ H
 EOF"
 else
   echo "WARN: ../VistA-DataLoader/VistA/VISTA_DATALOADER_3P1.KID not found; skipped ISI KIDS install" >&2
+fi
+
+# --- 1g. VistA Lab accessioning (accession areas / identifiers / rollover) ---
+# The FOIA image ships the #68 accession areas but links almost no #60 tests to
+# them (subfile 60.11 is empty), has no numeric identifiers (#68 field .4), and
+# the daily rollover has never run — so ISI lab filing fails with "does not
+# have an appropriate accession area" / "You must enter a 'Numeric Identifier'".
+# scripts/artifacts/C0FZLACC.mac mirrors the working vehu10 reference config
+# (file #60 node 8, inst 500 → FOIA inst 1 PLATINUM):
+#   EN   — add 60.11 rows (INSTITUTION=1, ACCESSION AREA per test) via FileMan
+#   IDS  — set numeric identifier (#68 .4) on each accession area
+#   FIX2 — LDL (#60 ien 901) SUBSCRIPT=CH + collection-sample (#60.03) gap rows
+#   ROLL — run ^LROLOVER foreground (Taskman does not run on IRIS)
+# All idempotent. Evidence: 12-patient cohort labs re-filed at 0 errors
+# (2026-09-11); DFN 1 FHIR read-back 123 Observations.
+LACC_SRC="$(cd "$(dirname "$0")/artifacts" 2>/dev/null && pwd || true)/C0FZLACC.mac"
+if [[ -f "$LACC_SRC" ]]; then
+  ssh "$HOST" "mkdir -p /opt/iris/durable/import/lacc"
+  scp -q "$LACC_SRC" "$HOST:/opt/iris/durable/import/lacc/C0FZLACC.mac"
+  ssh "$HOST" "docker exec -i $NAME iris session IRIS -U FOIA <<'EOF'
+S SC=\$SYSTEM.OBJ.ImportDir(\"/durable/import/lacc\",\"*.mac\",\"ck-d\",.ERR,0)
+W \"C0FZLACC import ok=\",SC,!
+S DUZ=1,DUZ(0)=\"@\" D DT^DICRW
+D EN^C0FZLACC,IDS^C0FZLACC,FIX2^C0FZLACC
+D ROLL^C0FZLACC
+H
+EOF"
+else
+  echo "WARN: scripts/artifacts/C0FZLACC.mac not found; skipped Lab accessioning config" >&2
 fi
 
 # --- 2. upgrade the self-healing ensure script to cover both listeners ------

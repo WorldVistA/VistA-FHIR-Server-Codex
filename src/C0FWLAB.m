@@ -160,6 +160,9 @@ UANORM(VAL,LOINC,TEST) ; $$ - Synthea UA / set-of-codes → VistA #60 answers
  S U=$$UP(X)
  I U="NEGATIVE"!(U="NEG.")!(U="NEG")!(U="ABSENT")!(U="NONE") Q "NEG"
  I U["NOT DETECTED" Q "NEG"
+ ; Synthea SNOMED finding displays, e.g. "Urine nitrite negative (finding)"
+ I U["NEGATIVE" Q "NEG"
+ I U["POSITIVE" Q "POS"
  I U["NO CAST" Q "NoneObs"
  I U="TRACE"!(U["TRACE") Q "TRACE"
  I U["CLOUD"!(U["HAZY")!(U["TURBID") Q "CLOUDY"
