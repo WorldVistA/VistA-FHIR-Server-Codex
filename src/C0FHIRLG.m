@@ -68,7 +68,94 @@ GETGRPNL(RTN,DFN,BEG,END) ; Append graph panel DiagnosticReports ONLY (VistA hos
  S BEG=+$G(BEG) S:BEG<1 BEG=1410101
  S END=+$G(END) S:END<1 END=4141015 S:END'["." END=END_".24"
  D GETGRPDR(.RTN,ROOT,IEN,DFN,BEG,END)
+ D REFFIX(.RTN,ROOT,IEN,DFN)
  Q
+ ;
+REFFIX(RTN,ROOT,IEN,DFN) ; Re-point panel result[] refs at in-bundle ^LR Observations
+ ; The graph panels reference graph Observation ids, but on VistA hosts the
+ ; bundle's lab Observations come from ^LR with LCH-* ids — unresolved refs
+ ; mean the browser cannot nest member Observations under their panel.
+ ; ISI files each panel member at +1s offsets for uniqueness, so match on
+ ; minute resolution. Primary key is the #60 test NAME (graph LOINC mapped
+ ; through the loader's labs map — many LOINCs share one #60 name, so the
+ ; reverse LOINC lookup is often ambiguous); LOINC is the fallback key.
+ ; Exact valueQuantity disambiguates same-name/same-minute collisions.
+ N GID,I,J,LNC,NEWID,NM,OID,OIDX,REF,RIEN,SEQ,TK,VAL
+ ; Index bundle Observations: ("N"|name and "L"|loinc) _ "|" _ YYYYMMDDHHMM
+ S I=0
+ F  S I=$O(RTN("entry",I)) Q:I<1  D
+ . Q:$G(RTN("entry",I,"resource","resourceType"))'="Observation"
+ . S OID=$G(RTN("entry",I,"resource","id")) Q:OID=""
+ . S TK=$$MINKEY($G(RTN("entry",I,"resource","effectiveDateTime"))) Q:TK=""
+ . S VAL=$G(RTN("entry",I,"resource","valueQuantity","value"))
+ . S NM=$$UP($G(RTN("entry",I,"resource","code","text")))
+ . I NM'="" D KEYADD(.OIDX,"N|"_NM_"|"_TK,VAL,OID)
+ . ; FOIA #60 names drift with trailing digits (GLUCOSE1); index stripped too.
+ . I NM?.E1N S NM=$$DIGSTRIP(NM) I NM'="" D KEYADD(.OIDX,"N|"_NM_"|"_TK,VAL,OID)
+ . S LNC="",J=0
+ . F  S J=$O(RTN("entry",I,"resource","code","coding",J)) Q:'J!(LNC'="")  I $G(RTN("entry",I,"resource","code","coding",J,"system"))["loinc" S LNC=$G(RTN("entry",I,"resource","code","coding",J,"code"))
+ . I LNC'="" D KEYADD(.OIDX,"L|"_LNC_"|"_TK,VAL,OID)
+ ; Rewrite unresolved DiagnosticReport result refs
+ S I=0
+ F  S I=$O(RTN("entry",I)) Q:I<1  D
+ . Q:$G(RTN("entry",I,"resource","resourceType"))'="DiagnosticReport"
+ . S SEQ=0
+ . F  S SEQ=$O(RTN("entry",I,"resource","result",SEQ)) Q:'SEQ  D
+ . . S REF=$G(RTN("entry",I,"resource","result",SEQ,"reference"))
+ . . Q:$P(REF,"/")'="Observation"
+ . . S GID=$P(REF,"/",2) Q:GID=""
+ . . Q:$D(RTN("index","Observation|"_GID))  ; already resolves in-bundle
+ . . S RIEN=+$O(@ROOT@(IEN,"SPO","urn:uuid:"_GID,"rien","")) Q:RIEN<1
+ . . N GR S GR=$NA(@ROOT@(IEN,"json","entry",RIEN,"resource"))
+ . . S LNC="",J=0
+ . . F  S J=$O(@GR@("code","coding",J)) Q:'J!(LNC'="")  I $G(@GR@("code","coding",J,"system"))["loinc" S LNC=$G(@GR@("code","coding",J,"code"))
+ . . Q:LNC=""
+ . . S TK=$$MINKEY($G(@GR@("effectiveDateTime"))) Q:TK=""
+ . . S VAL=$G(@GR@("valueQuantity","value"))
+ . . S NM="" I $T(MAP^SYNQLDM)'="" S NM=$$MAP^SYNQLDM(LNC,"labs") I +NM=-1 S NM=""
+ . . S NEWID=""
+ . . I NM'="" S NEWID=$$KEYGET(.OIDX,"N|"_$$UP(NM)_"|"_TK,VAL)
+ . . I NEWID="" S NEWID=$$KEYGET(.OIDX,"L|"_LNC_"|"_TK,VAL)
+ . . ; ISI second-bumps can cross the minute boundary on big panels.
+ . . I NEWID="" S TK=$$MINADD(TK) I TK'="" D
+ . . . I NM'="" S NEWID=$$KEYGET(.OIDX,"N|"_$$UP(NM)_"|"_TK,VAL)
+ . . . I NEWID="" S NEWID=$$KEYGET(.OIDX,"L|"_LNC_"|"_TK,VAL)
+ . . ; No ^LR match: this member never filed (LOINC-map gap / micro-type);
+ . . ; the graph Observation IS the record — emit it so the ref resolves.
+ . . I NEWID="" N C S C=0 D EMIT(.RTN,ROOT,IEN,RIEN,DFN,.C) Q
+ . . S RTN("entry",I,"resource","result",SEQ,"reference")="Observation/"_NEWID
+ Q
+ ;
+KEYADD(OIDX,KEY,VAL,OID) ; Register one Observation under a match key
+ S OIDX(KEY)=$G(OIDX(KEY))+1
+ I OIDX(KEY)=1 S OIDX(KEY,"one")=OID
+ I VAL'="",$G(OIDX(KEY,"v",VAL))="" S OIDX(KEY,"v",VAL)=OID
+ Q
+ ;
+KEYGET(OIDX,KEY,VAL) ; $$ - Observation id for key (+value tiebreak) or ""
+ I '$D(OIDX(KEY)) Q ""
+ I VAL'="",$G(OIDX(KEY,"v",VAL))'="" Q OIDX(KEY,"v",VAL)
+ I $G(OIDX(KEY))=1 Q $G(OIDX(KEY,"one"))
+ Q ""
+ ;
+DIGSTRIP(NM) ; $$ - name with trailing digits removed ("GLUCOSE1"->"GLUCOSE")
+ N X
+ S X=$G(NM)
+ F  Q:X=""  Q:$E(X,$L(X))'?1N  S X=$E(X,1,$L(X)-1)
+ Q X
+ ;
+MINADD(TK) ; $$ - YYYYMMDDHHMM key plus one minute (FileMan arithmetic)
+ N FM
+ Q:$G(TK)'?12N ""
+ S FM=($E(TK,1,4)-1700)_$E(TK,5,8)_"."_$E(TK,9,12)
+ S FM=$$FMADD^XLFDT(FM,0,0,1)
+ Q:FM<1 ""
+ Q ($E(FM,1,3)+1700)_$E(FM,4,7)_$E($P(FM,".",2)_"0000",1,4)
+ ;
+MINKEY(ISO) ; $$ - minute-resolution time key YYYYMMDDHHMM from ISO datetime
+ N D
+ S D=$TR($E($G(ISO),1,16),"-T:","")
+ Q $S(D?12N:D,1:"")
  ;
 GETGRPDR(RTN,ROOT,IEN,DFN,BEG,END) ; Append graph lab DiagnosticReports
  N RIEN

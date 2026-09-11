@@ -22,10 +22,6 @@ GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
  IF GRAPHON DO
  . DO GETGRPLAB^C0FHIRLG(.RTN,DFN,BEG,END,MAX)
  . SET CNT=$$LABOCNT(.RTN)
- ; VistA hosts (graph labs off): labs-of-record are ^LR, but panel
- ; DiagnosticReports exist only in fhir-intake — merge the panels alone
- ; (no graph Observations, so ISI-filed labs are not duplicated).
- IF 'GRAPHON,$TEXT(GETGRPNL^C0FHIRLG)'="" DO GETGRPNL^C0FHIRLG(.RTN,DFN,BEG,END)
  SET LRDFN=+$GET(^DPT(DFN,"LR"))
  IF LRDFN>0,CNT<MAX DO
  . ; Reserve 2 slots so LABMSFILL showcase rows are not crowded out at MAX.
@@ -35,6 +31,12 @@ GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
  . IF $DATA(PAN) DO ADDPANELS(.RTN,DFN,.PAN)
  . ; CMS165 cohorts are quantity-heavy; ensure MS valueString/valueCodeableConcept exist.
  . DO LABMSFILL(.RTN,DFN)
+ ; VistA hosts (graph labs off): labs-of-record are ^LR, but panel
+ ; DiagnosticReports exist only in fhir-intake — merge the panels alone
+ ; (no graph Observations, so ISI-filed labs are not duplicated). Runs AFTER
+ ; the ^LR Observations above so REFFIX can re-point panel result[] refs at
+ ; the in-bundle ^LR rows (browser nests member Observations under panels).
+ IF 'GRAPHON,$TEXT(GETGRPNL^C0FHIRLG)'="" DO GETGRPNL^C0FHIRLG(.RTN,DFN,BEG,END)
  QUIT
  ;
 LABOCNT(RTN) ; $$ - Observation entries currently in lab bundle
@@ -126,8 +128,10 @@ CHLINE(LRDFN,VPRIDT,VPRP,X0) ; Return normalized chemistry line
  NEW ACC,HDR,ID,LINE,LOINC,LOINCP,LOW,NODE,ORD,P,PERF,RANGE,TEST,VUID,HIGH
  SET P=+$$LRDN^LRPXAPIU(+$GET(X0))
  SET ID="CH;"_VPRIDT_";"_$SELECT(P>0:P,1:VPRP)
+ ; Prefer the full #60 test name; the LR display name (piece 15) truncates
+ ; (e.g. "LDL CHO"), which breaks name-keyed panel-ref matching in REFFIX.
  SET TEST=$PIECE($GET(^LAB(60,+X0,0)),"^")
- IF $PIECE(X0,"^",15)'="" SET TEST=$PIECE(X0,"^",15)
+ IF TEST="" SET TEST=$PIECE(X0,"^",15)
  SET LINE=ID_"^"_TEST_"^"_$PIECE(X0,"^",2)_"^"_$PIECE(X0,"^",3)_"^"_$PIECE(X0,"^",4)
  SET RANGE=$PIECE(X0,"^",5)
  SET (LOW,HIGH)=""
@@ -144,6 +148,9 @@ CHLINE(LRDFN,VPRIDT,VPRP,X0) ; Return normalized chemistry line
  .. SET $PIECE(LINE,"^",9)=LOINC
  .. SET VUID=$$VUID^VPRD(+LOINC,95.3)
  .. IF VUID'="" SET $PIECE(LINE,"^",10)=VUID
+ ; ISI-filed results carry no 95.3 pointer in the CH node; fall back to the
+ ; loader's LOINC<->name map so lab Observations keep a LOINC coding.
+ IF $PIECE(LINE,"^",9)="" SET $PIECE(LINE,"^",9)=$$LABLNC($PIECE($GET(^LAB(60,+X0,0)),"^"))
  SET ORD=+$PIECE(X0,"^",17)
  IF ORD>0 SET $PIECE(LINE,"^",11)=ORD
  SET PERF=+$PIECE($GET(NODE),"^",9)
@@ -154,6 +161,18 @@ CHLINE(LRDFN,VPRIDT,VPRP,X0) ; Return normalized chemistry line
  . SET ACC=$$TRIM^C0FHIR($PIECE(HDR,"^",6))
  IF ACC'="" SET $PIECE(LINE,"^",13)=ACC
  QUIT LINE
+ ;
+LABLNC(NAME) ; $$ - LOINC for a #60 test name via the SYN loader map
+ NEW LNC,X
+ IF $GET(NAME)="" QUIT ""
+ IF $TEXT(UNMAP^SYNQLDM)="" QUIT ""
+ ; UNMAP does not self-initialize ^XTMP("SYNQLD","MAPS"); MAP does.
+ IF '$DATA(^XTMP("SYNQLD","MAPS")) SET X=$$MAP^SYNQLDM("2339-0","labs")
+ SET LNC=$$UNMAP^SYNQLDM(NAME,"labs")
+ IF LNC="" QUIT ""
+ IF LNC=-1 QUIT ""
+ IF LNC'?1.7N1"-"1N QUIT ""
+ QUIT LNC
  ;
 MILINE(VPRIDT,VPRP,X0) ; Return normalized microbiology line
  NEW ACC,ID,LINE,ORD,TEST
