@@ -79,6 +79,15 @@ VistA-FHIR-Server-Codex/scripts/iris-web-setup.sh
 # 2. Public edge (Caddy + TLS + rehmp UI)
 VistA-FHIR-Server-Codex/scripts/iris-public-setup.sh
 
+# 2b. Provider-capable filing user (data change — reverts with every restore).
+#     The FOIA image has NO PROVIDER key holders and no person classes, so
+#     $$USER^C0FWENC() falls back to DUZ=.5 and everything files as
+#     POSTMASTER. Give USER,ONE (DUZ 1) the PROVIDER key + an active person
+#     class so TIU/PCE file as a real user:
+#       - file 200 PERSON CLASS multiple (200.05) entry w/ effective date
+#       - ^XUSEC("PROVIDER",1)="" cross-reference
+#     Verify: file a note, confirm ^TIU(8925,DA,12) piece 2 = 1 (not .5).
+
 # 3. Load ONE patient first; check response meta has no load.missingRoutines,
 #    then read its load log — Procedure / Medication / DocumentReference /
 #    CarePlan domains should now file. First real runtime exercise of
