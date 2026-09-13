@@ -96,9 +96,29 @@ File-60 config is done (C0FZPAN: BMP 5091, CMP 5092, COAG 5093, DIFF 5094
 13. **Parity (approved)**: make graph-ON lanes materialize panel members —
     run the REFFIX member-emit pass in the graph-ON path too. Expected:
     devfhir/rpmsfhir demo bundles grow ~600 → ~4,600 resources.
-14. **Slice-timing experiment**: measure per-slice latency, bytes, and
-    Content-Encoding across irisfhir/devfhir/rpmsfhir walking the full
-    bundle. Decide whether IRIS compression is needed for long downloads.
+14. **Slice-timing experiment — baseline measured 2026-09-13** (full C0RG
+    continuation walk, `Accept-Encoding: gzip`, two passes each, warm
+    numbers shown; script rerunnable as `scripts/slice-timing-walk.py <base> <dfn>`):
+
+    | Lane | dfn | Slices | Entries | Total | Mean/slice | p50 | Max | Wire→plain |
+    |---|---|---|---|---|---|---|---|---|
+    | irisfhir | 2 | 92 | 4,598 | 39.2s | **426ms** | 383ms | 3.3s | 439KiB→5.4MiB (gzip 0.08) |
+    | devfhir | 101122 | 13 | 634 | 42.2s | **3,249ms** | 1,906ms | 20.3s | 132KiB→1.3MiB (gzip 0.10) |
+
+    Findings:
+    - **IRIS slices are ~5–8x faster than the YottaDB lane**, while
+      serving 7x the resources. Per-slice p50: 383ms (iris) vs 1,906ms
+      (devfhir).
+    - **Both lanes already gzip on the wire** (front proxy): ~10x
+      compression. IRIS-native compression is NOT needed for downloads —
+      the wire problem is already solved; total transfer for iris's full
+      4,598-resource walk is only 439KiB.
+    - **devfhir's builder slice costs ~18–20s on every walk** (slice 1 =
+      `patient.fhir.bundle`; slices 2+ are 1–2.3s). The C0RG gateway path
+      rebuilds rather than hitting the C0FWCAC cache — worth a look when
+      touching the gateway (fresh finding, not yet chased).
+    - Re-measure after item 13 (parity) makes devfhir bundles comparably
+      big; also worth timing rpmsfhir for the third data point.
 
 ## Verification per phase (evidence gate)
 
