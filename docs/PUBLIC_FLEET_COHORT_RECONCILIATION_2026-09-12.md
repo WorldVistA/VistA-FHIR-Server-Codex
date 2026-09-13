@@ -170,6 +170,54 @@ check on devfhir:
 `mumps -run %XCMD 'W $G(^C0FHIR("EXPERIMENT","GRAPHLABS"))," ",$$ON^C0FHIRLG()'`
 → `1 1`.
 
+## Lab panels: file-60 configuration is the CPRS/rehmp divergence (2026-09-13)
+
+Why iris CPRS shows NO lab panels while rehmp shows them: **panels reach
+CPRS only through the lab package**, and that path needs file 60 configured.
+
+The loader's panel path (`importPanels^SYNFPAN` → `$$LAB^ISIIMP12`, the ISI
+DataLoader panel filer): each source DiagnosticReport's LOINC maps to a
+VistA panel NAME (`vistapanel` map in SYNQLDM/SYNFPAN — 9 panels), then
+`$$PMEM^ISIIMPU7` checks each member against the panel's file-60 subtest
+list (`^LAB(60,"B",name)` + lab-package expansion). Members not in the
+file-60 panel are dropped to the individual filer; if the panel entry
+doesn't exist, the whole panel files as loose tests. CPRS groups labs by
+accession, so only ISIIMP12-filed panels display grouped. rehmp shows
+panels anyway because they ride through from the source graph (REFFIX).
+
+File-60 audit (`^LAB(60,"B",…)` + node-2 member counts):
+
+| Panel (map name) | devfhir (VEHU) | irisfhir (FOIA) |
+|---|---|---|
+| BASIC METABOLIC PANEL | ien 5109, 8 members | **missing** |
+| CMP | ien 5143, 12 members | **missing** |
+| COAG PROFILE | ien 377, 2 members | **missing** |
+| DIFFERENTIAL COUNT | ien 1269, 35 members | **missing** |
+| URINALYSIS | 271 / 31 | 271 / 36 |
+| LIPID PROFILE | 1176 / 4 | 1176 / 3 |
+| CBC | 71 / 10 | 71 / 9 |
+| IRON GROUP | 325 / 4 | 325 / 8 |
+| BLOOD GASES | 279 / 16 | 279 / 16 |
+
+Note devfhir's BMP/CMP IENs (5109/5143) are high = site-added on VEHU —
+someone already did this configuration there; that's the recipe.
+
+Member tests on FOIA: all 8 BMP members exist (GLUCOSE 175, UREA NITROGEN
+174, SODIUM 176, POTASSIUM 177, CHLORIDE 178, CO2 179, CREATININE 173,
+CALCIUM 180) and the DIFF members exist (SEGS 11, BANDS 12, MONOS 14…), so
+those two panels just need file-60 panel entries. CMP is missing 4 member
+names (TOT PROT, TOT. BIL, ALT, ALK PHOS — FOIA likely names them
+differently) and COAG is missing PROTIME — those need name mapping or new
+tests first.
+
+Fix path for iris CPRS panels: create the 4 missing file-60 panel entries
+on FOIA (BMP + DIFF immediately; CMP/COAG after resolving member names),
+then re-run the panel replay — Sam's ISIIMP12 path will group them into
+panel accessions and CPRS will show panels, matching rehmp.
+
+Rerunnable: PANELCHK script (file-60 name + node-2 member walk) via
+`mumps -run PANELCHK` on fhirdev22 / `iris session IRIS -U FOIA` on iris.
+
 ## Rerunnable evidence
 
 - Guard rehearsal: `scripts/ci-roundtrip-local.sh --keep`, install loader
@@ -193,3 +241,7 @@ check on devfhir:
   cache (replay path never invalidates; devfhir refresh=1 → 317→634),
   per-domain MAX caps, and graph-labs mode (graph-OFF iris runs the REFFIX
   member-emit fallback uncapped; graph-ON devfhir/rpmsfhir cap at MAX).
+- 2026-09-13 (~01:15): iris "no panels in CPRS" explained — FOIA file 60
+  is missing 4 of the 9 panels the SYNFPAN→ISIIMP12 path needs (BMP, CMP,
+  COAG PROFILE, DIFFERENTIAL COUNT); VEHU has all 9 (BMP/CMP site-added).
+  BMP + DIFF members all exist on FOIA — panel entries alone unlock them.
