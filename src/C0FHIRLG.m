@@ -53,6 +53,15 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  . D EMIT(.RTN,ROOT,IEN,RIEN,DFN,.CNT)
  ; Lab panel DiagnosticReports (category LAB) with result[] links
  D GETGRPDR(.RTN,ROOT,IEN,DFN,BEG,END)
+ ; Parity with the graph-OFF path (GETGRPNL): materialize panel members.
+ ; The MAX cap above means most panel result[] refs point at graph
+ ; Observations that never made the bundle — the browser cannot nest them
+ ; and lane bundles diverge (iris 4598 vs devfhir 634, 2026-09-13 recon).
+ ; REFFIX repoints refs that match an in-bundle Observation and EMITs the
+ ; graph Observation for the rest, so every panel member resolves.
+ ; Decision 2026-09-13: big bundles are wanted; wire gzip (~10x) makes the
+ ; transfer cheap (full 4598-resource walk = 439KiB).
+ D REFFIX(.RTN,ROOT,IEN,DFN)
  Q
  ;
 GETGRPNL(RTN,DFN,BEG,END) ; Append graph panel DiagnosticReports ONLY (VistA hosts)

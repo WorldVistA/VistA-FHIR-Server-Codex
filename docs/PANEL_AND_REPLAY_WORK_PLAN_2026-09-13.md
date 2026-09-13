@@ -93,9 +93,22 @@ File-60 config is done (C0FZPAN: BMP 5091, CMP 5092, COAG 5093, DIFF 5094
 
 ## Phase 4 — Read layer
 
-13. **Parity (approved)**: make graph-ON lanes materialize panel members —
-    run the REFFIX member-emit pass in the graph-ON path too. Expected:
-    devfhir/rpmsfhir demo bundles grow ~600 → ~4,600 resources.
+13. **Parity — DONE 2026-09-13.** `GETGRPLAB^C0FHIRLG` (graph-ON path) now
+    runs `REFFIX` after `GETGRPDR`, mirroring the graph-OFF path: panel
+    result[] refs are repointed to in-bundle Observations or the graph
+    Observation is emitted, so every member resolves. Verified:
+    - devfhir HARBER290 (101122): demo bundle 634 → **4,525** entries
+      (direct build: 5,336 / 4,181 Observations).
+    - rpmsfhir dfn 33 (290 panels): → **1,635** entries, members nested.
+    - iris unaffected (graph OFF; already materialized).
+
+    **Enabling parity exposed a gateway scaling wall** (fixed in rehmp
+    `d79e4bc`): C0RGFHB/C0RGBNC copied or JSON-encoded the FULL bundle
+    several times per request — slice-1 on devfhir exceeded the 60s proxy
+    limit. Now: skip the full-bundle encode when entry count > 10x
+    CHUNKSIZE, merge to ^TMP only when returning whole, build FITCOUNT
+    probes as header+first-N, and copy only the header in CHUNK. Deployed
+    to fhirdev22, iris, rpmsfhir, vehu10, rpms-rebuild-candidate.
 14. **Slice-timing experiment — baseline measured 2026-09-13** (full C0RG
     continuation walk, `Accept-Encoding: gzip`, two passes each, warm
     numbers shown; script rerunnable as `scripts/slice-timing-walk.py <base> <dfn>`):
@@ -119,6 +132,24 @@ File-60 config is done (C0FZPAN: BMP 5091, CMP 5092, COAG 5093, DIFF 5094
       touching the gateway (fresh finding, not yet chased).
     - Re-measure after item 13 (parity) makes devfhir bundles comparably
       big; also worth timing rpmsfhir for the third data point.
+
+    **Post-parity re-measurement (2026-09-13 PM, gateway fixes applied,
+    equal ~4.5k-entry bundles on iris/devfhir — true apples-to-apples):**
+
+    | Lane | dfn | Slices | Entries | Total | Mean | p50 | Max |
+    |---|---|---|---|---|---|---|---|
+    | irisfhir | 2 | 92 | 4,598 | 19.7s | 214ms | **193ms** | 1.2s |
+    | devfhir | 101122 | 91 | 4,525 | 137.4s | 1,510ms | **1,384ms** | 5.5s |
+    | rpmsfhir | 33 | 33 | 1,635 | 24.9s | 755ms | **471ms** | 9.3s (cold build) |
+
+    - **IRIS processes slices ~7x faster than devfhir at identical bundle
+      size and slice count.** The gateway fixes also halved iris's own
+      slice time (426 → 214ms mean).
+    - Full HARBER290 demo load: iris ~20s, devfhir ~2.3min. devfhir's
+      per-slice floor (~1.4s) is host/M-platform, not payload: rpmsfhir
+      (also YottaDB, different host) runs 471ms/slice.
+    - Compression: unchanged conclusion — the proxy gzips ~12x on all
+      lanes; IRIS-native compression unnecessary.
 
 ## Verification per phase (evidence gate)
 
