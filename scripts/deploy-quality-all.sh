@@ -78,16 +78,16 @@ deploy_one() {
       ;;
     fhirprod|fhir)
       FHIRDEV_SSH=root@fhir.vistaplex.org \
-      FHIRDEV_CONTAINER=fhir \
-      FHIRDEV_ROUTINE_DIR=/home/osehra/p \
-      FHIRDEV_WWW=/home/osehra/www \
-      VEHU_ENV=/home/osehra/etc/env \
-      FHIRDEV_MUMPS=/home/osehra/lib/gtm/mumps \
+      FHIRDEV_CONTAINER=wvehr \
+      FHIRDEV_ROUTINE_DIR=/home/wv/p \
+      FHIRDEV_WWW=/home/wv/www/filesystem \
+      VEHU_ENV=/home/wv/etc/env \
+      FHIRDEV_MUMPS=/home/wv/lib/gtm/mumps \
       FHIRDEV_HTTP_BASE=https://fhir.vistaplex.org \
-      FHIRDEV_M_USER=osehra \
+      FHIRDEV_M_USER=wv \
       "$ROOT/scripts/fhirdev-codex-sync.sh"
       "$C0X_ROOT/scripts/deploy-c0x.sh" fhirprod || true
-      run_seedcrit_remote root@fhir.vistaplex.org fhir osehra /home/osehra/p /home/osehra/lib/gtm/mumps /home/osehra/etc/env || true
+      run_seedcrit_remote root@fhir.vistaplex.org wvehr wv /home/wv/p /home/wv/lib/gtm/mumps /home/wv/etc/env || true
       maybe_reindex https://fhir.vistaplex.org
       ;;
     vehu10)
@@ -155,7 +155,7 @@ smoke_one() {
   fi
   case "$t" in
     fhirdev)  base=https://devfhir.vistaplex.org; dfn=101076 ;;
-    fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=1643 ;;  # fhirprod cohort = DFNs 1643-1661
+    fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=1 ;;  # WVEHR 3.0 ZZ TEST (old Synthea 1643-1661 retired with container fhir)
     vehu10)   base=http://127.0.0.1:9085; dfn=101076 ;;
     rpms-candidate|rpms-rebuild-candidate|rpms) base=http://127.0.0.1:9088; dfn=4 ;;
     rpmsfhir|rpms-fhir) base=https://rpmsfhir.vistaplex.org; dfn=8 ;;
