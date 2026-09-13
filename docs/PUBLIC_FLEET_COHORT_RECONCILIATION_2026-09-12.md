@@ -218,6 +218,57 @@ panel accessions and CPRS will show panels, matching rehmp.
 Rerunnable: PANELCHK script (file-60 name + node-2 member walk) via
 `mumps -run PANELCHK` on fhirdev22 / `iris session IRIS -U FOIA` on iris.
 
+### Panel enablement executed on iris (2026-09-13, ~01:15–01:40)
+
+What was done (all additive; every change scripted/committed):
+
+1. **File 60 configured** — `scripts/artifacts/C0FZPAN.mac` (`EN` + `CS`)
+   created BASIC METABOLIC PANEL (5091, 8 members), CMP (5092, all 12
+   members via FOIA name alternates TOTAL PROTEIN / BILIRUBIN,TOTAL / SGPT
+   / ALKALINE PHOSPHATASE), COAG PROFILE (5093), DIFFERENTIAL COUNT (5094,
+   26 of 27 — LYMPHS % absent from FOIA), plus the 60.03 collection-sample
+   rows ISIIMP12 requires (SERUM=4 for BMP/CMP, PLASMA=6 + BLOOD=20 for
+   COAG, BLOOD for DIFF). File-60 creation needs identifier fields 17
+   (HIGHEST URGENCY ALLOWED) and 400 in the FDA.
+2. **Graph access fixed for SYN\* on IRIS** — `setroot^SYNWD` chose the
+   SYNGRAPH backend (empty on iris) because the `%wd` ROUTINE cannot be
+   imported on IRIS ("%wd.MAC is mapped from a database that you do not
+   have write permission on" — IRIS reserves non-%Z percent routines).
+   Added the `WDIRECT` direct-`^%wd` fallback to SYNWD (mirror of
+   C0FWGRT): `$$setroot^SYNWD("fhir-intake")` → `^%wd(17.040801,3)`.
+3. **PMEM crash fixed** — `LIEN^ISIIMPU7` returns "" (not 0) for names
+   absent from file 60; `EXP("")` was a `<SUBSCRIPT>` crash. Guarded in
+   PMEM (VistA-DataLoader repo).
+4. **Dry-run clean**: all 316 lab DiagnosticReports for DFN 2 evaluate;
+   BMP maps 8/8 members through PMEM. Residual member-drop classes:
+   CMP/UA/CBC members whose SYNQLDM `labs` map yields VEHU names not in
+   FOIA file 60 (TOT PROT, NITRITE URINE, RDW-CV, MPV…) — needs per-lane
+   map aliases; LOINC gaps 34533-0 (urine odor), 32167-9 (clarity),
+   10834-0 (globulin), 32207-3 (PDW).
+5. **Live filing REJECTED for already-loaded patients** — proven unsafe:
+   ENTERED_BY needs a DUZ holding LRLAB+LRVERIFY keys (FOIA user 95
+   PROVIDER,UNKNOWN SYNTHEA); with that, one UA panel filed a TRUE panel
+   accession row (16 member values in one CH row at 3160812.081858 — the
+   exact shape CPRS groups) but its values duplicated the individually
+   filed rows: `LABDUP` only checks the panel's exact RESULT_DT, and the
+   original individual filings sit at +1s offsets it never inspects. Test
+   row killed; `^LR` CH count restored to 3522 (verified). Two more
+   pre-existing defects surfaced: the SYNFPAN entry loop dies after the
+   first ISIIMP12 call (lab chain KILLs an un-namespaced loop local — the
+   Day-4 kill-bug class again), and lab ROLLOVER must be run foreground on
+   IRIS before accessioning (`ROLL^C0FZLACC`).
+
+Where this lands:
+
+- **New patient loads can have CPRS panels on iris now** (config is in),
+  once the load path calls the panel filer: legacy `IMPORTFHIRDOMS` does;
+  the C0FW writeback path (which loaded iris) does not — it needs a panel
+  bridge, or loads must route panels through SYNFPAN first.
+- **Already-loaded patients need a migration** (delete individual CH rows,
+  refile as panel accessions) — replay alone duplicates. Prereqs before
+  writing it: namespace the SYNFPAN loop locals, per-lane labs-map
+  aliases, foreground rollover.
+
 ## Rerunnable evidence
 
 - Guard rehearsal: `scripts/ci-roundtrip-local.sh --keep`, install loader
@@ -245,3 +296,8 @@ Rerunnable: PANELCHK script (file-60 name + node-2 member walk) via
   is missing 4 of the 9 panels the SYNFPAN→ISIIMP12 path needs (BMP, CMP,
   COAG PROFILE, DIFFERENTIAL COUNT); VEHU has all 9 (BMP/CMP site-added).
   BMP + DIFF members all exist on FOIA — panel entries alone unlock them.
+- 2026-09-13 (~01:40): Panels created on FOIA (C0FZPAN), SYNWD given the
+  WDIRECT ^%wd fallback for IRIS, PMEM crash guarded; dry-run 316/316
+  clean. Live filing proved a UA panel files as a true grouped accession
+  row but duplicates already-loaded members (LABDUP misses +1s offsets) —
+  test row removed, counts restored; migration design documented.

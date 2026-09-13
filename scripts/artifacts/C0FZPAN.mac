@@ -1,0 +1,85 @@
+ROUTINE C0FZPAN [Type=MAC]
+C0FZPAN ; temp - create missing file-60 lab panels on FOIA ; 2026-09-13
+ ; Creates the file #60 panel entries the SYNFPAN->ISIIMP12 panel filer
+ ; needs (vistapanel map) but FOIA lacks: BASIC METABOLIC PANEL, CMP,
+ ; COAG PROFILE, DIFFERENTIAL COUNT. VEHU reference structure dumped from
+ ; fhirdev22 2026-09-13 (BMP ien 5109, DIFF ien 1269). Members resolved by
+ ; name on FOIA with alternates (VEHU name|FOIA name); missing skipped.
+ ; Accession areas mirror working FOIA tests under INSTITUTION 1
+ ; (GLUCOSE -> area 11 chem, CBC -> area 10 hematology; C0FZLACC vintage).
+ ; Additive only: existing entries are never modified.
+ Q
+EN ; create all four panels
+ D P1("BASIC METABOLIC PANEL","BMP","B","CH",11,"GLUCOSE^UREA NITROGEN^SODIUM^POTASSIUM^CHLORIDE^CO2^CREATININE^CALCIUM")
+ D P1("CMP","CMP","B","CH",11,"GLUCOSE^UREA NITROGEN^CREATININE^CALCIUM^TOT PROT|TOTAL PROTEIN^ALBUMIN^TOT. BIL|BILIRUBIN,TOTAL^SODIUM^POTASSIUM^CHLORIDE^ALT|SGPT^ALK PHOS|ALKALINE PHOSPHATASE")
+ D P1("COAG PROFILE","COAG","B","CH",11,"PROTIME|PRO-TIME|PROTHROMBIN TIME|PT^PTT")
+ D P1("DIFFERENTIAL COUNT","DIFF","O","CH",10,"SEGS^BANDS^LYMPHS %^ATYPICAL LYMPHOCYTES^MONOS^EOSINO^BASO^META^MYELO^PROS^BLASTS^NUCLEATED RBC/100WBC^PLT (ESTM)^NORMOCYTIC^MICROCYTOSIS^MACROCYTOSIS^ANISOCYTOSIS^POIKILOCYTOSIS^OVALOCYTES^TEARDROPS^ACANTHOCYTES^NORMOCHROMIC^POLYCHROMASIA^HYPOCHROMIA^BASOPHILIC STIPPLING^TARGET CELLS^TOXIC GRANULATION")
+ Q
+P1(NAME,PRT,TYP,SUB,AA,MEMS) ; create one panel with members + accession area
+ N PIEN,FDA,IENA,DIERR,I,ALT,J,MIEN,MNM,ADD,SKIP,GOT,S
+ S PIEN=+$O(^LAB(60,"B",NAME,0))
+ I PIEN W NAME," exists (ien ",PIEN,"), leaving node 0 alone",!
+ I 'PIEN D  I 'PIEN W NAME,": CREATE FAILED",! Q
+ . K FDA,IENA,DIERR
+ . S FDA(60,"+1,",.01)=NAME
+ . S FDA(60,"+1,",3)=TYP
+ . S FDA(60,"+1,",4)=SUB
+ . S FDA(60,"+1,",17)=9
+ . S FDA(60,"+1,",51)=PRT
+ . S FDA(60,"+1,",400)=""
+ . D UPDATE^DIE("",$NA(FDA),$NA(IENA))
+ . I $D(DIERR) W NAME," ERR: ",$G(^TMP("DIERR",$J,1,"TEXT",1)),! K ^TMP("DIERR",$J) Q
+ . S PIEN=+$G(IENA(1))
+ . W NAME," created ien ",PIEN,!
+ ; members (skip ones already present)
+ S (ADD,SKIP)=0
+ F I=1:1:$L(MEMS,"^") D
+ . S ALT=$P(MEMS,"^",I) Q:ALT=""
+ . S MIEN=0
+ . F J=1:1:$L(ALT,"|") S MNM=$P(ALT,"|",J) I MNM'="" S MIEN=+$O(^LAB(60,"B",MNM,0)) Q:MIEN
+ . I 'MIEN S SKIP=SKIP+1 W "  member not found: ",ALT,! Q
+ . S (GOT,S)=0 F  S S=$O(^LAB(60,PIEN,2,S)) Q:'S  I +$G(^LAB(60,PIEN,2,S,0))=MIEN S GOT=1
+ . I GOT Q
+ . K FDA,IENA,DIERR
+ . S FDA(60.02,"+1,"_PIEN_",",.01)=MIEN
+ . D UPDATE^DIE("",$NA(FDA),$NA(IENA))
+ . I $D(DIERR) W "  member ERR ",MNM,": ",$G(^TMP("DIERR",$J,1,"TEXT",1)),! K ^TMP("DIERR",$J) Q
+ . S ADD=ADD+1
+ ; accession area under institution 1 (see C0FZLACC)
+ S (GOT,S)=0 F  S S=$O(^LAB(60,PIEN,8,S)) Q:'S  I +$P($G(^LAB(60,PIEN,8,S,0)),"^")=1 S GOT=1
+ I 'GOT D
+ . K FDA,IENA,DIERR
+ . S FDA(60.11,"+1,"_PIEN_",",.01)=1
+ . S FDA(60.11,"+1,"_PIEN_",",1)=AA
+ . D UPDATE^DIE("",$NA(FDA),$NA(IENA))
+ . I $D(DIERR) W "  acc ERR: ",$G(^TMP("DIERR",$J,1,"TEXT",1)),! K ^TMP("DIERR",$J) Q
+ W NAME,": members added=",ADD," skipped=",SKIP," accArea=",AA,!
+ Q
+CS ; add collection-sample rows (subfile 60.03) the ISI panel filer requires
+ ; ISIIMP12 rejects a panel whose file-60 entry lacks a 60.03 row matching
+ ; the COLLECTION_SAMPLE SYNFPAN passes (SERUM/BLOOD/PLASMA per 95.3 spec).
+ ; FOIA file 62: SERUM=4, BLOOD=20, URINE=15, PLASMA=6.
+ D CS1("BASIC METABOLIC PANEL",4)
+ D CS1("CMP",4)
+ D CS1("COAG PROFILE",6)
+ D CS1("COAG PROFILE",20)
+ D CS1("DIFFERENTIAL COUNT",20)
+ Q
+CS1(NAME,I62) ; add one collection-sample row if absent
+ N PIEN,S,GOT,FDA,IENA,DIERR
+ S PIEN=+$O(^LAB(60,"B",NAME,0)) I 'PIEN W NAME," missing",! Q
+ S (GOT,S)=0 F  S S=$O(^LAB(60,PIEN,3,S)) Q:'S  I +$G(^LAB(60,PIEN,3,S,0))=I62 S GOT=1
+ I GOT Q
+ K FDA,IENA,DIERR
+ S FDA(60.03,"+1,"_PIEN_",",.01)=I62
+ D UPDATE^DIE("",$NA(FDA),$NA(IENA))
+ I $D(DIERR) W "CS ERR ",NAME,": ",$G(^TMP("DIERR",$J,1,"TEXT",1)),! K ^TMP("DIERR",$J) Q
+ W "CS added ",NAME," sample ",I62,!
+ Q
+CHK ; verify PMEM sees the new panels
+ W "BMP/GLUCOSE: ",$$PMEM^ISIIMPU7("BASIC METABOLIC PANEL","GLUCOSE"),!
+ W "BMP/CALCIUM: ",$$PMEM^ISIIMPU7("BASIC METABOLIC PANEL","CALCIUM"),!
+ W "CMP/ALBUMIN: ",$$PMEM^ISIIMPU7("CMP","ALBUMIN"),!
+ W "DIFF/SEGS: ",$$PMEM^ISIIMPU7("DIFFERENTIAL COUNT","SEGS"),!
+ W "COAG/PTT: ",$$PMEM^ISIIMPU7("COAG PROFILE","PTT"),!
+ Q
