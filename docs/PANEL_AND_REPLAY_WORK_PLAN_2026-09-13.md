@@ -51,19 +51,37 @@ Work package assembled from the findings in
 
 ## Phase 2 — Finish devfhir HARBER290
 
-4b. **Mark C0FW-written resources as loaded in the graph row.** Found in
-   Phase-1 rehearsal (see above): at least one write path appends the
-   resource to `@root@(ien,"json","entry")` without setting a
-   `loadStatus` marker, so a later replay duplicates the visit. Find the
-   write path (CFH-WRITE-001 stage F writes two encounters; the second
-   is unmarked) and set the marker at append time.
+4b. **Mark simulation-staged writes — DONE 2026-09-13** (Codex `c4e466d`,
+   deployed fleet-wide). Root cause of the Phase-1 dup: the unmarked
+   entries were **simulation writes** (`load=0`) — C0FWWRT/C0FWUPD append
+   entries with no per-entry marker, so replay filed staged simulation
+   data. New `STAGED^C0FWSTAT` marks each staged entry `skipped` (honored
+   via `C0FWLD`). The C0FWUPD no-DFN orphan path stays unmarked on
+   purpose — replay-with-dfn is the duplicate-SSN recovery flow.
+   Proof (fresh ci-roundtrip): 13 harness assertions green; all
+   harness-written entries guard=1; replay over loaded+simulation writes
+   = zero bundle drift (494=494).
 4. Visit-linkage bridge for Procedures (0/737) + CarePlans (0/10):
    `-1^Visit not found` — legacy loaders resolve visits via lowercase
    encounter markers; C0FW stored `visitIen` per entry. Map across.
-5. Lab replay with a keyed user: ENTERED_BY requires a DUZ holding
-   **LRLAB + LRVERIFY** (`^XUSEC`) — proven on iris (user 95
-   PROVIDER,UNKNOWN SYNTHEA). Find devfhir's equivalent, replay labs
-   (0/1669 + 316 panels), then triage null-value and LOINC→#60 residue.
+5. Lab replay with a keyed user — **panels attempted 2026-09-13, halted
+   pending item-10 migration.** devfhir keyed DUZ found: 520824660
+   (PROVIDER,UNKNOWN SYNTHEA; PMEM guard `ISIIMPU7` deployed first).
+   `wsIntakePanels` on HARBER290 (ien 1399, DUZ 520824660): all 316
+   entries processed (the Phase-1 loop fix holds at scale), 145 loaded /
+   171 errors in ~25s. Key discovery: **the "labs 0/1669" tally was a
+   marker artifact — devfhir's early-vintage load DID file individual
+   labs** (2,291 CH rows under LRDFN 820 predating this work). So:
+   - 170 rejects = `Duplicate Lab Test GLUCOSE...` — LABDUP correctly
+     blocking BMP/CMP panels whose members already exist at the exact
+     RESULT_DT (+1 APPEARANCE validation reject).
+   - The 145 loaded panels (113 UA, 16 CBC, 12 BMP, 4 lipid) created
+     **~476 twin rows** where pre-existing individual filings sat at +1s
+     offsets LABDUP cannot see — same failure mode as iris DFN 2.
+   **Conclusion: no further panel/lab replays on pre-loaded patients
+   until the item-10 migration tool exists** (delete individual CH rows,
+   refile grouped; rehearse on CI first). HARBER290/devfhir is now a
+   second migration rehearsal candidate alongside iris DFN 2.
 6. Diagnose conditions (31/160) + immunizations (3/13) blank importer
    statuses (DEBUG-traced replay).
 7. Decide whether to replay the rest of the devfhir cohort.
