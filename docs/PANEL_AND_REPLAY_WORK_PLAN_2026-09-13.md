@@ -14,23 +14,49 @@ Work package assembled from the findings in
   YottaDB lanes (which have gzip configured) to decide whether IRIS needs
   its compression enabled for long downloads.
 
-## Phase 1 — Loader correctness (in progress)
+## Phase 1 — Loader correctness (DONE 2026-09-13, loader commit `5c29c2f`)
 
-1. **Namespace the SYNFPAN loop locals.** The panel entry loop dies after
-   the first `LAB^ISIIMP12` filing (live iris run: 2 of 316 entries
-   processed) — the lab chain KILLs an un-namespaced local, same class as
-   the SYNFMED2 `args("load")` kill (fixed with SYNMLOAD) and the Sept
-   Day-4 `LAST` kill. Identify the exact victim on a CI container, then
-   namespace the loop state.
-2. **Invalidate the bundle cache on replay** — `replayIntakeDomains^SYNFHIR`
-   (and the panel/lab replay entries) should call `INV^C0FWCAC` so replays
-   are immediately visible in rehmp/CPRS demos. devfhir served a
-   pre-replay cached bundle (0 meds) until a manual `refresh=1`.
-3. **Rehearse on a disposable `ci-roundtrip` container**: replay twice,
-   counts hold, cache node cleared, panel loop reaches all entries.
+1. **Namespace the SYNFPAN loop locals — done.** Rather than hunt the one
+   victim, the whole loop state is now SYN-namespaced (`SYNTROOT`,
+   `SYNEVAL`, `SYNJSON`, `SYNARGS`, `SYNJLOG`, `SYNSUCC`, ...; formal
+   params renamed too — positional, so callers unaffected; leaking
+   `DHPLOC` NEWed). CI proof: with a keyed DUZ the loop survived **11
+   consecutive successful `LAB^ISIIMP12` filings and processed all 12
+   lab-category DiagnosticReports** (pre-fix behavior: died after the
+   first filing — iris live run stopped at 2 of 316).
+2. **Invalidate the bundle cache on replay — done.** `INVCACHE` in
+   `replayIntakeDomains^SYNFHIR` calls `INV^C0FWCAC` (guarded for legacy
+   sites). CI proof: cache node `$D` 10 → 0 after each replay.
+3. **Rehearsed on a disposable `ci-roundtrip` container — done**, plus two
+   findings fixed/filed along the way:
+   - **New bug found + fixed: panel reruns were never idempotent.** The
+     loop top did `k @jlog`, killing the whole per-entry node *including*
+     the `loadstatus="loaded"` marker before the skip check — run 2
+     re-accessioned all 11 panels. Now only `log`+`vars` are cleared;
+     run 3: `loaded=0`, 11 "already loaded" skips, no new accessions.
+   - **C0FW writeback bookkeeping gap (→ Phase 2 item 4b).** The write
+     harness's resources are appended to the graph row, but at least one
+     write path leaves **no load marker** (entry zx=567: Encounter with
+     no marker under any domain family; zx=563 was marked and correctly
+     skipped by `C0FWLD`). Replay therefore filed it once more: +1
+     Encounter (dup visit) whose CPT/provider explain +1 Procedure and
+     +1 Practitioner. All 562 Synthea entries held with zero drift, and
+     the second replay was fully idempotent (282=282 resources).
+
+   Deployed 2026-09-13: fhirdev22 (`SYNFHIR`,`SYNFPAN` docker cp+zlink)
+   and iris FOIA (`SYNFHIR`,`SYNFPAN` **plus the whole `C0FWLD` guard
+   family** `SYNFHIRU/SYNFLAB/SYNFVIT/SYNFIMM/SYNFPRB/SYNFALG/SYNFAPT/
+   SYNFPROC/SYNFENC/SYNFMED2/SYNFCP`, which iris had never received —
+   all `$SYSTEM.OBJ.Load` sc=1).
 
 ## Phase 2 — Finish devfhir HARBER290
 
+4b. **Mark C0FW-written resources as loaded in the graph row.** Found in
+   Phase-1 rehearsal (see above): at least one write path appends the
+   resource to `@root@(ien,"json","entry")` without setting a
+   `loadStatus` marker, so a later replay duplicates the visit. Find the
+   write path (CFH-WRITE-001 stage F writes two encounters; the second
+   is unmarked) and set the marker at append time.
 4. Visit-linkage bridge for Procedures (0/737) + CarePlans (0/10):
    `-1^Visit not found` — legacy loaders resolve visits via lowercase
    encounter markers; C0FW stored `visitIen` per entry. Map across.
