@@ -75,6 +75,8 @@ WRITE(RETURN,DFN,ICN,BROOT,LOAD,RETG,REQID) ; $$ - file a clinical write bundle
  . S RETURN("loadStatus")="skipped"
  . S RETURN("simulation")=1
  . S RETURN("load","message")="simulation: entries staged in the intake graph, nothing filed"
+ . ; mark staged entries so a later replay does not file simulation data
+ . D STAGED^C0FWSTAT(ROOT,IEN,LASTRIEN+1,LASTRIEN+CNT,.RETURN)
  I +$G(RETG) D TXLOAD^C0FWIDX(.RETURN,IEN,LASTRIEN+1,LASTRIEN+CNT)
  I $T(INV^C0FWCAC)'="" D INV^C0FWCAC(IEN,ROOT)
  K C0FWBUNDLE

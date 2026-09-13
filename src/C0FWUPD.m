@@ -74,7 +74,10 @@ wsUpdatePatient(ARGS,BODY,RESULT) ; POST /updatepatient
  I ICN'="" S RETURN("icn")=ICN
  I RDFN'="" D
  . I $G(ARGS("load"))="" S ARGS("load")=1
- . I +$G(ARGS("load"))=0 S RETURN("loadStatus")="skipped" Q
+ . ; explicit load=0: mark staged entries so replay does not file them
+ . ; (the no-DFN branch below stays unmarked - replay-with-dfn is the
+ . ; documented duplicate-SSN recovery and must still file)
+ . I +$G(ARGS("load"))=0 S RETURN("loadStatus")="skipped" D STAGED^C0FWSTAT(ROOT,IEN,LASTRIEN+1,LASTRIEN+CNT,.RETURN) Q
  . D LOAD^C0FWDOM(.RETURN,IEN,.ARGS)
  E  D
  . S RETURN("loadStatus")="skipped"
