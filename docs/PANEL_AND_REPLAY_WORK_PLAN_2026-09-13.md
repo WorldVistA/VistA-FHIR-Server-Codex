@@ -169,6 +169,51 @@ File-60 config is done (C0FZPAN: BMP 5091, CMP 5092, COAG 5093, DIFF 5094
     - Compression: unchanged conclusion — the proxy gzips ~12x on all
       lanes; IRIS-native compression unnecessary.
 
+15. **Slice-latency root cause + fix — DONE 2026-09-13 evening** (rehmp
+    `4804096`, deployed fleet-wide).
+
+    **Root cause chase, in order of elimination:**
+    - Hardware: identical 2-vCPU/4GB DO droplets on devfhir AND irisfhir
+      — not hardware.
+    - Per-request floor: a no-op `/rehmp` op from inside the container is
+      **35ms** — not the web server, TLS, or process spawn.
+    - Gateway logic: chunk merge 1ms, auth 3ms — not the continue path.
+    - **`ENCODE^XLFJSON` = the entire slice cost (~7ms/entry).** Within
+      it, not the escape loop (4µs/call) but **CONCAT**: it appends every
+      ~35-byte token to a growing 4KB line through indirection, re-copying
+      the line each time (37µs/token, ~50x write amplification). IRIS's
+      runtime optimizes that append pattern; YottaDB doesn't — that is
+      the whole "IRIS is 5x faster" lane gap.
+
+    **Fix (option 1+3 of the ranked list):**
+    - `C0RGJSNE` — vendored fast encoder (Kernel's `XLFJSONE` carries a
+      VA "do not modify" directive): line-buffered CONCAT, leaf fast path
+      ($D=1 nodes skip four indirected subnode probes), ESC fast path,
+      one up-front MERGE for `^TMP` sources. **Output proven
+      byte-identical** to Kernel (100-entry slice, 162,532B joined
+      compare) and 2.0x faster. Wired into `C0RGRES` (all three response
+      encodes) and `ENCODEB^C0RGFHB`.
+    - `CHUNKSIZE` default 50 → 150 (FITCOUNT still halves oversize
+      slices; MAXBUNDLE 250KB unchanged).
+
+    **Measured (warm walks, same script):**
+
+    | Lane | Before | After | p50/slice |
+    |---|---|---|---|
+    | devfhir 101122 | 175s / 91 slices | **80s / 64 slices** | 1,757 → 1,074ms |
+    | irisfhir 2 | 39s / 92 slices | **17.6s / 66 slices** | 383 → 189ms |
+
+    Both lanes ~2.2x. Deployed: fhirdev22, iris FOIA (sc=1 ×4), rpmsfhir,
+    vehu10, rpms-rebuild-candidate; `/rehmp` bundle+continue smoked on
+    vehu10 and both local gateways (5177/5178 HTTP 200).
+
+    **Not done (next lever if demo browsing still lags):** cache encoded
+    slices in the continuation store keyed by patient+request signature —
+    repeat walks would drop to ~50ms/slice. The remaining devfhir floor
+    (~1s/slice) is the indirected tree-walk in the serializer plus the
+    per-slice ~75-entry encode; a $QUERY-based iterative serializer is
+    the deeper rewrite if ever needed.
+
 ## Verification per phase (evidence gate)
 
 | Phase | Rerunnable proof |
