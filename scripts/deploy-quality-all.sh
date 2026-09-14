@@ -192,6 +192,14 @@ for t in $TARGETS; do
   fi
 done
 
+# Self-announcing UI drift check (non-gating, like the iris lane): compares
+# each public lane's /demos/cprs/version.json against rehmp HEAD.
+if "$ROOT/scripts/check-ui-versions.sh"; then
+  RESULTS+=("OK  ui-versions (all public lanes at rehmp HEAD)")
+else
+  RESULTS+=("WARN ui-versions DRIFT — see lines above; rerun rehmp/deploy/publish-ui-all.sh")
+fi
+
 echo ""
 echo "======== SUMMARY ========"
 for r in "${RESULTS[@]}"; do echo "$r"; done

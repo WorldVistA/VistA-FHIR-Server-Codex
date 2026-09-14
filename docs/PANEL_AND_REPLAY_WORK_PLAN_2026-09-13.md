@@ -238,8 +238,11 @@ File-60 config is done (C0FZPAN: BMP 5091, CMP 5092, COAG 5093, DIFF 5094
     all four public hosts (irisfhir's Caddy `handle_path` docroot
     special-cased). All four now serve commit `4804096`; verify any
     lane with `curl -s https://<host>/demos/cprs/version.json`.
-    Remaining nicety: surface the stamp in the UI footer and have the
-    fleet smoke compare version.json across lanes against git HEAD.
+    **Self-announcing since 2026-09-13 late** (rehmp `11d27a3`, Codex
+    `check-ui-versions.sh`): the CPRS status line now ends with
+    `build <sha> <date>` (Vite-injected), and `deploy-quality-all.sh`
+    finishes every run with a non-gating ui-versions check that prints
+    OK/WARN per public lane against rehmp HEAD in the summary.
 
 ## Verification per phase (evidence gate)
 
