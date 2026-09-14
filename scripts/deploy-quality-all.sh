@@ -2,10 +2,15 @@
 # Deploy quality-dashboard + C0X stack to all active servers, then smoke each.
 #
 # Active servers (default):
-#   fhirdev  vehu10  rpms-candidate  rpmsfhir  fhirprod
+#   fhirdev  vehu10  rpms-candidate  rpmsfhir  wvehr
 # plus irisfhir, the NON-BLOCKING sixth lane (VistA-on-IRIS): it is deployed
 # and smoked like the others but can never gate the five GT.M servers — a
 # failure there reports WARN in the summary and does not affect the exit code.
+#
+# wvehr = the WorldVistA EHR at fhir.vistaplex.org (container wvehr, user wv).
+# It replaced the old fhirprod container 2026-09-13 and is a PERMANENT
+# first-class lane: every fleet deploy includes it ("fhirprod"/"fhir" are
+# kept as aliases so old invocations keep working).
 #
 # Usage:
 #   ./scripts/deploy-quality-all.sh
@@ -22,7 +27,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 C0X_ROOT="${C0X_ROOT:-$ROOT/../fhir-triple-store}"
 SMOKE="$ROOT/scripts/smoke-quality-host.sh"
-TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir fhirprod irisfhir}"
+TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir wvehr irisfhir}"
 SKIP_DEPLOY="${QUALITY_SKIP_DEPLOY:-0}"
 REINDEX="${QUALITY_REINDEX:-0}"
 
@@ -76,7 +81,7 @@ deploy_one() {
       run_seedcrit_remote root@devfhir.vistaplex.org fhirdev22 vehu /home/vehu/p /home/vehu/lib/gtm/mumps /home/vehu/etc/env || true
       maybe_reindex https://devfhir.vistaplex.org
       ;;
-    fhirprod|fhir)
+    wvehr|fhirprod|fhir)
       FHIRDEV_SSH=root@fhir.vistaplex.org \
       FHIRDEV_CONTAINER=wvehr \
       FHIRDEV_ROUTINE_DIR=/home/wv/p \
@@ -155,7 +160,7 @@ smoke_one() {
   fi
   case "$t" in
     fhirdev)  base=https://devfhir.vistaplex.org; dfn=101076 ;;
-    fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=1 ;;  # WVEHR 3.0 ZZ TEST (old Synthea 1643-1661 retired with container fhir)
+    wvehr|fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=1 ;;  # WVEHR 3.0 ZZ TEST (old Synthea 1643-1661 retired with container fhir)
     vehu10)   base=http://127.0.0.1:9085; dfn=101076 ;;
     rpms-candidate|rpms-rebuild-candidate|rpms) base=http://127.0.0.1:9088; dfn=4 ;;
     rpmsfhir|rpms-fhir) base=https://rpmsfhir.vistaplex.org; dfn=8 ;;

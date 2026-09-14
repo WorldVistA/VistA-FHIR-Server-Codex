@@ -7,6 +7,17 @@ Work package assembled from the findings in
 - **fhirprod is being retired** (container at fhir.vistaplex.org; the host
   stays and gets a new WorldVistA container — separate migration effort).
   All fhirprod dedupe/cache items are dropped from this plan.
+  - **UPDATE 2026-09-13 late:** the conversion happened. fhir.vistaplex.org
+    now runs the **WorldVistA EHR (WVEHR)** — container `wvehr`, user `wv`,
+    routines `/home/wv/p` — and it is a **PERMANENT first-class fleet
+    lane**, included in every deploy process. `deploy-quality-all.sh` names
+    it `wvehr` (aliases `fhirprod`/`fhir` kept); the same evening it
+    received the full backfill (C0RG gateway incl. the C0RGJSNE fast
+    encoder, current loaders with the C0FWLD guard family, ISIIMPU7 PMEM
+    guard, C0FW STAGED markers via codex-sync) and the current CPRS demo
+    UI (`deploy/publish-ui-all.sh` in rehmp, version.json-stamped). The
+    old fhirprod dedupe items stay dropped — its Synthea cohort (DFNs
+    1643-1661) retired with the old container; WVEHR smoke uses DFN 1.
 - **Bundle parity approved**: graph-ON lanes (devfhir, rpmsfhir) should
   materialize panel member Observations like irisfhir does. Big bundles are
   wanted.
@@ -213,6 +224,22 @@ File-60 config is done (C0FZPAN: BMP 5091, CMP 5092, COAG 5093, DIFF 5094
     (~1s/slice) is the indirected tree-walk in the serializer plus the
     per-slice ~75-entry encode; a $QUERY-based iterative serializer is
     the deeper rewrite if ever needed.
+
+16. **UI version control — audited + fixed 2026-09-13 late.** The CPRS
+    demo UI (rehmp `ehmp-ui/rehmp-cprs-demo`) was on four different
+    vintages across the public fleet: devfhir+irisfhir Sep 9, rpmsfhir
+    Aug 6 (5 weeks stale), fhir.vistaplex.org Jul 13 (predates Quality
+    AI Consult and the tobacco reminder — the "ancient" UI). Cause: the
+    deploy flow was per-host manual `npm run build` + rsync, with a
+    publish script for devfhir only and **no version marker anywhere**
+    (auditing required asset-hash fingerprinting + Last-Modified).
+    Fix: `rehmp/deploy/publish-ui-all.sh` — build once, stamp
+    `version.json` (git SHA + build time), rsync the same artifact to
+    all four public hosts (irisfhir's Caddy `handle_path` docroot
+    special-cased). All four now serve commit `4804096`; verify any
+    lane with `curl -s https://<host>/demos/cprs/version.json`.
+    Remaining nicety: surface the stamp in the UI footer and have the
+    fleet smoke compare version.json across lanes against git HEAD.
 
 ## Verification per phase (evidence gate)
 
