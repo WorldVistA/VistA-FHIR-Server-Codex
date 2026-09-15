@@ -190,6 +190,7 @@ BROWSER(RTN,FILTER) ; Interactive FHIR browser for live /fhir or stored /showfhi
  . S BADGE="VistA source"
  . S SRCNOTE="VistA-generated FHIR via /fhir"
  . S LOADURL="/fhir?dfn="_D
+ . I +$G(FILTER("refresh")) S LOADURL=LOADURL_"&refresh=1"
  . S RAWLBL="raw fhir"
  . S RAWURL=LOADURL
  . S ALTRAW=""

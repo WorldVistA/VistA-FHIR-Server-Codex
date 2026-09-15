@@ -24,7 +24,7 @@ ON() ; $$ - graph labs enabled?
  Q 0
  ;
 GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticReports
- N CNT,IEN,KEEP,ROOT,RIEN
+ N BYDT,CNT,DT,IEN,KEEP,ROOT,RIEN
  Q:'$$ON()
  S DFN=+$G(DFN) Q:DFN<1
  S ROOT=$$ROOT^C0FWFUTL() Q:ROOT=""
@@ -46,21 +46,21 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  S RIEN=0
  F  S RIEN=$O(@ROOT@(IEN,"type","Observation",RIEN)) Q:'RIEN  D
  . I $$WANT(ROOT,IEN,RIEN) S KEEP(RIEN)=""
- ; Newest intake entries first so Quality AI / writeback labs win MAX slots.
- S RIEN=" "
- F  S RIEN=$O(KEEP(RIEN),-1) Q:'RIEN!(CNT'<MAX)  D
+ ; Newest effective/issued first (MAX keeps the newest, not newest IEN).
+ S RIEN=0
+ F  S RIEN=$O(KEEP(RIEN)) Q:'RIEN  D
  . I '$$INWIN(ROOT,IEN,RIEN,BEG,END) Q
- . D EMIT(.RTN,ROOT,IEN,RIEN,DFN,.CNT)
+ . S BYDT($$RESDT(ROOT,IEN,RIEN),RIEN)=""
+ S DT=""
+ F  S DT=$O(BYDT(DT),-1) Q:DT=""!(CNT'<MAX)  D
+ . S RIEN=0
+ . F  S RIEN=$O(BYDT(DT,RIEN)) Q:'RIEN!(CNT'<MAX)  D EMIT(.RTN,ROOT,IEN,RIEN,DFN,.CNT)
  ; Lab panel DiagnosticReports (category LAB) with result[] links
  D GETGRPDR(.RTN,ROOT,IEN,DFN,BEG,END)
- ; Parity with the graph-OFF path (GETGRPNL): materialize panel members.
- ; The MAX cap above means most panel result[] refs point at graph
- ; Observations that never made the bundle — the browser cannot nest them
- ; and lane bundles diverge (iris 4598 vs devfhir 634, 2026-09-13 recon).
- ; REFFIX repoints refs that match an in-bundle Observation and EMITs the
- ; graph Observation for the rest, so every panel member resolves.
- ; Decision 2026-09-13: big bundles are wanted; wire gzip (~10x) makes the
- ; transfer cheap (full 4598-resource walk = 439KiB).
+ ; REFFIX re-points panel result[] at in-bundle Observations (MAX / ^LR).
+ ; It does not EMIT the rest: that added ~3,800 Observations and ~50 C0RG
+ ; slices (2026-09-15 HARBER). Unmatched members keep their graph refs.
+ ; Restore emit: S ^C0FHIR("EXPERIMENT","REFFIXEMIT")=1
  D REFFIX(.RTN,ROOT,IEN,DFN)
  Q
  ;
@@ -129,9 +129,10 @@ REFFIX(RTN,ROOT,IEN,DFN) ; Re-point panel result[] refs at in-bundle ^LR Observa
  . . I NEWID="" S TK=$$MINADD(TK) I TK'="" D
  . . . I NM'="" S NEWID=$$KEYGET(.OIDX,"N|"_$$UP(NM)_"|"_TK,VAL)
  . . . I NEWID="" S NEWID=$$KEYGET(.OIDX,"L|"_LNC_"|"_TK,VAL)
- . . ; No ^LR match: this member never filed (LOINC-map gap / micro-type);
- . . ; the graph Observation IS the record — emit it so the ref resolves.
- . . I NEWID="" N C S C=0 D EMIT(.RTN,ROOT,IEN,RIEN,DFN,.C) Q
+ . . ; No in-bundle match: leave the graph Observation/id. Extra EMIT of
+ . . ; every unmatched member was the 4k-lab tree (see GETGRPLAB).
+ . . I NEWID="" D  Q
+ . . . I +$G(^C0FHIR("EXPERIMENT","REFFIXEMIT")) N C S C=0 D EMIT(.RTN,ROOT,IEN,RIEN,DFN,.C)
  . . S RTN("entry",I,"resource","result",SEQ,"reference")="Observation/"_NEWID
  Q
  ;
@@ -167,13 +168,25 @@ MINKEY(ISO) ; $$ - minute-resolution time key YYYYMMDDHHMM from ISO datetime
  Q $S(D?12N:D,1:"")
  ;
 GETGRPDR(RTN,ROOT,IEN,DFN,BEG,END) ; Append graph lab DiagnosticReports
- N RIEN
+ N BYDT,DT,RIEN
  S RIEN=0
  F  S RIEN=$O(@ROOT@(IEN,"type","DiagnosticReport",RIEN)) Q:'RIEN  D
  . I '$$WANTDR(ROOT,IEN,RIEN) Q
  . I '$$INWIN(ROOT,IEN,RIEN,BEG,END) Q
- . D EMITDR(.RTN,ROOT,IEN,RIEN,DFN)
+ . S BYDT($$RESDT(ROOT,IEN,RIEN),RIEN)=""
+ S DT=""
+ F  S DT=$O(BYDT(DT),-1) Q:DT=""  D
+ . S RIEN=0
+ . F  S RIEN=$O(BYDT(DT,RIEN)) Q:'RIEN  D EMITDR(.RTN,ROOT,IEN,RIEN,DFN)
  Q
+ ;
+RESDT(ROOT,IEN,RIEN) ; $$ FileMan effective/issued, 0 if missing
+ N DT,ISO
+ S ISO=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","effectiveDateTime"))
+ I ISO="" S ISO=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","issued"))
+ I ISO="" Q 0
+ S DT=$$ISOFM(ISO)
+ Q $S(DT>0:DT,1:0)
  ;
 KEEPCODE(ROOT,IEN,CODE,KEEP) ; Mark entry IENs that have POS code index
  N PURL,RIEN
