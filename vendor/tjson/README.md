@@ -1,4 +1,4 @@
-# Vendored @rfanth/tjson 0.6.5
+# Vendored @rfanth/tjson 0.10.1
 
 Browser entry: **`web/index.js`** (`@rfanth/tjson/web`) — wasm inlined as
 base64; top-level await initializes on import. Also needs sibling
@@ -7,4 +7,4 @@ base64; top-level await initializes on import. Also needs sibling
 Served at `/filesystem/tjson/web/index.js` (sync copies `vendor/tjson/web`
 → M user `www/.../tjson/web`).
 
-Refresh: `./scripts/update-vendored-tjson.sh 0.6.5`
+Refresh: `./scripts/update-vendored-tjson.sh 0.10.1`

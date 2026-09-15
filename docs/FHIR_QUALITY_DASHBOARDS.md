@@ -19,7 +19,9 @@ Routes (Codex M HTML):
 4. **Measure calculation** — CQM tool versions + link to calculation docs
 5. **Re-evaluate CQL** — button calls cds1 official CQL (not AI Consult `/analyze`)
 6. **Patient table** — IPP / DENOM / NUMER / DENEX / evidence, MeasureReport, FHIR browser (live), rehmp, Quality AI Consult, Synthea bundle
-7. **MeasureReports** — summary + individual JSON under `/filesystem/quality/measurereports/{measure}/`
+7. **MeasureReports** — DEQM Summary (`summary-deqm.json` official-cql freeze),
+   SETPOP aggregate Summary (`summary.json`, also DEQM-profiled), and individual
+   JSON under `/filesystem/quality/measurereports/{measure}/`
 
 ### Patient-table browser links
 

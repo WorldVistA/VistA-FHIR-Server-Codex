@@ -13,6 +13,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  S FMDT=$$FMDT(ROOT,IEN,RIEN)
  S ICD=$$RESICD(ROOT,IEN,RIEN,FMDT)
  I ICD<1 D  Q
+ . I $$NOSDX(ROOT,IEN,RIEN) D SKIP(ROOT,IEN,RIEN,"Non-diagnosis Condition retained in fhir-intake (situation/finding, no ICD).",.RETURN) Q
  . S MSG="Condition has no ICD-10/ICD-9 diagnosis resolvable from codings (ICD or SNOMED CT to ICD-10 map)."
  . D ERR(ROOT,IEN,RIEN,MSG,.RETURN)
  S ADDPL=$$ADDPL(ROOT,IEN,RIEN)
@@ -170,10 +171,31 @@ SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien via Lexicon map 5217
  S MAPVUID=5217693
  K LEX S Y=$$GETASSN^LEXTRAN1(SCT,MAPVUID)
  S ICDTX="" S ICDTX=$O(LEX(1,ICDTX))
- I ICDTX="" Q 0
+ S RET=0
+ I ICDTX'="" S RET=$$ICDDX^ICDEX(ICDTX,30)
+ I +RET<1,ICDTX'="",ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
+ I +RET>0 Q +RET
+ S ICDTX=$$SCTMAP(SCT) I ICDTX="" Q 0
  S RET=$$ICDDX^ICDEX(ICDTX,30)
  I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
  Q $S(+RET>0:+RET,1:0)
+ ;
+SCTMAP(SCT) ; $$ - Synthea SCT leftovers that Lexicon 5217693 does not map
+ I SCT=109570002 Q "K02.9" ; Primary dental caries
+ I SCT=80967001 Q "K02.9" ; Dental caries
+ I SCT=278598003 Q "K08.59" ; Leaking dental filling
+ I SCT=278860009 Q "M54.5" ; Chronic low back pain
+ I SCT=274531002 Q "R93.1" ; Abnormal cardiac diagnostic imaging
+ I SCT=66383009 Q "K05.10" ; Gingivitis
+ I SCT=18718003 Q "K05.6" ; Gingival disease
+ I SCT=195662009 Q "J02.9" ; Acute viral pharyngitis
+ I SCT=237602007 Q "E88.81" ; Metabolic syndrome
+ I SCT=433144002 Q "N18.3" ; Chronic kidney disease stage 3
+ I SCT=1255252008 Q "K08.20" ; Alveolar process resorption
+ I SCT=278558000 Q "K08.59" ; Dental filling lost
+ I SCT=278588009 Q "K08.59" ; Fractured dental filling
+ I SCT=278602001 Q "K08.59" ; Loose dental filling
+ Q ""
  ;
 ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only
  N EI,FND,VB,VS
@@ -185,6 +207,38 @@ ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only
  . S VS=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",EI,"valueString"))
  . I VS'="" S VB=VS
  Q $S(FND:$$BOOLPL(VB),1:1)
+ ;
+NOSDX(ROOT,IEN,RIEN) ; $$ - Synthea situation/social finding, not a diagnosis
+ N CAT,NI,TXT
+ S TXT=$$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","text")))
+ I TXT="" S TXT=$$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",1,"display")))
+ I TXT["(SITUATION)" Q 1
+ S CAT="",NI=0
+ F  S NI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","category",NI)) Q:+NI=0  D
+ . I $$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","category",NI,"coding",1,"code")))["SOCIAL" S CAT=1
+ I CAT Q 1
+ I TXT'["(FINDING)" Q 0
+ I TXT["EMPLOY" Q 1
+ I TXT["UNEMPLOY" Q 1
+ I TXT["LABOR FORCE" Q 1
+ I TXT["EDUCATION" Q 1
+ I TXT["EDUCATED" Q 1
+ I TXT["HOUSING" Q 1
+ I TXT["SOCIAL CONTACT" Q 1
+ I TXT["SOCIAL ISOLATION" Q 1
+ I TXT["VIOLENCE" Q 1
+ I TXT["INTIMATE PARTNER" Q 1
+ I TXT["STRESS (FINDING)" Q 1
+ I TXT["MEDICATION REVIEW" Q 1
+ I TXT["ALCOHOL DRINKING" Q 1
+ I TXT["RECEIVED HIGHER" Q 1
+ I TXT["MILITARY SERVICE" Q 1
+ I TXT["RISK ACTIVITY" Q 1
+ I TXT["CRIMINAL RECORD" Q 1
+ I TXT["REFUGEE" Q 1
+ I TXT["TRANSPORTATION" Q 1
+ I TXT["(MORPHOLOGIC" Q 1
+ Q 0
  ;
 CAND(ROOT,IEN,RIEN) ; $$ - true if reminder generated a non-fileable candidate Condition
  N EI,URL,VAL
@@ -324,10 +378,12 @@ ADDPOV(ERR,DFN,VISIT,ICD,NARR,FMDT,USER,SCT) ; $$ - file V POV only, without add
  S FDA(9000010.07,IENS,.04)=NARRIEN
  S FDA(9000010.07,IENS,.12)=$S($$PRIMARY(VISIT,ICD):"P",1:"S")
  S FDA(9000010.07,IENS,1201)=FMDT
- I CLIN>0 S FDA(9000010.07,IENS,1203)=CLIN
+ ; RPMS-only aux fields: set only when the local DD has them (VistA's
+ ; V POV lacks 1203/1216; UPDATE^DIE hard-fails the whole record otherwise)
+ I CLIN>0,$D(^DD(9000010.07,1203)) S FDA(9000010.07,IENS,1203)=CLIN
  S FDA(9000010.07,IENS,1204)=USER
- S FDA(9000010.07,IENS,1216)=$$NOW^XLFDT
- S FDA(9000010.07,IENS,1217)=USER
+ I $D(^DD(9000010.07,1216)) S FDA(9000010.07,IENS,1216)=$$NOW^XLFDT
+ I $D(^DD(9000010.07,1217)) S FDA(9000010.07,IENS,1217)=USER
  D UPDATE^DIE("","FDA","","MSG")
  I $D(MSG) S ERR="Problem saving RPMS V POV: "_$G(MSG("DIERR",1,"TEXT",1)) Q 0
  Q 1

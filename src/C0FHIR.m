@@ -926,8 +926,24 @@ DOCAUTH(DA) ; $$ - TIU author display
  Q ""
  ;
 B64(TXT) ; $$ - base64 text for DocumentReference attachment
+ ; Prefer the loader's encoder, but never blank the note body when it is
+ ; absent: on IRIS (2026-09-10) the silent "" here made every filed TIU note
+ ; read back empty while the write side was fine. Pure-M fallback below.
  I $T(ENCODE64^SYNWEBUT)'="" Q $$ENCODE64^SYNWEBUT($G(TXT))
- Q ""
+ Q $$ENC64($G(TXT))
+ ;
+ENC64(IN) ; $$ - pure-M base64 (RFC 4648), no external dependencies
+ N A,OUT,I,B1,B2,B3
+ S A="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+ S OUT=""
+ F I=1:3:$L(IN) D
+ . S B1=$A(IN,I),B2=$A(IN,I+1),B3=$A(IN,I+2)
+ . S OUT=OUT_$E(A,B1\4+1)
+ . I B2<0 S OUT=OUT_$E(A,B1#4*16+1)_"==" Q
+ . S OUT=OUT_$E(A,B1#4*16+(B2\16)+1)
+ . I B3<0 S OUT=OUT_$E(A,B2#16*4+1)_"=" Q
+ . S OUT=OUT_$E(A,B2#16*4+(B3\64)+1)_$E(A,B3#64+1)
+ Q OUT
  ;
 VISITIEN(ENC,VIEN) ; Numeric visit ien for ^TIU(8925,"V",...) / FIND^DIC index
  IF +$GET(VIEN)>0 QUIT VIEN
@@ -1302,9 +1318,15 @@ DOMSUM(ROOT,IEN) ; Build domain loaded/source summary text
  . SET (LD,SRC)=0
  . SET ZI=0
  . FOR  SET ZI=$ORDER(@ROOT@(IEN,"load",DOM,ZI)) Q:+ZI<1  DO
- . . SET SRC=SRC+1
  . . SET ST=$$LOADST(ROOT,IEN,DOM,ZI)
+ . . ; TIU copies DocumentReference RIENs under Encounter as log/tiu
+ . . ; stubs with no loadStatus; do not count those as Encounter source.
+ . . IF ST="" QUIT
+ . . SET SRC=SRC+1
  . . IF ST="LOADED" SET LD=LD+1
+ . . ; Intentional skips (TIU already matched, social findings, missing CVX)
+ . . ; are success-equivalent; not_implemented stays a miss.
+ . . IF ST="SKIPPED" SET LD=LD+1
  . ; Some domains (for example Patient) use only domain-level status nodes.
  . ; Prefer explicit status counters when present, then fallback to status/loadstatus.
  . SET DOMSRC=+$GET(@ROOT@(IEN,"load",DOM,"status","source"))
@@ -1834,7 +1856,12 @@ DOMTOK(X) ; Normalize domain alias to canonical token
  IF Y="LAB"!(Y="LABS")!(Y="LABORATORY")!(Y="LABORATORIES") QUIT "LAB"
  IF Y="REM"!(Y="REMS")!(Y="REMINDER")!(Y="REMINDERS")!(Y="CLINICALREMINDER")!(Y="CLINICALREMINDERS") QUIT "REMINDER"
  IF Y="CAREPLAN"!(Y="CAREPLANS")!(Y="CP") QUIT "CAREPLAN"
- QUIT
+ ; TIU notes ride the ENCOUNTER domain (GETENC emits DocumentReference)
+ IF Y="DOC"!(Y="DOCS")!(Y="DOCUMENT")!(Y="DOCUMENTS")!(Y="DOCUMENTREFERENCE")!(Y="NOTE")!(Y="NOTES")!(Y="TIU") QUIT "ENCOUNTER"
+ ; Unknown alias: return empty (caller skips). A valueless QUIT here is an
+ ; M17 <COMMAND> error on IRIS ("Function must return a value") and crashed
+ ; GET /fhir?domain=DocumentReference before 2026-09-10.
+ QUIT ""
  ;
 REQMODE(REQ) ; Resolve request mode from mapped parameters
  NEW MODE

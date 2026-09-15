@@ -271,6 +271,7 @@ SUMMARY(RTN) ; HTML summary of active measures
  DO ADDLN^C0FHIR(.RTN,"<div class=""links"">")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-dashboards?view=all"">All catalog measures</a>")
+ DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-reporting"">Quality reporting (DEQM)</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/altfhir/metadata"">/altfhir metadata</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir/metadata"">/fhir metadata</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
@@ -322,7 +323,7 @@ CATALOG(RTN) ;
  ;
 MEASURE(RTN,CMS) ; HTML single-measure dashboard
  NEW CNT,DFN,FOCUS,IEN,NAME,NOTE,ROOT,ROW,STAT,TITLE,RAW
- NEW AURL,BURL,CURL,FURL,LURL,RURL
+ NEW AURL,BURL,CURL,FURL,LNK,LURL,RURL
  NEW IPP,DENOM,NUMER,DENEX,EVID,MODE,FLAG
  DO SEED
  SET RAW=$$NORM($GET(CMS))
@@ -342,8 +343,10 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
  SET CURL="/filesystem/c0x/index.html?measure="_CMS
  DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">C0X population IPP</a>")
+ SET CURL="/filesystem/quality/measurereports/"_CMS_"/summary-deqm.json"
+ DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">DEQM Summary MeasureReport</a>")
  SET CURL="/filesystem/quality/measurereports/"_CMS_"/summary.json"
- DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">Summary MeasureReport</a>")
+ DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">SETPOP Summary MeasureReport</a>")
  SET CURL="/filesystem/quality/measurereports/"_CMS_"/index.html"
  DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">MeasureReport index</a>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
@@ -372,9 +375,12 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"})();")
  DO ADDLN^C0FHIR(.RTN,"</script>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
- DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
- SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=0
- FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:+DFN<1  DO
+ DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th>")
+ DO ADDLN^C0FHIR(.RTN,"<th>Evidence</th><th>MeasureReport</th><th>Live DEQM indv</th><th>Validate</th>")
+ DO ADDLN^C0FHIR(.RTN,"<th>Submit</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
+ SET ROOT=$$GSROOT^C0FHIR(),CNT=0,DFN=""
+ ; Match /fhir-dashboard: highest DFN first (newest patients at top).
+ FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN),-1) QUIT:DFN=""  DO
  . SET CNT=CNT+1
  . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^") IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
  . SET IPP=$$YN($$POP(CMS,DFN,1)),DENOM=$$YN($$POP(CMS,DFN,2))
@@ -392,24 +398,52 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td class="""_$$PCLS(NUMER)_""">"_NUMER_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
- . SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
- . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a></td>"
+ . ; Frozen artifact is only published for the reviewed SETPOP freeze DFNs.
+ . IF $$HASQMR(CMS,DFN) SET ROW=ROW_"<td><a href="""_LURL_""">frozen</a></td>"
+ . ELSE  SET ROW=ROW_"<td class=""muted"" title=""No published freeze for this DFN — use Live DEQM indv"">—</td>"
+ . SET LNK="<a href=""/fhir-quality-report?measure="_CMS_"&amp;dfn="_DFN_""">report</a>"
+ . SET LNK=LNK_" · <a href=""/fhir-quality-report?measure="_CMS_"&amp;dfn="_DFN_"&amp;bundle=1"">Bundle</a>"
+ . SET LNK=LNK_" "_$$TJBTN("/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS_"&amp;dfn="_DFN,"TJSON",1)
+ . SET ROW=ROW_"<td>"_LNK_"</td>"
+ . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-dfn="""_DFN_""" data-op=""validate"">"
+ . SET ROW=ROW_"Validate</button><br><span class=""muted"" id=""st-validate-"_CMS_"-"_DFN_""">"
+ . SET ROW=ROW_$$HTMLESC^C0FHIR($$OPSTAT^C0FQRPT(CMS,"validate",DFN))_"</span>"_$$OUTLNK^C0FQRPT(CMS,"validate",DFN)_"</td>"
+ . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-dfn="""_DFN_""" data-op=""submit"">"
+ . SET ROW=ROW_"Submit</button><br><span class=""muted"" id=""st-submit-"_CMS_"-"_DFN_""">"
+ . SET ROW=ROW_$$HTMLESC^C0FHIR($$OPSTAT^C0FQRPT(CMS,"submit",DFN))_"</span>"_$$OUTLNK^C0FQRPT(CMS,"submit",DFN)_"</td>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(BURL,"fhir",1)_"</td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
- . SET ROW=ROW_"<td><a href="""_AURL_""">quality ai</a></td>"
- . IF FURL'="" SET ROW=ROW_"<td><a href="""_FURL_""">synthea</a></td></tr>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(AURL,"quality ai",1)_"</td>"
+ . IF FURL'="" SET ROW=ROW_"<td>"_$$TJBTN(FURL,"synthea",1)_"</td></tr>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
- IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
+ IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""15"">No curated POP rows yet. Use SETPOP^C0FQUAL.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
+ DO ADDLN^C0FHIR(.RTN,"<script>")
+ DO ADDLN^C0FHIR(.RTN,"(function(){")
+ DO ADDLN^C0FHIR(.RTN,"function wire(b){b.addEventListener('click',async function(){")
+ DO ADDLN^C0FHIR(.RTN,"var m=b.getAttribute('data-m'),op=b.getAttribute('data-op'),dfn=b.getAttribute('data-dfn');")
+ DO ADDLN^C0FHIR(.RTN,"var sid='st-'+op+'-'+m+(dfn?'-'+dfn:'');")
+ DO ADDLN^C0FHIR(.RTN,"var s=document.getElementById(sid);")
+ DO ADDLN^C0FHIR(.RTN,"b.disabled=true;if(s)s.textContent='starting…';")
+ DO ADDLN^C0FHIR(.RTN,"try{var url='/fhir-quality-report-'+op+'?measure='+m+(dfn?'&dfn='+dfn:'');")
+ DO ADDLN^C0FHIR(.RTN,"var r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});")
+ DO ADDLN^C0FHIR(.RTN,"var t=await r.text(),j={};try{j=JSON.parse(t)}catch(e){j={status:'error',message:t.slice(0,120)||('HTTP '+r.status)};}")
+ DO ADDLN^C0FHIR(.RTN,"if(!r.ok||j.status==='error'){if(s)s.textContent='error: '+(j.message||('HTTP '+r.status));b.disabled=false;return;}")
+ DO ADDLN^C0FHIR(.RTN,"if(s)s.textContent='running… (page reloads)';setTimeout(function(){location.reload();},5000);")
+ DO ADDLN^C0FHIR(.RTN,"}catch(e){if(s)s.textContent='error: '+e;b.disabled=false;}});}")
+ DO ADDLN^C0FHIR(.RTN,"var bs=document.querySelectorAll('.rptop');for(var i=0;i<bs.length;i++)wire(bs[i]);")
+ DO ADDLN^C0FHIR(.RTN,"})();")
+ DO ADDLN^C0FHIR(.RTN,"</script>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<h2>Patients (graph source)</h2>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Graph-linked patients (first 250). Flags show when POP is stored for that DFN.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Graph-linked patients (highest DFN first, up to 250). Flags show when POP is stored for that DFN.</p>")
  IF ROOT="" DO  GOTO MDONE
  . DO ADDLN^C0FHIR(.RTN,"<p>No fhir-intake graph root is available.</p>")
  DO ADDLN^C0FHIR(.RTN,"<table>")
  DO ADDLN^C0FHIR(.RTN,"<tr><th>DFN</th><th>Name</th><th>IPP</th><th>DENOM</th><th>NUMER</th><th>DENEX</th><th>Evidence</th><th>MeasureReport</th><th>FHIR browser</th><th>rehmp</th><th>Quality AI Consult</th><th>Synthea bundle</th></tr>")
- SET CNT=0,DFN=0
- FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN)) QUIT:+DFN<1!(CNT>250)  DO
+ SET CNT=0,DFN=""
+ FOR  SET DFN=$ORDER(@ROOT@("DFN",DFN),-1) QUIT:DFN=""!(CNT>250)  DO
  . SET IEN=$ORDER(@ROOT@("DFN",DFN,""),-1) QUIT:+IEN<1
  . SET CNT=CNT+1
  . SET NAME=$PIECE($GET(^DPT(DFN,0)),"^") IF NAME="" SET NAME="UNKNOWN ("_DFN_")"
@@ -432,12 +466,12 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET ROW=ROW_"<td class="""_$$PCLS(NUMER)_""">"_NUMER_"</td>"
  . SET ROW=ROW_"<td class="""_$$PCLS(DENEX)_""">"_DENEX_"</td>"
  . SET ROW=ROW_"<td>"_$$HTMLESC^C0FHIR(EVID)_"</td>"
- . IF FLAG SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
+ . IF FLAG,$$HASQMR(CMS,DFN) SET ROW=ROW_"<td><a href="""_LURL_""">individual</a></td>"
  . ELSE  SET ROW=ROW_"<td class=""muted"">—</td>"
- . SET ROW=ROW_"<td><a href="""_BURL_""">/fhir browser</a></td>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(BURL,"fhir",1)_"</td>"
  . SET ROW=ROW_"<td><a href="""_RURL_""">rehmp</a></td>"
- . SET ROW=ROW_"<td><a href="""_AURL_""">quality ai</a></td>"
- . SET ROW=ROW_"<td><a href="""_FURL_""">synthea</a></td></tr>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(AURL,"quality ai",1)_"</td>"
+ . SET ROW=ROW_"<td>"_$$TJBTN(FURL,"synthea",1)_"</td></tr>"
  . DO ADDLN^C0FHIR(.RTN,ROW)
  IF CNT=0 DO ADDLN^C0FHIR(.RTN,"<tr><td colspan=""12"">No graph-linked patients found.</td></tr>")
  DO ADDLN^C0FHIR(.RTN,"</table>")
@@ -482,10 +516,16 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  . IF ASOF'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">As of "_$$HTMLESC^C0FHIR(ASOF)_"</p>")
  . IF COHORT'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Cohort: "_$$HTMLESC^C0FHIR(COHORT)_"</p>")
  ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">No aggregate CQL/heuristic summary stored yet for this measure.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p><a href=""/fhir-quality-report?measure="_CMS_""">Live DEQM Summary MeasureReport (current counts)</a>")
+ DO ADDLN^C0FHIR(.RTN," · <a href=""/fhir-quality-report?measure="_CMS_"&amp;bundle=1"">Live submission Bundle</a>")
+ DO ADDLN^C0FHIR(.RTN," · <a href=""/fhir-quality-reporting"">Reporting pipeline</a></p>")
+ SET MURL="/filesystem/quality/measurereports/"_CMS_"/summary-deqm.json"
+ DO ADDLN^C0FHIR(.RTN,"<p><a href="""_MURL_""">DEQM Summary MeasureReport (official-cql freeze)</a>")
  SET MURL="/filesystem/quality/measurereports/"_CMS_"/summary.json"
- DO ADDLN^C0FHIR(.RTN,"<p><a href="""_MURL_""">Summary MeasureReport (JSON)</a>")
+ DO ADDLN^C0FHIR(.RTN," · <a href="""_MURL_""">SETPOP aggregate Summary (DEQM profile)</a>")
  SET MURL="/filesystem/quality/measurereports/"_CMS_"/Bundle-all.json"
  DO ADDLN^C0FHIR(.RTN," · <a href="""_MURL_""">All MeasureReports (Bundle)</a></p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">QRDA-III replacement path: Da Vinci DEQM Summary MeasureReport (STU5). Prefer the official-cql freeze for Connectathon exchange.</p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
@@ -499,7 +539,7 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  ; Official CQL re-eval via cds1 /quality/evaluate-cohort (not AI Consult /analyze)
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
  DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Re-evaluate CQL</h2>")
- DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 for this server's curated POP DFNs (cds1 fetches /fhir when public; updates SETPOP/SETSUM). Separate from AI Consult.</p>")
+ DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Runs official cqm-execution on cds1 for this server's curated POP DFNs (cds1 fetches /fhir when public; localhost hosts send refreshed inline bundles so post-writeback Procedure evidence is included). Updates SETPOP/SETSUM. Separate from AI Consult.</p>")
  DO ADDLN^C0FHIR(.RTN,"<p><button type=""button"" class=""btn"" id=""reevalBtn"">Re-evaluate CQL</button> <span id=""reevalStatus"" class=""muted"">"_$$HTMLESC^C0FHIR($PIECE($GET(^C0FQUAL("REEVAL",CMS)),"^",1))_"</span></p>")
  DO ADDLN^C0FHIR(.RTN,"<script>")
  DO ADDLN^C0FHIR(.RTN,"(function(){var b=document.getElementById('reevalBtn'),s=document.getElementById('reevalStatus');")
@@ -558,7 +598,7 @@ QMRPATH(PATH) ; $$ - measure id from /filesystem/quality/measurereports/{measure
  ;
 QMRDIR() ; $$ - filesystem root for published MeasureReports
  NEW DIR,HOME
- SET HOME=$ZTRNLNM("HOME")
+ SET HOME=$$ENV^C0FWOS("HOME")
  IF HOME'="" SET DIR=HOME_"/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
  SET DIR="/home/vehu/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
  SET DIR="/home/osehra/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
@@ -569,6 +609,16 @@ QMRDIRX(DIR) ; $$ - true when index.html exists in DIR
  SET TMP=$NA(^TMP("C0FQMRX",$J))
  KILL @TMP
  SET OK=$$FTGOK^C0FHIRWS(DIR,"index.html",TMP)
+ KILL @TMP
+ QUIT +OK
+ ;
+HASQMR(CMS,DFN) ; $$ - true when frozen Patient-{DFN}.json is published for CMS
+ NEW DIR,OK,TMP
+ SET DIR=$$QMRDIR() IF DIR="" QUIT 0
+ SET CMS=$$FIND($GET(CMS)),DFN=+$GET(DFN) IF CMS=""!(DFN<1) QUIT 0
+ SET TMP=$NA(^TMP("C0FQMRF",$J))
+ KILL @TMP
+ SET OK=$$FTGOK^C0FHIRWS(DIR_CMS_"/","Patient-"_DFN_".json",TMP)
  KILL @TMP
  QUIT +OK
  ;
@@ -586,6 +636,11 @@ HDR(RTN,TITLE,SUB) ;
  DO ADDLN^C0FHIR(.RTN,".card{background:#fff;border:1px solid #cbd5e1;padding:14px 16px;margin:14px 0;border-radius:6px}")
  DO ADDLN^C0FHIR(.RTN,".stats .big{font-size:1.05rem} .yes{color:#047857;font-weight:600} .no{color:#b91c1c} .na{color:#94a3b8}")
  DO ADDLN^C0FHIR(.RTN,"code{background:#e2e8f0;padding:1px 4px;border-radius:3px}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn{display:inline-block;padding:2px 10px;border-radius:999px;background:#0f766e;color:#fff;text-decoration:none;font-size:.8rem;font-weight:600;white-space:nowrap;border:1px solid #0f766e}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn:hover{background:#115e59;border-color:#115e59}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn .br{opacity:.7;margin-right:5px;font-weight:700}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn.lite{background:transparent;color:#0f766e}")
+ DO ADDLN^C0FHIR(.RTN,"a.tjbtn.lite:hover{background:#ccfbf1}")
  DO ADDLN^C0FHIR(.RTN,"</style></head><body>")
  DO ADDLN^C0FHIR(.RTN,"<h1>"_$$HTMLESC^C0FHIR(TITLE)_"</h1>")
  IF $GET(SUB)'="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">"_$$HTMLESC^C0FHIR(SUB)_"</p>")
@@ -594,6 +649,13 @@ HDR(RTN,TITLE,SUB) ;
 FTR(RTN) ;
  DO ADDLN^C0FHIR(.RTN,"</body></html>")
  QUIT
+ ;
+TJBTN(URL,LABEL,LITE) ; $$ - pill button for links that open the TJSON browser
+ ; Solid teal pill for standalone placement; LITE=1 outline variant for tables.
+ NEW TIP
+ SET LABEL=$GET(LABEL) IF LABEL="" SET LABEL="TJSON"
+ SET TIP="Opens the C0FHIR Browser: resource list + TJSON rendering"
+ QUIT "<a class=""tjbtn"_$SELECT(+$GET(LITE):" lite",1:"")_""" href="""_URL_""" title="""_TIP_"""><span class=""br"">{&hellip;}</span>"_$$HTMLESC^C0FHIR(LABEL)_"</a>"
  ;
  ;----- Curated cohort maintenance -----
 WSDELCOH(ARGS,BODY,RESULT) ; POST /fhir-quality-cohort-delete?measure=
@@ -672,7 +734,7 @@ WSREEVAL(ARGS,BODY,RESULT) ; POST /fhir-quality-reeval?measure=
  QUIT ""
  ;
 WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy timeouts)
- NEW BASE,CMS,DFN,ERR,INLINE,N,TMP
+ NEW BASE,CMS,DFN,ERR,INLINE,N,REF,TMP
  SET U="^",HTTPRSP("mime")="application/json"
  KILL OUT
  DO SEED
@@ -683,18 +745,32 @@ WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy t
  IF $DATA(HTTPARGS("inline"))#2 DO
  . IF +$GET(HTTPARGS("inline")) SET INLINE=1
  . ELSE  SET INLINE=0
+ ; Inline bundles run in TaskMan — default refresh so post-writeback evidence is not stale.
+ ; ?refresh=0 keeps C0FWCAC; ?refresh=1 forces rebuild (explicit).
+ SET REF=1
+ IF $DATA(HTTPARGS("refresh"))#2 SET REF=+$GET(HTTPARGS("refresh"))
  ; Count POP only (do not build bundles on the request thread)
  SET N=0,DFN=0
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  SET N=N+1
  IF N<1 DO OO^C0FWAIS(.OUT,"error","invalid","No curated POP DFNs for "_CMS) QUIT
- SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT_"^"_BASE_"^"_$SELECT(INLINE:1,1:0)_"^"_+N
- ; Background job: large cohorts exceed ~60s edge/proxy limits (Failed to fetch)
- JOB REEVALJ^C0FQUAL(CMS)
+ SET ^C0FQUAL("REEVAL",CMS)="running^"_$$NOW^XLFDT_"^"_BASE_"^"_$SELECT(INLINE:1,1:0)_"^"_+N_"^"_REF
+ ; Background task: large cohorts exceed ~60s edge/proxy limits (Failed to fetch)
+ ; Queue via TaskMan (SAC): REEVT restores CMS from the task symbol table
+ NEW ZTRTN,ZTDESC,ZTDTH,ZTIO,ZTSAVE,ZTSK
+ SET ZTRTN="REEVT^C0FQUAL"
+ SET ZTDESC="C0F quality re-evaluate "_CMS
+ SET ZTIO="",ZTDTH=$H
+ SET ZTSAVE("CMS")=""
+ DO ^%ZTLOAD
+ IF '$GET(ZTSK) DO  QUIT
+ . SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^TaskMan queue failed"
+ . DO OO^C0FWAIS(.OUT,"error","exception","TaskMan queue failed for re-evaluate")
  KILL TMP
  SET TMP("status")="accepted"
  SET TMP("measure")=CMS
  SET TMP("fhirBase")=BASE
  SET TMP("inlineBundles")=$SELECT(INLINE:1,1:0)
+ SET TMP("refreshBundles")=+REF
  SET TMP("patients")=+N
  SET TMP("reeval")=$GET(^C0FQUAL("REEVAL",CMS))
  SET TMP("message")="Re-evaluate started in background; reload when status is done."
@@ -702,19 +778,26 @@ WSREEVAL2(OUT,BODY) ; Accept reeval; JOB background work (avoids browser/proxy t
  IF $DATA(ERR) DO OO^C0FWAIS(.OUT,"error","exception","Unable to encode reeval response") QUIT
  QUIT
  ;
-REEVALJ(CMS) ; Background JOB: cds1 evaluate-cohort → SETPOP/SETSUM
- NEW BASE,DFN,ERR,INLINE,N,PAYLOAD,REQ,RESP,SLOT,SUM,PARTS
+REEVT ; TaskMan entry: re-evaluate cohort; CMS restored via ZTSAVE
+ SET ZTREQ="@"
+ DO REEVALJ($GET(CMS))
+ QUIT
+ ;
+REEVALJ(CMS) ; Background worker: cds1 evaluate-cohort → SETPOP/SETSUM
+ NEW BASE,DFN,ERR,INLINE,N,PAYLOAD,REF,REQ,RESP,SLOT,SUM,PARTS
  SET CMS=$$FIND($GET(CMS)) QUIT:CMS=""
  SET PARTS=$GET(^C0FQUAL("REEVAL",CMS))
  SET BASE=$PIECE(PARTS,"^",3)
  SET INLINE=+$PIECE(PARTS,"^",4)
+ SET REF=+$PIECE(PARTS,"^",6)
+ IF $PIECE(PARTS,"^",6)="" SET REF=1 ; older running rows: prefer fresh bundles
  IF BASE="" SET BASE=$$FHIRBASE(.REQ)
  KILL REQ
  SET REQ("measureId")=CMS
  SET REQ("fhirBase")=BASE
  ; Use 0/1 so XLFJSON emits JSON boolean/number — string "false" is truthy in cds1
  SET REQ("inlineBundles")=$SELECT(INLINE:1,1:0)
- IF INLINE DO LOADBND(.REQ,CMS,.N,.ERR)
+ IF INLINE DO LOADBND(.REQ,CMS,.N,.ERR,REF)
  ELSE  DO LOADDFNS(.REQ,CMS,.N,.ERR)
  IF $GET(ERR)'="" SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^"_$EXTRACT(ERR,1,80) QUIT
  IF +$GET(N)<1 SET ^C0FQUAL("REEVAL",CMS)="error^"_$$NOW^XLFDT_"^no POP rows" QUIT
@@ -747,7 +830,9 @@ FHIRBASE(BODY) ; $$ - FHIR base for THIS host (audit / override; remote cds1 fet
  SET PROTO=$GET(HTTPREQ("header","x-forwarded-proto"))
  IF PROTO="" SET PROTO=$GET(HTTPREQ("header","X-Forwarded-Proto"))
  IF PROTO="" SET PROTO=$S($$LOW^XLFSTR(HOST)["localhost":"http",$$LOW^XLFSTR(HOST)["127.0.0.1":"http",HOST[".vistaplex.org":"https",1:"http")
- IF HOST'="",$$LOW^XLFSTR(HOST)'["127.0.0.1",$$LOW^XLFSTR(HOST)'["localhost" Q PROTO_"://"_HOST_"/fhir"
+ ; Include localhost / 127.0.0.1 — NEEDINLINE forces inline bundles (cds1 cannot fetch private hosts).
+ ; Previously local Host fell through to fhirdev and re-eval scored the wrong patient graph.
+ IF HOST'="" Q PROTO_"://"_HOST_"/fhir"
  ; Last-resort defaults by profile / known public hosts
  IF $$ISRPMS^C0FWPOL() Q $S($G(^C0FQUAL("FHIRBASE"))'="":$$TRIMSL(^C0FQUAL("FHIRBASE")),1:"https://rpmsfhir.vistaplex.org/fhir")
  Q "https://devfhir.vistaplex.org/fhir"
@@ -779,12 +864,14 @@ LOADDFNS(REQ,CMS,N,ERR) ; patients[] only — cds1 fetches each DFN from fhirBas
  . SET REQ("patients",SLOT)=DFN
  QUIT
  ;
-LOADBND(REQ,CMS,N,ERR) ; Build patients[] + inline bundles[] for curated POP
- NEW BND,DFN,FIL,REF,SLOT
+LOADBND(REQ,CMS,N,ERR,REF) ; Build patients[] + inline bundles[] for curated POP
+ NEW BND,DFN,FIL,SLOT
  KILL ERR
- ; Default: use C0FWCAC cache. ?refresh=1 rebuilds every patient and can hang the
- ; %web worker for minutes on large lab graphs (browser shows Failed to fetch).
- SET REF=+$GET(HTTPARGS("refresh"))
+ ; REF comes from REEVALJ (stored on ^C0FQUAL("REEVAL")) — HTTPARGS is gone in TaskMan.
+ ; Default refresh on inline path so Quality AI Consult writebacks appear in CQL.
+ IF '$DATA(REF) DO
+ . IF $DATA(HTTPARGS("refresh"))#2 SET REF=+$GET(HTTPARGS("refresh"))
+ . ELSE  SET REF=1
  SET (N,SLOT,DFN)=0
  FOR  SET DFN=$ORDER(^C0FQUAL("POP",CMS,DFN)) QUIT:'DFN  DO  QUIT:$GET(ERR)'=""
  . SET SLOT=SLOT+1,N=SLOT

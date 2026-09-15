@@ -62,7 +62,7 @@ NOW() ; $$ - current FileMan date/time if available
  Q $H
  ;
 INDEX(ROOT,IEN,CID) ; Index cached Bundle entries with FHIR search predicates
- N CROOT,ENTRY,IDX,RES,SUB,TYPE
+ N C0FENT,CROOT,ENTRY,IDX,RES,SUB,TYPE
  S CROOT=$NA(@ROOT@(IEN,"cache",CID))
  K @CROOT@("SPO"),@CROOT@("POS"),@CROOT@("PSO"),@CROOT@("OPS"),@CROOT@("type"),@CROOT@("alias")
  S IDX=0
@@ -73,8 +73,10 @@ INDEX(ROOT,IEN,CID) ; Index cached Bundle entries with FHIR search predicates
  . I $G(@RES@("id"))'="",$G(@ENTRY@("fullUrl"))'="" S @CROOT@("alias",$G(@ENTRY@("fullUrl")))=TYPE_"/"_$G(@RES@("id"))
  S IDX=0
  F  S IDX=$O(@CROOT@("bundle","entry",IDX)) Q:+IDX<1  D
- . S ENTRY=$NA(@CROOT@("bundle","entry",IDX))
- . S RES=$NA(@ENTRY@("resource"))
+ . ; $O/$G via $NA into the fat cached Bundle is 10-30x on YottaDB; COMMON on a small M copy.
+ . K C0FENT
+ . M C0FENT=@CROOT@("bundle","entry",IDX)
+ . S ENTRY="C0FENT",RES=$NA(C0FENT("resource"))
  . S TYPE=$G(@RES@("resourceType")) Q:TYPE=""
  . S SUB=$$SUBJ(RES,ENTRY,TYPE,IDX)
  . S @CROOT@("type",TYPE,IDX)=""

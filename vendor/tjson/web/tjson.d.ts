@@ -2,12 +2,19 @@
 /* eslint-disable */
 
 export type BareStyle = "prefer" | "none";
+export type StringStyle = "quoted" | "bare" | "marked";
+/**
+ * StringStyle plus the two spellings it retired, so existing code still compiles.
+ * @deprecated Write a StringStyle. `"prefer"` means `"bare"` and `"none"` means `"quoted"`.
+ */
+export type StringStyleCompat = StringStyle | "prefer" | "none";
 export type FoldStyle = "auto" | "fixed" | "none";
-export type MultilineStyle = "floating" | "bold" | "boldFloating" | "transparent" | "light" | "foldingQuotes";
+export type MultilineStyle = "floating" | "bold" | "boldFloating" | "boldLight" | "transparent" | "light" | "foldingQuotes";
 export type TableUnindentStyle = "left" | "auto" | "floating" | "none";
 export type StringArrayStyle = "spaces" | "preferSpaces" | "comma" | "preferComma" | "none";
 export type IndentGlyphStyle = "auto" | "fixed" | "none";
 export type IndentGlyphMarkerStyle = "compact" | "separate";
+export type Eol = "lf" | "crlf";
 
 export interface StringifyOptions {
     /** Start from a preset canonical configuration (one pair per line, no packing, no tables). */
@@ -16,8 +23,8 @@ export interface StringifyOptions {
     wrapWidth?: number;
     /** Force explicit `[` / `{` indent markers on arrays and objects, even for single-step indents that would normally be implicit. */
     forceMarkers?: boolean;
-    /** Whether to use bare (unquoted) strings. Default: `"prefer"`. */
-    bareStrings?: BareStyle;
+    /** How a string value announces itself: `"quoted"` always quotes; `"bare"` uses the unquoted form where the spec permits, its opening quote being the space in front of it; `"marked"` writes that space as `_` so it can be seen. Default: `"bare"`. */
+    bareStrings?: StringStyleCompat;
     /** Whether to use bare (unquoted) object keys. Default: `"prefer"`. */
     bareKeys?: BareStyle;
     /** Allow packing multiple key-value pairs onto one line. Default: `true`. */
@@ -64,6 +71,8 @@ export interface StringifyOptions {
     indentGlyphMarkerStyle?: IndentGlyphMarkerStyle;
     /** @experimental Spacing multiplier between packed key-value pairs. Valid values: 1–4 (clamped); actual spaces = value × 2. Default: `2` (4 spaces). May be changed or removed in a future version. */
     kvPackMultiple?: number;
+    /** Line ending used between output lines. `"lf"` (default) keeps output canonical and byte-identical across platforms; `"crlf"` is for a consumer that genuinely requires CRLF. Being on Windows is not itself a reason, as most Windows tooling handles LF, and TJSON survives whole-file LF↔CRLF conversion, so a consumer can usually convert on its own. Default: `"lf"`. */
+    eol?: Eol;
 }
 
 export interface ParseOptions {
@@ -87,6 +96,13 @@ export function parse(input: string, options?: ParseOptions): any;
  * any size and precision pass through as exact text. */
 export function toJson(input: string): string;
 
+/** Parse a TJSON string and return an indented JSON string: two spaces per
+ * level, one element per line. Lossless on the same terms as `toJson` -- no
+ * JS number is on the path, so prefer this over
+ * `JSON.stringify(JSON.parse(tjson.toJson(x)), null, 2)`, which puts every
+ * number through an f64. */
+export function toJsonPretty(input: string): string;
+
 /** Render a JSON string as TJSON, with optional options. Never lossy:
  * numbers of any size and precision pass through as exact text. */
 export function fromJson(input: string, options?: StringifyOptions): string;
@@ -96,6 +112,22 @@ export function stringify(input: any, options?: StringifyOptions): string;
 
 
 
+/**
+ * The tjson version this module was built from.
+ *
+ * Reported from inside the wasm rather than read from package metadata,
+ * because the metadata sits beside the artifact and can disagree with it: a
+ * page holding a cached `.wasm` will show fresh surroundings while running old
+ * code, and nothing outside the module can tell. This string cannot be wrong
+ * about which build is executing.
+ *
+ * A function rather than a constant only because a `&'static str` cannot cross
+ * the wasm boundary as a module constant. `d3.version`, `vue.version` and
+ * `ts.version` are the same idea. The C API exposes the same constant through
+ * `tjson_version()`.
+ */
+export function version(): string;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
@@ -104,6 +136,8 @@ export interface InitOutput {
     readonly parse: (a: number, b: number, c: any) => [number, number, number];
     readonly stringify: (a: any, b: any) => [number, number, number, number];
     readonly toJson: (a: number, b: number) => [number, number, number, number];
+    readonly toJsonPretty: (a: number, b: number) => [number, number, number, number];
+    readonly version: () => [number, number];
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;

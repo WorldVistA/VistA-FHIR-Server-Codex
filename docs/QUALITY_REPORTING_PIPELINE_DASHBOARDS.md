@@ -1,0 +1,152 @@
+# Quality Reporting Pipeline on the Dashboards
+
+**Date:** August 10, 2026
+**Status:** Phases 1–5 implemented (`C0FQRPT.m` + cds1 hosted validator/receiver)
+
+## Goal
+
+Make the end-to-end FHIR quality reporting capability (DEQM Summary
+MeasureReport, the QRDA Category III replacement) visible and clickable from
+the quality dashboards, so the September Connectathon demonstration runs in a
+browser instead of a terminal.
+
+## What already existed
+
+- `C0FQUAL.m` renders the summary dashboard, per-measure dashboards, and the
+  **Re-evaluate CQL** button (official cqm-execution on cds1 → `SETPOP`/`SETSUM`).
+  Local/private hosts send **refreshed inline** `/fhir` bundles (so Quality AI
+  Consult writebacks are scored); public hosts let cds1 fetch `fhirBase`.
+  CMS125 mammo Procedure (SCT) is bridged to QDM Diagnostic Study / LOINC on cds1
+  — same path for VistA and RPMS; no radiology DiagnosticReport write required.
+- The workstation pipeline in `HL7-FHIR-quality-testing`
+  (`build-deqm-summary.py`, `deqm-summary-receiver-smoke.sh`) builds, validates,
+  and submits DEQM Summary MeasureReports; its **frozen artifacts** are
+  published under `/filesystem/quality/measurereports/{CMS}/` and linked from
+  each measure dashboard.
+
+The gap: the published artifacts are a freeze. Nothing on the dashboards showed
+the *live* counts as a standards-shaped report, and the pipeline steps were not
+visible as a story.
+
+## Phase 1 (this change) — live export + reporting page
+
+New routine `src/C0FQRPT.m`, routes registered in `SYNWEBRG.m`:
+
+| Route | What it does |
+|---|---|
+| `GET /fhir-quality-report?measure=CMS165v14` | DEQM STU5 Summary MeasureReport built in M, at request time, from `^C0FQUAL("SUM")` — the same aggregates the dashboards display |
+| `GET /fhir-quality-report?measure=…&bundle=1` | Transaction Bundle (reporter Organization + report), the exact payload a DEQM receiver accepts |
+| `GET /fhir-quality-reporting` | Pipeline page: the four steps (Calculate → Build → Validate → Submit), a live-report table for every active measure, and the reporter Organization for this lane |
+
+Links added: summary dashboard → *Quality reporting (DEQM)*; each measure
+dashboard's results card → *Live DEQM Summary MeasureReport* and *Live
+submission Bundle*.
+
+Design decisions:
+
+- **JSON shape mirrors `build-deqm-summary.py` exactly** (profile, measureScoring
+  extension, meta.tag provenance, group/population/measureScore) — that shape is
+  validated against DEQM STU5 and accepted by the reference `deqm-test-server`.
+- **Honest provenance:** live exports are tagged `setsum-live` with the SETSUM
+  cohort text and as-of date in `meta.tag`; they never claim `official-cql`.
+  The reviewed freeze remains the artifact of record for exchange.
+- **Distinct ids** (`{CMS}-[lane-]live-summary-deqm`) so a live submission never
+  overwrites a frozen one on a receiver.
+- **Lane-aware reporter Organization** (fhirdev / rpmsfhir / fhirprod presets,
+  RPMS detected via `$$ISRPMS^C0FWPOL`), matching the Python builder's presets.
+
+## Phase 2 (implemented) — one-click Validate and Submit
+
+- cds1 `quality-eval` sidecar gained `POST /quality/validate-report` (proxies
+  the HL7 validator service with the `hl7.fhir.us.davinci-deqm` 5.0.0 package,
+  applies the same known-IG-noise allowlist as the workstation smoke) and
+  `POST /quality/submit-report` (POSTs the transaction Bundle to the hosted
+  Tacoma `deqm-test-server`; `body.receiver` can point at Connectathon
+  receivers).
+- Hosted infra on cds1: `fhir-validator` (Inferno validator service,
+  `DISABLE_TX=true`) joined the stage-2 compose; `deqm-test-server` + MongoDB +
+  Redis run from their own compose at `/opt/deqm-test-server` with ports bound
+  to the host loopback, reached by the sidecar over the compose network.
+  Caddy routes `/quality/validate-report*` and `/quality/submit-report*` to
+  the sidecar. (Upstream images referenced `dhi.io`, which requires auth —
+  swapped to public `node:24`/`redis:7-alpine`.)
+- M routes `POST /fhir-quality-report-validate|submit?measure=` follow the
+  `WSREEVAL` pattern (accept fast, queue the worker as a TaskMan task via
+  `^%ZTLOAD`, status in `^C0FQUAL("REPORT",CMS,op)`, page reloads to show the
+  outcome). Buttons appear on `/fhir-quality-reporting` next to each live
+  report. The re-evaluate worker is TaskMan-queued the same way (SAC).
+
+## Phase 3 (implemented) — evidence log
+
+- `LOGRUN^C0FQRPT` appends `^C0FQUAL("REPORT","LOG",n)` rows (timestamp,
+  measure, step, outcome, detail); the last 20 render at the bottom of
+  `/fhir-quality-reporting`, so the demonstration leaves a visible audit trail.
+
+## Phase 4 (implemented) — full outcomes and TJSON browser view
+
+- Each validate/submit run now keeps the **complete cds1 response** (the full
+  validator OperationOutcome with every issue, or the receiver's
+  transaction-response Bundle) at `^C0FQUAL("REPORT",CMS,op,"json")`, replaced
+  on each run.
+- `GET /fhir-quality-report-outcome?measure=&op=validate|submit` serves that
+  JSON; `&view=html` renders it as a page in the dashboard style: status,
+  severity counts, actionable errors vs. known IG noise, a severity/location/
+  message table of every validator issue (or the receiver's per-entry
+  results), with the validator's own narrative and the raw JSON one click
+  away. The *details* links under each button and the latest evidence-log row
+  per measure/step open the HTML view.
+- **TJSON browser view:** the C0FHIR Browser gained
+  `source=qualityreport`, so
+  `/fhir?view=browser&source=qualityreport&measure=CMS165v14` opens the live
+  submission Bundle (reporter Organization + MeasureReport) in the same
+  TJSON/JSON browser used for patient FHIR. A *browser* link sits next to each
+  live report on `/fhir-quality-reporting`.
+
+## Phase 5 (implemented) — live Individual MeasureReport (QRDA-I analogue)
+
+Extends the same `/fhir-quality-report*` surface with `dfn=`:
+
+| Route | What it does |
+|---|---|
+| `GET /fhir-quality-report?measure=CMS165v14&dfn=101115` | DEQM STU5 Individual MeasureReport from `^C0FQUAL("POP",CMS,DFN)` |
+| `…&bundle=1` | Transaction Bundle (reporter Organization + individual report) |
+| `POST /fhir-quality-report-validate\|submit?measure=&dfn=` | Same TaskMan → cds1 path; validate sends `profile=indv-measurereport-deqm` |
+| `GET /fhir-quality-report-outcome?measure=&op=&dfn=` | Full cds1 outcome for that patient run |
+
+- Status/outcome stored under `^C0FQUAL("REPORT",CMS,"INDV",DFN,op)`; evidence-log
+  rows carry an optional DFN piece.
+- Measure dashboard curated cohort table: per-row *report · Bundle · TJSON*,
+  Validate/Submit buttons, and status/details links.
+- Reporting page notes that Individual controls live on the measure dashboards.
+- TJSON browser: `source=qualityreport&dfn=` loads the individual Bundle.
+- Shape mirrors `build-deqm-individual.py` (no `measureScore`, no
+  `evaluatedResource`; evidence in `meta.tag`; honest `setpop-live` provenance).
+- Subject-List MeasureReport is deferred (no spike yet).
+
+## Verified end to end
+
+**Summary (August 9, 2026, vehu10):**
+- Validate: `pass` — 1 validator error, which is the known DEQM STU5 IG
+  supplementalData noise also present on the IG's own golden example; 0
+  actionable.
+- Submit: `accepted` — receiver returned 200/201 for the reporter Organization
+  and MeasureReport entries.
+
+**Individual (August 10, 2026, vehu10, CMS165v14 DFN 1):**
+- Live report: `type=individual`, `indv-measurereport-deqm`, counts match POP.
+- Validate: `pass` — errors=1 warnings=2 actionable=0 knownNoise=1.
+- Submit: `accepted` — HTTP 200; entry statuses 200 OK, 201 Created.
+
+## Verification (Phase 1 / Phase 5 gate)
+
+1. Sync to vehu10 (`./scripts/vehu10-fhir-sync.sh`), XINDEX clean on
+   `C0FQRPT`, `C0FQUAL`, `C0FHIRWS`.
+2. `GET /fhir-quality-report?measure=CMS165v14` returns JSON whose population
+   counts equal `^C0FQUAL("SUM","CMS165v14")` pieces 2–5; `python3 -m json.tool`
+   parses it.
+3. `&bundle=1` returns a two-entry transaction Bundle that parses.
+4. `/fhir-quality-reporting` lists all active measures with working links.
+5. `GET /fhir-quality-report?measure=CMS165v14&dfn=<POP>` returns
+   `type=individual`, `indv-measurereport-deqm`, subject `Patient/<dfn>`, and
+   binary population counts matching the POP row; `&bundle=1` parses.
+6. Validate/Submit for that DFN reach `pass` / `accepted` (known IG noise only).

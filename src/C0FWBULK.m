@@ -47,9 +47,9 @@ READJSON(DIR,FILE,OUT) ; $$1 if OUT(1..n) filled with ≤12k chunks of FILE
  S PATH=$G(DIR)_"/"_$G(FILE)
  I $G(FILE)="" Q 0
  S IO=PATH
- ; Do not use EXCEPTION= on OPEN — it STACKOFLOWs on this GT.M during READ loops.
- O IO:(READONLY:NOWRAP):5
- I '$T Q 0
+ ; Platform-conditional open (READONLY:NOWRAP on GT.M, "R" on IRIS);
+ ; no EXCEPTION= on OPEN — it STACKOFLOWs on this GT.M during READ loops.
+ I '$$FOPENR^C0FWOS(IO,5) Q 0
  U IO
  S (N,EOF)=0
  F  Q:EOF  D

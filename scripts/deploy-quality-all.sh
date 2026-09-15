@@ -2,7 +2,15 @@
 # Deploy quality-dashboard + C0X stack to all active servers, then smoke each.
 #
 # Active servers (default):
-#   fhirdev  vehu10  rpms-candidate  rpmsfhir  fhirprod
+#   fhirdev  vehu10  rpms-candidate  rpmsfhir  wvehr
+# plus irisfhir, the NON-BLOCKING sixth lane (VistA-on-IRIS): it is deployed
+# and smoked like the others but can never gate the five GT.M servers — a
+# failure there reports WARN in the summary and does not affect the exit code.
+#
+# wvehr = the WorldVistA EHR at fhir.vistaplex.org (container wvehr, user wv).
+# It replaced the old fhirprod container 2026-09-13 and is a PERMANENT
+# first-class lane: every fleet deploy includes it ("fhirprod"/"fhir" are
+# kept as aliases so old invocations keep working).
 #
 # Usage:
 #   ./scripts/deploy-quality-all.sh
@@ -19,7 +27,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 C0X_ROOT="${C0X_ROOT:-$ROOT/../fhir-triple-store}"
 SMOKE="$ROOT/scripts/smoke-quality-host.sh"
-TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir fhirprod}"
+TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir wvehr irisfhir}"
 SKIP_DEPLOY="${QUALITY_SKIP_DEPLOY:-0}"
 REINDEX="${QUALITY_REINDEX:-0}"
 
@@ -73,18 +81,18 @@ deploy_one() {
       run_seedcrit_remote root@devfhir.vistaplex.org fhirdev22 vehu /home/vehu/p /home/vehu/lib/gtm/mumps /home/vehu/etc/env || true
       maybe_reindex https://devfhir.vistaplex.org
       ;;
-    fhirprod|fhir)
+    wvehr|fhirprod|fhir)
       FHIRDEV_SSH=root@fhir.vistaplex.org \
-      FHIRDEV_CONTAINER=fhir \
-      FHIRDEV_ROUTINE_DIR=/home/osehra/p \
-      FHIRDEV_WWW=/home/osehra/www \
-      VEHU_ENV=/home/osehra/etc/env \
-      FHIRDEV_MUMPS=/home/osehra/lib/gtm/mumps \
+      FHIRDEV_CONTAINER=wvehr \
+      FHIRDEV_ROUTINE_DIR=/home/wv/p \
+      FHIRDEV_WWW=/home/wv/www/filesystem \
+      VEHU_ENV=/home/wv/etc/env \
+      FHIRDEV_MUMPS=/home/wv/lib/gtm/mumps \
       FHIRDEV_HTTP_BASE=https://fhir.vistaplex.org \
-      FHIRDEV_M_USER=osehra \
+      FHIRDEV_M_USER=wv \
       "$ROOT/scripts/fhirdev-codex-sync.sh"
       "$C0X_ROOT/scripts/deploy-c0x.sh" fhirprod || true
-      run_seedcrit_remote root@fhir.vistaplex.org fhir osehra /home/osehra/p /home/osehra/lib/gtm/mumps /home/osehra/etc/env || true
+      run_seedcrit_remote root@fhir.vistaplex.org wvehr wv /home/wv/p /home/wv/lib/gtm/mumps /home/wv/etc/env || true
       maybe_reindex https://fhir.vistaplex.org
       ;;
     vehu10)
@@ -126,6 +134,11 @@ M
       run_seedcrit_remote root@rpmsfhir.vistaplex.org rpms-fhir rpms /home/rpms/r /home/rpms/lib/gtm/mumps /home/rpms/etc/env || true
       maybe_reindex https://rpmsfhir.vistaplex.org
       ;;
+    irisfhir|iris)
+      # Non-blocking sixth lane: refresh routes + ensure listeners, never fail.
+      "$ROOT/scripts/iris-web-setup.sh" \
+        || echo "WARN: irisfhir web setup failed (non-blocking lane)" >&2
+      ;;
     *)
       echo "unknown target: $t" >&2
       return 1
@@ -135,9 +148,19 @@ M
 
 smoke_one() {
   local t="$1" base dfn
+  # irisfhir is the non-blocking sixth lane: right-sized smoke, WARN on failure,
+  # and it must never gate the five GT.M servers (exit code untouched).
+  if [[ "$t" == "irisfhir" || "$t" == "iris" ]]; then
+    if "$ROOT/scripts/iris-lane-smoke.sh"; then
+      RESULTS+=("OK  irisfhir (non-blocking lane)")
+    else
+      RESULTS+=("WARN irisfhir (non-blocking lane, does not gate)")
+    fi
+    return 0
+  fi
   case "$t" in
     fhirdev)  base=https://devfhir.vistaplex.org; dfn=101076 ;;
-    fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=101076 ;;
+    wvehr|fhirprod|fhir) base=https://fhir.vistaplex.org; dfn=1 ;;  # WVEHR 3.0 ZZ TEST (old Synthea 1643-1661 retired with container fhir)
     vehu10)   base=http://127.0.0.1:9085; dfn=101076 ;;
     rpms-candidate|rpms-rebuild-candidate|rpms) base=http://127.0.0.1:9088; dfn=4 ;;
     rpmsfhir|rpms-fhir) base=https://rpmsfhir.vistaplex.org; dfn=8 ;;
@@ -168,6 +191,14 @@ for t in $TARGETS; do
     overall=1
   fi
 done
+
+# Self-announcing UI drift check (non-gating, like the iris lane): compares
+# each public lane's /demos/cprs/version.json against rehmp HEAD.
+if "$ROOT/scripts/check-ui-versions.sh"; then
+  RESULTS+=("OK  ui-versions (all public lanes at rehmp HEAD)")
+else
+  RESULTS+=("WARN ui-versions DRIFT — see lines above; rerun rehmp/deploy/publish-ui-all.sh")
+fi
 
 echo ""
 echo "======== SUMMARY ========"

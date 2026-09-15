@@ -11,6 +11,10 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; DocumentReference/TIU filing placeholder
  I DFN<1 D DOCERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
  S VISIT=$$DOCVISIT(ROOT,IEN,RIEN)
  I VISIT<1 D DOCERR(ROOT,IEN,RIEN,"DocumentReference has no resolved Encounter visit pointer",.RETURN) Q
+ ; Name the real problem when the decoder is missing. Before 2026-09-10 this
+ ; fell through to the "no attachment data" message below, which blamed the
+ ; data and hid the missing-routine root cause for 806 documents on IRIS.
+ I $T(+0^SYNWEBUT)="" D DOCERR(ROOT,IEN,RIEN,"SYNWEBUT is not installed; cannot decode DocumentReference attachment data",.RETURN) Q
  S TXT=$$DOCTEXT(ROOT,IEN,RIEN)
  I TXT="" D DOCERR(ROOT,IEN,RIEN,"DocumentReference has no text/plain attachment data",.RETURN) Q
  S TITLE=$$DOCRTTL(ROOT,IEN,RIEN,TXT)
@@ -56,6 +60,7 @@ FILENOTE(ROOT,IEN,RIEN,NI,DFN,VISIT,TXT,TITLE) ; File one Encounter.note/Documen
  I +RES>0 D  Q
  . S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"status")="filed"
  . S @ROOT@(IEN,"load","DocumentReference",RIEN,"tiu",NI,"ien")=+RES
+ . I $G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="Encounter" Q
  . S @ROOT@(IEN,"load","Encounter",RIEN,"tiu",NI,"status")="filed"
  . S @ROOT@(IEN,"load","Encounter",RIEN,"tiu",NI,"ien")=+RES
  . S @ROOT@(IEN,"load","Encounter",RIEN,"tiu",NI,"result")=RES

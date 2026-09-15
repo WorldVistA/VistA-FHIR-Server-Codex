@@ -25,6 +25,30 @@ INDEX(IEN,ROOT) ; Index parsed FHIR JSON in graph row IEN
  . D SETIDX(JINDEX,WI,"bundle",BUND)
  Q
  ;
+INDEXADD(IEN,FIRST,LAST,ROOT) ; Index only appended entries FIRST..LAST (no CLEAR)
+ ; Used by /updatepatient on large graphs — full INDEX rewrites tens of thousands of triples.
+ N JROOT,JINDEX,WI,TYPE,BUND
+ I $G(ROOT)="" S ROOT=$$ROOT^C0FWGRT("fhir-intake")
+ I $G(ROOT)="" Q
+ I $G(IEN)="" Q
+ S FIRST=+$G(FIRST),LAST=+$G(LAST)
+ Q:FIRST<1  Q:LAST<FIRST
+ S JROOT=$NA(@ROOT@(IEN,"json","entry"))
+ Q:'$D(@JROOT)
+ S JINDEX=$NA(@ROOT@(IEN))
+ S WI=FIRST-1
+ F  S WI=$O(@JROOT@(WI)) Q:+WI=0!(WI>LAST)  D
+ . S TYPE=$G(@JROOT@(WI,"resource","resourceType"))
+ . Q:TYPE=""
+ . S @JINDEX@("type",TYPE,WI)=""
+ . D TRIPLES(JINDEX,$NA(@JROOT@(WI)),WI,TYPE)
+ S BUND=$$BUNDLE(JINDEX)
+ S WI=FIRST-1
+ F  S WI=$O(@JROOT@(WI)) Q:+WI=0!(WI>LAST)  D
+ . S @JINDEX@(WI,"bundle")=BUND
+ . D SETIDX(JINDEX,WI,"bundle",BUND)
+ Q
+ ;
 TRIPLES(INDEX,ARY,WI,TYPE) ; Build graph triples for one FHIR entry
  N PURL,ENC,PAT,SDATE,HL7DATE,CLASS
  S TYPE=$G(TYPE)

@@ -55,6 +55,11 @@
  S TO=$G(TO) ; Timeout
  I +TO=0 S TO=30 ; Default timeout
  ;
+ ; IRIS/Cache: no PIPE device and no curl in the stock container — use
+ ; %Net.HttpRequest instead. Object syntax hidden in XECUTE so GT.M/YottaDB
+ ; still compiles this routine (same trick as the C0FWOS shim family).
+ I $P($SY,",")'=47 Q:$QUIT $$IRIS(.RETURN,METHOD,URL,.PAYLOAD,$G(MIME),TO,.HEADERS,.OPTIONS) D IRIS(.RETURN,METHOD,URL,.PAYLOAD,$G(MIME),TO,.HEADERS,.OPTIONS) Q
+ ;
  ; Write payload to File in shared memory
  I $D(PAYLOAD) N F D
  . S F="/dev/shm/"_$R(987987234)_$J_".DAT"
@@ -129,6 +134,38 @@
  ;
  QUIT:$QUIT ZCLOSE QUIT
  ;
+ ;
+IRIS(RETURN,METHOD,URL,PAYLOAD,MIME,TO,HEADERS,OPTIONS) ; $$ - IRIS/Cache branch via %Net.HttpRequest
+ ; Same contract as %(...): returns 0 on transport success (curl-exit-style),
+ ; RETURN(i)=body chunks, HEADERS("STATUS")=HTTP status code.
+ ; https URLs use the "C0SSL" SSL configuration (created by iris-web-setup.sh).
+ ; Response headers other than STATUS are not populated on this branch.
+ N %WREQ,%WERR,%WHOST,%WPATH,%WPORT,%WSSL,%WI,%WU,%WN,%WV
+ K RETURN,HEADERS
+ S %WU=URL
+ S %WSSL=$S($E(%WU,1,8)="https://":1,1:0)
+ S %WU=$P(%WU,"://",2,99)
+ S %WHOST=$P(%WU,"/"),%WPATH="/"_$P(%WU,"/",2,99)
+ S %WPORT=$S(%WHOST[":":+$P(%WHOST,":",2),%WSSL:443,1:80)
+ S %WHOST=$P(%WHOST,":")
+ X "S %WREQ=##class(%Net.HttpRequest).%New()"
+ X "S %WREQ.Server=%WHOST,%WREQ.Port=%WPORT,%WREQ.Timeout=TO"
+ I %WSSL X "S %WREQ.Https=1,%WREQ.SSLConfiguration=""C0SSL"""
+ I $G(MIME)]"" X "S %WREQ.ContentType=MIME"
+ S %WI=0 F  S %WI=$O(OPTIONS("header",%WI)) Q:'%WI  D
+ . S %WN=$$TRIM($P(OPTIONS("header",%WI),":"))
+ . S %WV=$$TRIM($P(OPTIONS("header",%WI),":",2,99))
+ . Q:%WN=""  Q:%WV=""  ; curl-style suppressions ("Expect:") are no-ops here
+ . X "D %WREQ.SetHeader(%WN,%WV)"
+ I $D(PAYLOAD)#2,PAYLOAD'="" X "D %WREQ.EntityBody.Write(PAYLOAD)"
+ S %WI=0 F  S %WI=$O(PAYLOAD(%WI)) Q:'%WI  X "D %WREQ.EntityBody.Write(PAYLOAD(%WI))"
+ S %WERR=0
+ X "N %WSC S %WSC=%WREQ.Send(METHOD,%WPATH) I '$SYSTEM.Status.IsOK(%WSC) S %WERR=1"
+ I %WERR S HEADERS("STATUS")="" Q:$QUIT 7 Q  ; 7 = curl "failed to connect"
+ X "S HEADERS(""STATUS"")=%WREQ.HttpResponse.StatusCode,HEADERS(""PROTOCOL"")=""HTTP/1.1"""
+ S %WI=10
+ X "N %WD S %WD=%WREQ.HttpResponse.Data F  Q:%WD.AtEnd  S %WI=%WI+1,RETURN(%WI)=%WD.Read(30000)"
+ Q:$QUIT 0 Q
  ;
  ; Code below stolen from Kernel. Thanks Wally.
 TRIM(%X,%F,%V) ;Trim spaces\char from front(left)/back(right) of string

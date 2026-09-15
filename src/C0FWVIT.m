@@ -39,9 +39,11 @@ RPMS() ; $$ - true when RPMS PCC measurements are available
  Q 1
  ;
 GETRMSR(RTN,DFN,BEG,END,MAX) ; Add RPMS V MEASUREMENT resources
+ ; Walk newest-first: AC is ascending by IEN; large patients hit MAX on old vitals
+ ; and omit Quality AI Consult / recent writebacks (e.g. DFN 55 BP IEN 116851).
  N CNT,DATE,IEN,VIT
- S (CNT,IEN)=0
- F  S IEN=$O(^AUPNVMSR("AC",DFN,IEN)) Q:IEN<1!(CNT'<MAX)  D
+ S CNT=0,IEN=""
+ F  S IEN=$O(^AUPNVMSR("AC",+$G(DFN),IEN),-1) Q:IEN<1!(CNT'<MAX)  D
  . S DATE=$$MSRDT(IEN)
  . I (DATE<BEG)!(DATE>END) Q
  . K VIT
@@ -115,8 +117,9 @@ RPMSLOAD(ROOT,IEN,RIEN,DFN,ABBR,RETURN) ; File one RPMS V MEASUREMENT
  S FDA(9000010.01,"+1,",.04)=VAL
  S FDA(9000010.01,"+1,",.07)=FMDT
  S FDA(9000010.01,"+1,",1201)=FMDT
- I CLIN>0 S FDA(9000010.01,"+1,",1203)=CLIN
- S FDA(9000010.01,"+1,",1217)=ENT
+ ; RPMS-only aux fields: DD-guarded (see C0FWCON V POV note)
+ I CLIN>0,$D(^DD(9000010.01,1203)) S FDA(9000010.01,"+1,",1203)=CLIN
+ I $D(^DD(9000010.01,1217)) S FDA(9000010.01,"+1,",1217)=ENT
  D UPDATE^DIE("","FDA","","MSG")
  I $D(MSG) D STATUS(ROOT,IEN,RIEN,"error","Problem saving RPMS V MEASUREMENT: "_$G(MSG("DIERR",1,"TEXT",1)),.RETURN) Q
  D STATUS(ROOT,IEN,RIEN,"loaded","Vital sign filed as RPMS V MEASUREMENT",.RETURN)
@@ -162,6 +165,7 @@ ABBRCD(CODE) ; $$ - LOINC/SNOMED to vital abbreviation
  I CODE="59408-5" Q "PO2"
  I CODE="2708-6" Q "PO2"
  I CODE="72514-3" Q "PN"
+ I CODE="39156-5" Q "BMI"
  I CODE=27113001 Q "WT"
  I CODE=50373000 Q "HT"
  I CODE=75367002 Q "BP"
@@ -184,6 +188,7 @@ ABBRNM(TXT) ; $$ - display/text to vital abbreviation
  I X["TEMP" Q "T"
  I X["OXIM" Q "PO2"
  I X["PAIN" Q "PN"
+ I X["BODY MASS"!(X["BMI") Q "BMI"
  Q ""
  ;
 VTIEN(ABBR) ; $$ - vital type ien from abbreviation or name index

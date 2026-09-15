@@ -73,6 +73,16 @@ EN ; Register (or refresh) routes - idempotent for same method+pattern
  . SET MQ(1)="U^measure"
  . DO addService^%webutils("GET","filesystem/quality/measurereports/{measure}","QMRHTML^C0FQUAL","","","",.MQ)
  . DO addService^%webutils("GET","filesystem/quality/measurereports/{measure}/","QMRHTML^C0FQUAL","","","",.MQ)
+ ; Live DEQM Summary MeasureReport export + reporting pipeline page
+ IF $T(WSRPT^C0FQRPT)'="" DO
+ . DO addService^%webutils("GET","fhir-quality-report","WSRPT^C0FQRPT")
+ . DO addService^%webutils("GET","fhir-quality-reporting","WSRPTPG^C0FQRPT")
+ . DO addService^%webutils("GET","fhir-quality-report-outcome","WSOUT^C0FQRPT")
+ IF $T(WSVAL^C0FQRPT)'="" DO
+ . NEW PARAMS
+ . SET PARAMS(1)="B"
+ . DO addService^%webutils("POST","fhir-quality-report-validate","WSVAL^C0FQRPT","","","",.PARAMS)
+ . DO addService^%webutils("POST","fhir-quality-report-submit","WSSUB^C0FQRPT","","","",.PARAMS)
  ; Seed quality-measure catalog when routine is present
  IF $T(SEED^C0FQUAL)'="" DO SEED^C0FQUAL
  IF $T(WS^C0FWAIS)'="" DO addService^%webutils("GET","aiconsult","WS^C0FWAIS")
@@ -203,13 +213,18 @@ ADDALTREAD(RT) ; Register one concrete altfhir read route
  ;
 LOADDEF ; Same routes as SYNINIT LOADHAND^SYNINIT (master) when branch has no LOADHAND
  ; addpatient: new bundle -> new graph row. updatepatient: merge bundle into existing row (use ?ien=&dfn=&icn=).
- IF $T(WSPAT^C0FWADD)'="" DO addService^%webutils("POST","addpatient","WSPAT^C0FWADD")
- E  DO addService^%webutils("POST","addpatient","wsPostFHIR^SYNFHIR")
- IF $T(wsUpdatePatient^C0FWUPD)'="" DO addService^%webutils("POST","updatepatient","wsUpdatePatient^C0FWUPD")
- E  DO addService^%webutils("POST","updatepatient","wsUpdatePatient^SYNFHIRU")
+ ; NOTE: choose the entry point with $SELECT, not IF/ELSE around addService —
+ ; $TEST is not stacked across a parameterized DO, and addService's last
+ ; internal IF ($P($SY,",")=47, i.e. "am I GT.M") leaves $TEST=0 on IRIS,
+ ; which made the ELSE fallback overwrite the correct route (found 2026-09-10).
+ NEW C0FWEP
+ SET C0FWEP=$SELECT($T(WSPAT^C0FWADD)'="":"WSPAT^C0FWADD",1:"wsPostFHIR^SYNFHIR")
+ DO addService^%webutils("POST","addpatient",C0FWEP)
+ SET C0FWEP=$SELECT($T(wsUpdatePatient^C0FWUPD)'="":"wsUpdatePatient^C0FWUPD",1:"wsUpdatePatient^SYNFHIRU")
+ DO addService^%webutils("POST","updatepatient",C0FWEP)
  DO addService^%webutils("GET","loadstatus","wsLoadStatus^SYNFHIR")
- IF $T(wsShow^C0FHIR)'="" DO addService^%webutils("GET","showfhir","wsShow^C0FHIR")
- E  DO addService^%webutils("GET","showfhir","wsShow^SYNFHIR")
+ SET C0FWEP=$SELECT($T(wsShow^C0FHIR)'="":"wsShow^C0FHIR",1:"wsShow^SYNFHIR")
+ DO addService^%webutils("GET","showfhir",C0FWEP)
  DO addService^%webutils("GET","vpr/{dfn}","wsVPR^SYNVPR")
  DO addService^%webutils("GET","vpr?icn={icn}","wsVPR^SYNVPR")
  DO addService^%webutils("GET","vpr?ien={ien}","wsVPR^SYNVPR")
