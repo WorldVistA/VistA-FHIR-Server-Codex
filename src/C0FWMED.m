@@ -44,13 +44,17 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR MedicationRequest as an outpatient Rx
  Q
  ;
 PREP(RXN) ; $$ - convert RxNorm and ensure a file 50 IEN (may laygo)
- N IEN,SCD,X
- S X="ADDDRUG^SYNFMED"
- I $T(@X)="" Q 0
- S SCD=$G(RXN)
- I $T(RXNCONV^SYNFMED)'="" S SCD=$$RXNCONV^SYNFMED(RXN)
- I 'SCD Q 0
- Q +$$ADDDRUG^SYNFMED(SCD)
+ ; Do not NEW IEN. Kernel/FileMan and C0FWDOM $ETRAP still use that name;
+ ; hiding it made PREP+5 report LVUNDEF IEN on WVEHR (no ETSRXN).
+ N $ETRAP,C0FDRG,C0FSCD
+ S $ETRAP="S $ECODE="""" Q 0"
+ I $T(ADDDRUG^SYNFMED)="" Q 0
+ S C0FSCD=$G(RXN)
+ ; RXNCONV $EC U-UNIMPLEMENTED when ETSRXN is absent. Skip conversion then.
+ I $T(+0^ETSRXN)'="",$T(RXNCONV^SYNFMED)'="" S C0FSCD=$$RXNCONV^SYNFMED(RXN)
+ I 'C0FSCD Q 0
+ S C0FDRG=+$$ADDDRUG^SYNFMED(C0FSCD)
+ Q C0FDRG
  ;
 FILEPS(DFN,DRUG,FMDT) ; $$ - file one Rx with PSO locals isolated
  N IEN,OT,PSONEW,PSODRUG,PSOY,PSOSITE,PSOPAR,PSOPAR7,PSOSYS,PSODTCUT,PSOPRPAS
