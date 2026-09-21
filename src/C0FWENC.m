@@ -27,6 +27,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  I +$G(KNOWNVISIT)>0,'$D(ENCDATA("HEALTH FACTOR")),'$D(ENCDATA("DX/PL")),'$D(ENCDATA("STD CODES")) D  Q
  . D LOG(ROOT,IEN,RIEN,"Encounter already has visitIen "_KNOWNVISIT_"; filing Encounter.note only")
  . D LOADED(ROOT,IEN,RIEN,KNOWNVISIT,"Encounter already linked to visit",.RETURN)
+ . D HFROLL(ROOT,IEN,RIEN,.RETURN)
  S DUZ=USER
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
  I +$G(DUZ(2))<1 S DUZ(2)=500
@@ -52,6 +53,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  I +$G(VISIT)<1 D ERR(ROOT,IEN,RIEN,"DATA2PCE did not return a visit IEN",.RETURN) Q
  D LOADED(ROOT,IEN,RIEN,+VISIT,$S(+$G(RET)=-5:"Encounter filed through DATA2PCE with warnings",1:"Encounter filed through DATA2PCE"),.RETURN)
  D POSTFILE(ROOT,IEN,RIEN,+VISIT)
+ D HFROLL(ROOT,IEN,RIEN,.RETURN)
  I +$G(RET)=-5 S @ROOT@(IEN,"load","Encounter",RIEN,"warning")=$$WARNMSG(.ZZERR,.ZZERDESC)
  Q
  ;
@@ -94,12 +96,14 @@ RPMSLOAD(ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,KNOWNVISIT,RETURN) ; File RPMS outpatie
  I +$G(KNOWNVISIT)>0 D  Q
  . D RPMSHF(.ERR,DFN,+KNOWNVISIT,APDT,LOC,USER,.ENCDATA,ROOT,IEN,RIEN) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
  . D LOADED(ROOT,IEN,RIEN,+KNOWNVISIT,"Encounter already linked to RPMS visit",.RETURN)
+ . D HFROLL(ROOT,IEN,RIEN,.RETURN)
  S VISIT=$$RPMSEXI(DFN,LOC,APDT)
  I VISIT<1 S VISIT=$$RPMSVIS(.ERR,DFN,LOC,APDT) I VISIT<1 D ERR(ROOT,IEN,RIEN,$S($G(ERR)'="":ERR,1:"APCDALV did not create an RPMS visit"),.RETURN) Q
  D RPMSHF(.ERR,DFN,VISIT,APDT,LOC,USER,.ENCDATA,ROOT,IEN,RIEN) I $G(ERR)'="" D ERR(ROOT,IEN,RIEN,ERR,.RETURN) Q
  D LOG(ROOT,IEN,RIEN,"RPMS visit filed through APCDALV: "_VISIT)
  D LOADED(ROOT,IEN,RIEN,VISIT,"Encounter filed as RPMS outpatient visit",.RETURN)
  D RPMSSTAT(ROOT,IEN,RIEN,VISIT,APDT,LOC)
+ D HFROLL(ROOT,IEN,RIEN,.RETURN)
  Q
  ;
 APPTDT(FMDT) ; $$ - RPMS appointment date/time, seconds stripped like ISIIMP05
@@ -696,6 +700,19 @@ POVONLY(ZZERR,ZZERDESC) ; $$ - true if DATA2PCE only complains about optional PO
 HFSTAT(ROOT,IEN,RIEN,EI,STATUS,MSG) ; Record Health Factor extension detail
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"status")=$G(STATUS)
  S @ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",EI,"message")=$G(MSG)
+ Q
+ ;
+HFROLL(ROOT,IEN,RIEN,RETURN) ; Promote Encounter HF child skips to domain rollup
+ N C0FEI,C0FST,C0FMSG,C0FSK,C0FER,C0FOK
+ S (C0FSK,C0FER,C0FOK)=0,C0FMSG=""
+ S C0FEI=0
+ F  S C0FEI=$O(@ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",C0FEI)) Q:+C0FEI=0  D
+ . S C0FST=$G(@ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",C0FEI,"status"))
+ . I C0FST="error" S C0FER=1 S:C0FMSG="" C0FMSG=$G(@ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",C0FEI,"message"))
+ . I C0FST="skipped" S C0FSK=1 S:C0FMSG="" C0FMSG=$G(@ROOT@(IEN,"load","Encounter",RIEN,"healthFactor",C0FEI,"message"))
+ . I C0FST="filed"!(C0FST="queued")!(C0FST="loaded") S C0FOK=1
+ I 'C0FER,'C0FSK Q
+ D SET^C0FWSTAT(ROOT,IEN,RIEN,"HealthFactor","Encounter",$S(C0FER:"error",C0FOK:"partial",1:"skipped"),C0FMSG,.RETURN)
  Q
  ;
 HFMAG(ROOT,IEN,RIEN,EI,STATUS,MSG) ; Record Health Factor magnitude detail

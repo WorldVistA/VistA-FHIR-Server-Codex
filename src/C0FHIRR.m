@@ -74,7 +74,7 @@ EVAL(REM,DFN,RIEN) ; Evaluate one reminder definition with PXRM
  QUIT
  ;
 ADDEXT(RTN,IDX,N,REM) ; Add one va-reminders-due extension
- NEW BASE
+ NEW BASE,C0FI
  SET BASE=$ORDER(RTN("entry",IDX,"resource","extension",""),-1)+1
  SET RTN("entry",IDX,"resource","extension",BASE,"url")="http://vistaplex.org/fhir/StructureDefinition/va-reminders-due"
  DO SUBEXT(.RTN,IDX,BASE,"uid",$GET(REM("uid")))
@@ -84,6 +84,9 @@ ADDEXT(RTN,IDX,N,REM) ; Add one va-reminders-due extension
  DO SUBEXT(.RTN,IDX,BASE,"dueDate",$GET(REM("dueDate")))
  DO SUBEXT(.RTN,IDX,BASE,"lastDone",$GET(REM("lastDone")))
  DO SUBEXT(.RTN,IDX,BASE,"clinicalMaintenance",$GET(REM("clinicalMaintenance")))
+ DO FINDHF(.REM,+$GET(REM("ien")))
+ SET C0FI=0
+ FOR  SET C0FI=$ORDER(REM("hf",C0FI)) QUIT:'C0FI  DO SUBEXT(.RTN,IDX,BASE,"healthFactor",$GET(REM("hf",C0FI)))
  QUIT
  ;
 SUBEXT(RTN,IDX,BASE,URL,VAL) ; Add named subextension
@@ -128,4 +131,58 @@ REMLOC(DFN) ; Most recent patient visit location for reminder list context
  ;
 NOWFHIR() ; Current time as FHIR instant
  QUIT $$FM2FHIR^C0FHIRBU($$NOW^XLFDT())
+ ;
+FINDHF(REM,RIEN) ; AUTTHF type-F findings that PXRM will accept
+ NEW C0FFI,C0FVP,C0FHF,C0FTYP,C0FCAT,C0FFIL
+ SET C0FFI=0
+ FOR  SET C0FFI=$ORDER(^PXD(811.9,+$GET(RIEN),20,C0FFI)) QUIT:'C0FFI  DO
+ . SET C0FVP=$PIECE($GET(^PXD(811.9,+RIEN,20,C0FFI,0)),U)
+ . SET C0FFIL=$PIECE(C0FVP,";",2)
+ . IF C0FFIL["811.5" DO TERMHF(.REM,+C0FVP) QUIT
+ . QUIT:C0FFIL'["AUTTHF"
+ . SET C0FHF=+C0FVP
+ . QUIT:C0FHF<1
+ . SET C0FTYP=$PIECE($GET(^AUTTHF(C0FHF,0)),U,10)
+ . IF C0FTYP="C" DO FAMALL(.REM,C0FHF) QUIT
+ . IF C0FTYP="F" DO ONEHF(.REM,C0FHF)
+ . SET C0FCAT=+$PIECE($GET(^AUTTHF(C0FHF,0)),U,3)
+ . IF C0FCAT>0 DO FAMHF(.REM,C0FCAT)
+ QUIT
+ ;
+TERMHF(REM,TERM) ; AUTTHF members of a reminder term (exclusion HFs, not drug class)
+ NEW C0FTI,C0FTVP
+ SET C0FTI=0
+ FOR  SET C0FTI=$ORDER(^PXRMD(811.5,+$GET(TERM),20,C0FTI)) QUIT:'C0FTI  DO
+ . SET C0FTVP=$PIECE($GET(^PXRMD(811.5,+TERM,20,C0FTI,0)),U)
+ . QUIT:$PIECE(C0FTVP,";",2)'["AUTTHF"
+ . QUIT:$PIECE($GET(^AUTTHF(+C0FTVP,0)),U,10)'="F"
+ . DO ONEHF(.REM,+C0FTVP)
+ QUIT
+ ;
+FAMALL(REM,CAT) ; All type-F members when the finding is a category
+ NEW C0FMEM
+ SET C0FMEM=0
+ FOR  SET C0FMEM=$ORDER(^AUTTHF("AC",+$GET(CAT),C0FMEM)) QUIT:'C0FMEM  DO
+ . IF $PIECE($GET(^AUTTHF(C0FMEM,0)),U,10)="F" DO ONEHF(.REM,C0FMEM)
+ QUIT
+ ;
+FAMHF(REM,CAT) ; Refused/unable siblings in the finding family
+ NEW C0FMEM,C0FN,C0FX
+ SET C0FMEM=0
+ FOR  SET C0FMEM=$ORDER(^AUTTHF("AC",+$GET(CAT),C0FMEM)) QUIT:'C0FMEM  DO
+ . QUIT:$PIECE($GET(^AUTTHF(C0FMEM,0)),U,10)'="F"
+ . SET C0FN=$PIECE($GET(^AUTTHF(C0FMEM,0)),U)
+ . SET C0FX=$$UPCASE^C0FHIR(C0FN)
+ . IF C0FX["UNABLE"!(C0FX["REFUS")!(C0FX["DECLIN") DO ONEHF(.REM,C0FMEM)
+ QUIT
+ ;
+ONEHF(REM,HFIEN) ; Record one AUTTHF name once
+ NEW C0FN,C0FI
+ SET C0FN=$PIECE($GET(^AUTTHF(+$GET(HFIEN),0)),U)
+ QUIT:C0FN=""
+ QUIT:$DATA(REM("hfb",C0FN))
+ SET REM("hfb",C0FN)=+HFIEN
+ SET C0FI=$ORDER(REM("hf",""),-1)+1
+ SET REM("hf",C0FI)=C0FN
+ QUIT
  ;
