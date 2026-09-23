@@ -279,6 +279,14 @@ ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension, reasonCod
  I CODE'="" D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,CODE,CODESYS,NARR,$$BOOL(PRI),FMDT,USER,.HASPOV) Q
  S RCCNT=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",""),-1)
  S RCI=0 F  S RCI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","reasonCode",RCI)) Q:+RCI=0  D ADDRC(.ENCDATA,ROOT,IEN,RIEN,RCI,RCCNT,FMDT,USER,.HASPOV)
+ I $G(HASPOV) Q
+ ; 308335008 is the default encounter type when type.coding is empty.
+ ; Lexicon map 5217693 has no ICD-10-CM target (procedure, not a finding).
+ ; File Z76.89 as the V POV instead of leaving the SNOMED unmapped.
+ S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","type",1,"coding",1,"code"))
+ I CODE'="",CODE'="308335008" Q
+ D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,"Z76.89","http://hl7.org/fhir/sid/icd-10-cm","Persons encountering health services in other specified circumstances",1,FMDT,USER,.HASPOV)
+ I $G(HASPOV) D POVSTAT(ROOT,IEN,RIEN,"queued","POV queued: Z76.89 in place of SNOMED 308335008")
  Q
  ;
 ADDRC(ENCDATA,ROOT,IEN,RIEN,RCI,RCCNT,FMDT,USER,HASPOV) ; Add one Encounter.reasonCode entry

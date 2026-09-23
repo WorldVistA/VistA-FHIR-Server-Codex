@@ -57,7 +57,11 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  I +$G(DUZ(2))<1 S DUZ(2)=500
  D IO^C0FWCTX
  I $$RPMS^C0FWENC() D RPMSLOAD(ROOT,IEN,RIEN,DFN,VISIT,ICD,FMDT,USER,ADDPL,.RETURN) Q
+ D LOG(ROOT,IEN,RIEN,"Calling DATA2PCE^PXAI to add/update condition")
+ D LOGARR(ROOT,IEN,RIEN,"PROBDATA",.PROBDATA)
  S RET=$$DATA2PCE^PXAI("PROBDATA",PKG,"C0FW WRITEBACK",.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
+ D LOG(ROOT,IEN,RIEN,"Return from DATA2PCE was: "_$G(RET)_"^"_$G(VISIT))
+ D LOGPCE(ROOT,IEN,RIEN,.ZZERR,.ZZERDESC)
  I +$G(RET)'=1,+$G(RET)'=-5,'$$HASPOV(VISIT,ICD) D ERR(ROOT,IEN,RIEN,$$ERRMSG(RET,.ZZERR,.ZZERDESC),.RETURN) Q
  S SCT=$$SCT(ROOT,IEN,RIEN),SCTDES=$$SCTDES(ROOT,IEN,RIEN)
  I PROB<1 S PROB=$$PROB(DFN,ICD,FMDT)
@@ -261,9 +265,13 @@ PLURL() ; $$ - Condition extension URL for Add to Problem List
  Q "http://vistaplex.org/fhir/StructureDefinition/vista-add-to-problem-list"
  ;
 FMDT(ROOT,IEN,RIEN) ; $$ - onset as FileMan date/time
+ ; Partial onsetDateTime (year, or year-month) is the historical onset.
+ ; Expand to a full date before conversion. Do not substitute the visit.
  N DT
  S DT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","onsetDateTime"))
  I DT="" S DT=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","recordedDate"))
+ I DT?4N1"-"2N S DT=DT_"-01"
+ I DT?4N S DT=DT_"-01-01"
  Q $$FHIRTFM^C0FWFUTL(DT)
  ;
 ICDIEN(CODE,SYS,FMDT) ; $$ - ICD diagnosis ien for ICD-coded Condition
@@ -480,24 +488,45 @@ CINFO(ROOT,IEN,RIEN,RETURN) ; Add source Condition code/text to load log
  Q
  ;
 ERRMSG(RET,ZZERR,ZZERDESC) ; $$ - DATA2PCE error text
- N MSG,N
+ N MSG
  S MSG="DATA2PCE condition filing failed: "_$G(RET)
- S N=0 F  S N=$O(ZZERDESC(N)) Q:+N=0  S MSG=MSG_" "_$G(ZZERDESC(N))
- I '$D(ZZERDESC),$D(ZZERR) S MSG=MSG_" "_$$ERRTXT("ZZERR")
+ S MSG=MSG_$$ARRTXT("ZZERDESC")_$$ARRTXT("ZZERR")
  Q MSG
  ;
 WARNMSG(RET,ZZERR,ZZERDESC) ; $$ - DATA2PCE warning text
- N MSG,N
+ N MSG
  S MSG="DATA2PCE returned non-clean status ("_$G(RET)_") after filing"
- S N=0 F  S N=$O(ZZERDESC(N)) Q:+N=0  S MSG=MSG_" "_$G(ZZERDESC(N))
- I '$D(ZZERDESC),$D(ZZERR) S MSG=MSG_" "_$$ERRTXT("ZZERR")
+ S MSG=MSG_$$ARRTXT("ZZERDESC")_$$ARRTXT("ZZERR")
  Q MSG
  ;
-ERRTXT(ROOT) ; $$ - compact first error node from a local array name
- N MSG,NODE
- S MSG="",NODE=$Q(@ROOT)
- I NODE'="" S MSG=NODE_"="_$G(@NODE)
+ARRTXT(NAME) ; $$ - leaf text from a local array (DATA2PCE nests under $J)
+ N BASE,MSG,NODE
+ S MSG="",BASE=$NA(@NAME),NODE=BASE
+ F  S NODE=$Q(@NODE) Q:NODE=""  Q:$E(NODE,1,$L(BASE))'=BASE  D
+ . Q:$G(@NODE)=""
+ . S MSG=MSG_" "_$E(NODE,$L(BASE)+1,999)_"="_$G(@NODE)
  Q MSG
+ ;
+LOG(ROOT,IEN,RIEN,TXT) ; Append operational log line
+ S @ROOT@(IEN,"load","Condition",RIEN,"log",$O(@ROOT@(IEN,"load","Condition",RIEN,"log",""),-1)+1)=$G(TXT)
+ Q
+ ;
+LOGARR(ROOT,IEN,RIEN,LABEL,ARY,INTRO) ; Append a local array snapshot to the load log
+ N BASE,NODE,SEEN
+ S LABEL=$G(LABEL,"ARRAY")
+ S INTRO=$G(INTRO,"DATA2PCE input")
+ D LOG(ROOT,IEN,RIEN,INTRO_" "_LABEL_":")
+ S BASE=$NA(ARY),NODE=BASE,SEEN=0
+ F  S NODE=$Q(@NODE) Q:NODE=""  Q:$E(NODE,1,$L(BASE))'=BASE  D
+ . S SEEN=1
+ . D LOG(ROOT,IEN,RIEN,LABEL_$E(NODE,$L(BASE)+1,999)_"="_$G(@NODE))
+ I 'SEEN D LOG(ROOT,IEN,RIEN,LABEL_"=<empty>")
+ Q
+ ;
+LOGPCE(ROOT,IEN,RIEN,ZZERR,ZZERDESC) ; Append DATA2PCE errors/warnings to the load log
+ I $D(ZZERR) D LOGARR(ROOT,IEN,RIEN,"ZZERR",.ZZERR,"DATA2PCE output")
+ I $D(ZZERDESC) D LOGARR(ROOT,IEN,RIEN,"ZZERDESC",.ZZERDESC,"DATA2PCE output")
+ Q
  ;
 UP(X) ; $$ - uppercase
  Q $TR($G(X),"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
