@@ -78,16 +78,22 @@ MEDCOMM(ID) ; Return medication order comment text when present
  QUIT TXT
  ;
 MEDCODE(RTN,MED,IDX) ; Add medication coding details when available
- NEW PROD,VUID
- SET PROD=$GET(MED("product",1))
+ ; Never emit a coding with only display (Inferno: "Coding must have a code").
+ NEW N,PROD,VUID
+ SET PROD=$GET(MED("product",1)),N=0
  SET VUID=$PIECE(PROD,"^",3)
  IF VUID'="" DO
+ . SET N=1
  . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"system")="urn:va:vuid"
- . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"code")=VUID
- IF $PIECE(PROD,"^",2)'="" SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"display")=$PIECE(PROD,"^",2)
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"code")=VUID_""
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"code","\s")=""
+ . IF $PIECE(PROD,"^",2)'="" SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"display")=$PIECE(PROD,"^",2)
  IF $PIECE(PROD,"^",1)'="" DO
- . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",2,"system")="urn:va:drug"
- . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",2,"code")=$PIECE(PROD,"^",1)
+ . SET N=N+1
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",N,"system")="urn:va:drug"
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",N,"code")=$PIECE(PROD,"^",1)_""
+ . SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",N,"code","\s")=""
+ . IF N=1,$PIECE(PROD,"^",2)'="" SET RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"display")=$PIECE(PROD,"^",2)
  QUIT
  ;
 MEDSTAT(X) ; Map VPR medication status to FHIR MedicationRequest status

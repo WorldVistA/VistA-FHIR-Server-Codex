@@ -227,8 +227,12 @@ FM2FHIR(FMDT) ; Convert FileMan date/time to FHIR date/dateTime
  SET M=$EXTRACT(D,4,5),DAY=$EXTRACT(D,6,7)
  ; FileMan uses 00 for unknown month/day. FHIR date allows YYYY, YYYY-MM,
  ; or YYYY-MM-DD - never month/day zero (HAPI rejects "1983-06-00").
+ ; Inverse lab dates can also produce impossible months/days (e.g. 99);
+ ; omit those rather than emitting 1999-99-99T23:59:59Z for Inferno.
  IF +M=0 QUIT Y
+ IF +M>12 QUIT ""
  IF +DAY=0 QUIT Y_"-"_M
+ IF +DAY>31 QUIT ""
  IF $PIECE($GET(FMDT),".")=$GET(FMDT) QUIT Y_"-"_M_"-"_DAY
  SET T=$EXTRACT($PIECE($GET(FMDT),".",2)_"000000",1,6)
  SET HH=+$EXTRACT(T,1,2),MM=+$EXTRACT(T,3,4),SS=+$EXTRACT(T,5,6)

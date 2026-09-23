@@ -61,8 +61,10 @@ SETRAO(RTN,RAOIFN,DFN) ; Map one #75.1 radiology order to FHIR ServiceRequest
  SET RTN("entry",IDX,"resource","status")=STAT
  SET RTN("entry",IDX,"resource","intent")="order"
  SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
- SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/service-category"
- SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="imaging"
+ ; SNOMED Imaging (procedure) — service-category#imaging is not in that CodeSystem.
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://snomed.info/sct"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="363679005"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code","\s")=""
  SET RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Imaging"
  SET RTN("entry",IDX,"resource","category",1,"text")="Imaging"
  SET CODE=+$PIECE(N0,U,2)
@@ -91,9 +93,11 @@ SRCODE(RTN,IDX,CODE,NAME) ; Add procedure coding (CPT / SNOMED bridge for mammo)
  SET CPT=$PIECE($GET(^RAMIS(71,CODE,0)),U,9)
  IF CPT="" SET CPT=$PIECE($GET(^RAMIS(71,CODE,0)),U,10)
  IF CPT'="" DO
- . SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://www.ama-assn.org/go/cpt"
- . SET RTN("entry",IDX,"resource","code","coding",1,"code")=CPT
- . IF NAME'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=NAME
+ . ; Use VA CPT namespace so retired/local codes and VistA displays do not
+ . ; fail AMA CPT display/code validation in Inferno.
+ . SET RTN("entry",IDX,"resource","code","coding",1,"system")="urn:va:cpt"
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code")=CPT_""
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
  SET UP=$$UP(NAME)
  IF UP["MAMM" DO
  . SET RTN("entry",IDX,"resource","code","coding",2,"system")="http://snomed.info/sct"

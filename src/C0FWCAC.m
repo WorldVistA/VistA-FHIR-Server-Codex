@@ -117,11 +117,86 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D BOOL(CROOT,SUB,"do-not-perform",$$DONOT(RES))
  D DATE(CROOT,SUB,"date",$G(@RES@("effectiveDateTime")))
  D DATE(CROOT,SUB,"date",$G(@RES@("issued")))
+ ; Keep shared "date" for generic date= search, but also index typed predicates
+ ; so Inferno onset-date / asserted-date / abatement-date / period / authoredon
+ ; check the field they name instead of any date on the resource.
  D DATE(CROOT,SUB,"date",$G(@RES@("onsetDateTime")))
+ D DATE(CROOT,SUB,"onset-date",$G(@RES@("onsetDateTime")))
  D DATE(CROOT,SUB,"date",$G(@RES@("period","start")))
  D DATE(CROOT,SUB,"date",$G(@RES@("period","end")))
  D DATE(CROOT,SUB,"recorded-date",$G(@RES@("recordedDate")))
+ D DATE(CROOT,SUB,"asserted-date",$G(@RES@("recordedDate")))
+ D DATE(CROOT,SUB,"abatement-date",$G(@RES@("abatementDateTime")))
  D DATE(CROOT,SUB,"authored",$G(@RES@("authoredOn")))
+ D DATE(CROOT,SUB,"authoredon",$G(@RES@("authoredOn")))
+ I TYPE="Encounter" D ENCIDX(CROOT,SUB,RES)
+ I TYPE="DocumentReference" D DOCIDX(CROOT,SUB,RES)
+ I TYPE="Organization" D ORGIDX(CROOT,SUB,RES)
+ I TYPE="Location" D LOCIDX(CROOT,SUB,RES)
+ I TYPE="Practitioner" D PRACIDX(CROOT,SUB,RES)
+ Q
+ ;
+ENCIDX(CROOT,SUB,RES) ; Encounter class + location search facts
+ N I,LOC
+ D SET(CROOT,SUB,"class",$G(@RES@("class","code")))
+ I $G(@RES@("class","system"))'="",$G(@RES@("class","code"))'="" D SET(CROOT,SUB,"class",$G(@RES@("class","system"))_"|"_$G(@RES@("class","code")))
+ S I=0 F  S I=$O(@RES@("location",I)) Q:+I<1  D
+ . S LOC=$G(@RES@("location",I,"location","reference"))
+ . D REF(CROOT,SUB,"location",LOC)
+ . I LOC["Location/" D SET(CROOT,SUB,"location",$P(LOC,"Location/",2))
+ Q
+ ;
+DOCIDX(CROOT,SUB,RES) ; DocumentReference.date and context.period
+ D DATE(CROOT,SUB,"date",$G(@RES@("date")))
+ D DATE(CROOT,SUB,"period",$G(@RES@("context","period","start")))
+ D DATE(CROOT,SUB,"period",$G(@RES@("context","period","end")))
+ Q
+ ;
+ORGIDX(CROOT,SUB,RES) ; Organization name + address
+ D ADDRIDX(CROOT,SUB,RES)
+ Q
+ ;
+LOCIDX(CROOT,SUB,RES) ; Location name + address (US Core Location search)
+ ; Location.address is 0..1 Address (not an array like Organization.address).
+ N A
+ D STR(CROOT,SUB,"name",$G(@RES@("name")))
+ I $D(@RES@("address"))>1 D
+ . S A=$NA(@RES@("address"))
+ . D STR(CROOT,SUB,"address",$G(@A@("text")))
+ . D STR(CROOT,SUB,"address",$G(@A@("city")))
+ . D STR(CROOT,SUB,"address",$G(@A@("state")))
+ . D STR(CROOT,SUB,"address",$G(@A@("postalCode")))
+ . D STR(CROOT,SUB,"address",$G(@A@("line",1)))
+ . D STR(CROOT,SUB,"address-city",$G(@A@("city")))
+ . D STR(CROOT,SUB,"address-state",$G(@A@("state")))
+ . D STR(CROOT,SUB,"address-postalcode",$G(@A@("postalCode")))
+ Q
+ ;
+ADDRIDX(CROOT,SUB,RES) ; Shared name + address facts for Organization/Location
+ N I,A
+ D STR(CROOT,SUB,"name",$G(@RES@("name")))
+ S I=0 F  S I=$O(@RES@("address",I)) Q:+I<1  D
+ . S A=$NA(@RES@("address",I))
+ . D STR(CROOT,SUB,"address",$G(@A@("text")))
+ . D STR(CROOT,SUB,"address",$G(@A@("city")))
+ . D STR(CROOT,SUB,"address",$G(@A@("state")))
+ . D STR(CROOT,SUB,"address",$G(@A@("postalCode")))
+ . D STR(CROOT,SUB,"address",$G(@A@("line",1)))
+ . D STR(CROOT,SUB,"address-city",$G(@A@("city")))
+ . D STR(CROOT,SUB,"address-state",$G(@A@("state")))
+ . D STR(CROOT,SUB,"address-postalcode",$G(@A@("postalCode")))
+ Q
+ ;
+PRACIDX(CROOT,SUB,RES) ; Practitioner name (non-Patient name indexing)
+ N I,NAME,G
+ S I=0 F  S I=$O(@RES@("name",I)) Q:+I<1  D
+ . S NAME=$NA(@RES@("name",I))
+ . D STR(CROOT,SUB,"name",$G(@NAME@("text")))
+ . D STR(CROOT,SUB,"family",$G(@NAME@("family")))
+ . D STR(CROOT,SUB,"name",$G(@NAME@("family")))
+ . S G=0 F  S G=$O(@NAME@("given",G)) Q:+G<1  D
+ . . D STR(CROOT,SUB,"given",$G(@NAME@("given",G)))
+ . . D STR(CROOT,SUB,"name",$G(@NAME@("given",G)))
  Q
  ;
 PROV(CROOT,SUB,RES) ; Provenance target search parameter
@@ -195,6 +270,7 @@ REF(CROOT,SUB,PRED,VAL) ; Reference search aliases
  I $G(@CROOT@("alias",VAL))'="" D SET(CROOT,SUB,PRED,$G(@CROOT@("alias",VAL)))
  I VAL["Patient/" D SET(CROOT,SUB,PRED,$P(VAL,"Patient/",2))
  I VAL["Encounter/" D SET(CROOT,SUB,PRED,$P(VAL,"Encounter/",2))
+ I VAL["Location/" D SET(CROOT,SUB,PRED,$P(VAL,"Location/",2))
  Q
  ;
 DATE(CROOT,SUB,PRED,VAL) ; Date search value
@@ -358,7 +434,11 @@ SEARCH(FILTER,OUT,ERR) ; Build searchset Bundle from cache indexes
  I RES="" S ERR="Missing or unsupported FHIR resource type" Q
  I $G(FILTER("id"))'="" S FILTER("_id")=$G(FILTER("id"))
  S DFN=$$REQDFN(.FILTER,RES)
- I DFN<1 S ERR="FHIR cache search requires a patient id, _id, patient, or subject parameter" Q
+ ; Patient/Practitioner/Organization (and _id/identifier) may search across
+ ; all cached graph rows when no patient/subject is supplied.
+ I DFN<1 D  Q
+ . I '$$ALLOWGLOB(RES,.FILTER) S ERR="FHIR cache search requires a patient id, _id, patient, or subject parameter" Q
+ . D SEARCHALL(.FILTER,RES,.OUT,.ERR)
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
  I ROOT="" S ERR="FHIR graph root is unavailable" Q
  S IEN=$$DFN2IEN^C0FWFUTL(DFN)
@@ -371,6 +451,36 @@ SEARCH(FILTER,OUT,ERR) ; Build searchset Bundle from cache indexes
  S IEN=SAVEIEN,ROOT=SAVEROOT
  S CID=$$CID(.REQ),CROOT=$NA(@ROOT@(IEN,"cache",CID))
  D FINDS(.FILTER,CROOT,RES,.OUT)
+ Q
+ ;
+ALLOWGLOB(RES,FILTER) ; $$ - resource/query may search without a patient id
+ I RES="Patient"!(RES="Practitioner")!(RES="Organization")!(RES="Location") Q 1
+ I $G(FILTER("_id"))'=""!($G(FILTER("id"))'="") Q 1
+ I $G(FILTER("identifier"))'="" Q 1
+ Q 0
+ ;
+SEARCHALL(FILTER,RES,OUT,ERR) ; Union FINDS across every cached patient row
+ N C,ENTRY,IEN,IDX,LIMIT,MATCH,ONE,ROOT,SEEN,SUB
+ K OUT,ERR,MATCH,SEEN
+ S ROOT=$$ROOT^C0FWGRT("fhir-intake")
+ I ROOT="" S ERR="FHIR graph root is unavailable" Q
+ D INITSRCH(.MATCH)
+ S LIMIT=+$G(FILTER("_count")) I LIMIT<1 S LIMIT=200
+ S IEN=0 F  S IEN=$O(@ROOT@(IEN)) Q:+IEN<1!(MATCH("total")'<LIMIT)  D
+ . S C="" F  S C=$O(@ROOT@(IEN,"cache",C)) Q:C=""!(MATCH("total")'<LIMIT)  D
+ . . I '$D(@ROOT@(IEN,"cache",C,"POS","type",RES)) Q
+ . . K ONE
+ . . D FINDS(.FILTER,$NA(@ROOT@(IEN,"cache",C)),RES,.ONE)
+ . . S IDX=0 F  S IDX=$O(ONE("entry",IDX)) Q:+IDX<1!(MATCH("total")'<LIMIT)  D
+ . . . S SUB=$G(ONE("entry",IDX,"resource","resourceType"))_"/"_$G(ONE("entry",IDX,"resource","id"))
+ . . . I SUB="/",$G(ONE("entry",IDX,"fullUrl"))'="" S SUB=ONE("entry",IDX,"fullUrl")
+ . . . I SUB'="/",$D(SEEN(SUB)) Q
+ . . . I SUB'="/" S SEEN(SUB)=""
+ . . . S ENTRY=MATCH("total")+1,MATCH("total")=ENTRY
+ . . . M MATCH("entry",ENTRY)=ONE("entry",IDX)
+ K OUT
+ M OUT=MATCH
+ D FINAL^C0FHIRBU(.OUT)
  Q
  ;
 FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundle
@@ -396,10 +506,22 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  D APPLY(.CAND,CROOT,"birthdate",$G(FILTER("birthdate")),"DATE")
  D APPLY(.CAND,CROOT,"date",$G(FILTER("date")),"DATE")
  D APPLY(.CAND,CROOT,"recorded-date",$G(FILTER("recorded-date")),"DATE")
+ D APPLY(.CAND,CROOT,"asserted-date",$G(FILTER("asserted-date")),"DATE")
+ D APPLY(.CAND,CROOT,"onset-date",$G(FILTER("onset-date")),"DATE")
+ D APPLY(.CAND,CROOT,"abatement-date",$G(FILTER("abatement-date")),"DATE")
  D APPLY(.CAND,CROOT,"authored",$G(FILTER("authored")),"DATE")
+ D APPLY(.CAND,CROOT,"authored",$G(FILTER("authoredon")),"DATE")
+ D APPLY(.CAND,CROOT,"authoredon",$G(FILTER("authoredon")),"DATE")
+ D APPLY(.CAND,CROOT,"period",$G(FILTER("period")),"DATE")
+ D APPLY(.CAND,CROOT,"class",$G(FILTER("class")),"TOKEN")
+ D APPLY(.CAND,CROOT,"location",$G(FILTER("location")),"REF")
  D APPLY(.CAND,CROOT,"name",$G(FILTER("name")),"STRING")
  D APPLY(.CAND,CROOT,"family",$G(FILTER("family")),"STRING")
  D APPLY(.CAND,CROOT,"given",$G(FILTER("given")),"STRING")
+ D APPLY(.CAND,CROOT,"address",$G(FILTER("address")),"STRING")
+ D APPLY(.CAND,CROOT,"address-city",$G(FILTER("address-city")),"STRING")
+ D APPLY(.CAND,CROOT,"address-state",$G(FILTER("address-state")),"STRING")
+ D APPLY(.CAND,CROOT,"address-postalcode",$G(FILTER("address-postalcode")),"STRING")
  D INITSRCH(.MATCH)
  S LIMIT=+$G(FILTER("_count")) I LIMIT<1 S LIMIT=200
  S SUB="",IDX=0 F  S SUB=$O(CAND(SUB)) Q:SUB=""!(IDX'<LIMIT)  D
@@ -449,8 +571,10 @@ TOKSET(CROOT,PRED,VAL,KEEP) ; Exact token/reference match, comma means OR
  . D ADDKEEP(CROOT,PRED,TOK,.KEEP)
  . I TOK'["/" D ADDKEEP(CROOT,PRED,"Patient/"_TOK,.KEEP)
  . I TOK'["/" D ADDKEEP(CROOT,PRED,"Encounter/"_TOK,.KEEP)
+ . I TOK'["/" D ADDKEEP(CROOT,PRED,"Location/"_TOK,.KEEP)
  . I TOK["Patient/" D ADDKEEP(CROOT,PRED,$P(TOK,"Patient/",2),.KEEP)
  . I TOK["Encounter/" D ADDKEEP(CROOT,PRED,$P(TOK,"Encounter/",2),.KEEP)
+ . I TOK["Location/" D ADDKEEP(CROOT,PRED,$P(TOK,"Location/",2),.KEEP)
  Q
  ;
 DATESET(CROOT,PRED,VAL,KEEP) ; Date exact/range match

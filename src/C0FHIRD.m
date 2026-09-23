@@ -320,7 +320,7 @@ SETSMOK(RTN,DFN,BEST) ; Build one smoking-status Observation; BEST=DT^IEN^NAME^V
  SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
  SET RTN("entry",IDX,"resource","code","coding",1,"code")="72166-2"
  SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
- SET RTN("entry",IDX,"resource","code","coding",1,"display")="Tobacco smoking status NHIS"
+ SET RTN("entry",IDX,"resource","code","coding",1,"display")="Tobacco smoking status"
  SET RTN("entry",IDX,"resource","code","text")="Tobacco smoking status"
  SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_DFN
  IF DT>0 SET RTN("entry",IDX,"resource","effectiveDateTime")=$$FM2FHIR^C0FHIRBU(DT)
@@ -438,7 +438,8 @@ SETOBS(RTN,VIT,DFN) ; Map one VPR vital entry to a FHIR Observation resource
  SET VUID=$PIECE(M0,"^",2),NAME=$PIECE(M0,"^",3)
  IF VUID'="" DO
  . SET RTN("entry",IDX,"resource","code","coding",1,"system")="urn:va:vuid"
- . SET RTN("entry",IDX,"resource","code","coding",1,"code")=VUID
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code")=VUID_""
+ . SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
  DO VLOINC(.RTN,IDX,NAME)
  DO VPROFILE(.RTN,IDX,NAME)
  IF NAME'="" SET RTN("entry",IDX,"resource","code","text")=NAME
@@ -481,12 +482,14 @@ VLOINC(RTN,IDX,NAME) ; Add LOINC coding for known VistA vital types
  SET DISPLAY=$PIECE(CODE,"^",2),CODE=$PIECE(CODE,"^")
  SET N=$ORDER(RTN("entry",IDX,"resource","code","coding",""),-1)+1
  SET RTN("entry",IDX,"resource","code","coding",N,"system")="http://loinc.org"
- SET RTN("entry",IDX,"resource","code","coding",N,"code")=CODE
+ SET RTN("entry",IDX,"resource","code","coding",N,"code")=CODE_""
+ SET RTN("entry",IDX,"resource","code","coding",N,"code","\s")=""
  IF DISPLAY'="" SET RTN("entry",IDX,"resource","code","coding",N,"display")=DISPLAY
  IF CODE="59408-5" DO
  . SET N=$ORDER(RTN("entry",IDX,"resource","code","coding",""),-1)+1
  . SET RTN("entry",IDX,"resource","code","coding",N,"system")="http://loinc.org"
  . SET RTN("entry",IDX,"resource","code","coding",N,"code")="2708-6"
+ . SET RTN("entry",IDX,"resource","code","coding",N,"code","\s")=""
  . SET RTN("entry",IDX,"resource","code","coding",N,"display")="Oxygen saturation in Arterial blood"
  QUIT
  ;

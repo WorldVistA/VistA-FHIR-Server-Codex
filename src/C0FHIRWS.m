@@ -11,6 +11,12 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  K RTN
  S FILTER("type")="application/json" ; default mime type
  S PATH=$G(HTTPREQ("path"))
+ I $P(PATH,"/",2)="fhir",$P(PATH,"/",3)="metadata" D  Q
+ . ; CapabilityStatement for Inferno / US Core (same builder as /altfhir/metadata).
+ . N CAP,JERR
+ . D ALTCAP^C0FHIR(.CAP)
+ . D TOJSON^C0FHIRBU(.CAP,.RTN,.JERR)
+ . S HTTPRSP("mime")="application/fhir+json"
  I $P(PATH,"/",2)="fhir",$P(PATH,"/",3)'="" D  Q
  . S FILTER("resource")=$P(PATH,"/",3)
  . I $P(PATH,"/",4)'="",$P(PATH,"/",4)'="_search" DO  QUIT
