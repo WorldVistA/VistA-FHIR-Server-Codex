@@ -1601,52 +1601,84 @@ ALTFIXRF(NODE,PREF,NEWREF) ; Rewrite nested Patient references in one resource
  . IF $DATA(@NODE@(SUB))>1 DO ALTFIXRF($NAME(@NODE@(SUB)),PREF,NEWREF)
  QUIT
  ;
-ALTCAP(OUT) ; Minimal CapabilityStatement for graph-source /altfhir
+ALTCAP(OUT) ; CapabilityStatement for /fhir/metadata (Inferno / US Core)
  KILL OUT
  SET OUT("resourceType")="CapabilityStatement"
- SET OUT("status")="draft"
- SET OUT("date")=$$NOW^C0FWCAC()
+ SET OUT("status")="active"
+ ; Inferno requires date as FHIR dateTime string (FileMan numbers fail validation).
+ SET OUT("date")=$$NOWISO^C0FQRPT()
  SET OUT("kind")="instance"
  SET OUT("fhirVersion")="4.0.1"
- SET OUT("format",1)="json"
+ SET OUT("format",1)="application/fhir+json"
+ SET OUT("format",2)="json"
+ SET OUT("instantiates",1)="http://hl7.org/fhir/us/core/CapabilityStatement/us-core-server|6.1.0"
+ SET OUT("instantiates",2)="http://hl7.org/fhir/us/core/CapabilityStatement/us-core-server|7.0.0"
+ SET OUT("implementation","description")="VistA/RPMS FHIR read server (Codex)"
  SET OUT("rest",1,"mode")="server"
- SET OUT("rest",1,"resource",1,"type")="Patient"
- SET OUT("rest",1,"resource",1,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",1,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",1,"searchParam",1,"name")="_id"
- SET OUT("rest",1,"resource",1,"searchParam",1,"type")="token"
- SET OUT("rest",1,"resource",2,"type")="Observation"
- SET OUT("rest",1,"resource",2,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",2,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",2,"searchParam",1,"name")="patient"
- SET OUT("rest",1,"resource",2,"searchParam",1,"type")="reference"
- SET OUT("rest",1,"resource",3,"type")="Condition"
- SET OUT("rest",1,"resource",3,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",3,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",4,"type")="Encounter"
- SET OUT("rest",1,"resource",4,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",4,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",5,"type")="DiagnosticReport"
- SET OUT("rest",1,"resource",5,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",5,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",6,"type")="Immunization"
- SET OUT("rest",1,"resource",6,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",6,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",7,"type")="Procedure"
- SET OUT("rest",1,"resource",7,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",7,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",8,"type")="MedicationRequest"
- SET OUT("rest",1,"resource",8,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",8,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",9,"type")="DocumentReference"
- SET OUT("rest",1,"resource",9,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",9,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",10,"type")="ServiceRequest"
- SET OUT("rest",1,"resource",10,"interaction",1,"code")="read"
- SET OUT("rest",1,"resource",10,"interaction",2,"code")="search-type"
- SET OUT("rest",1,"resource",10,"searchParam",1,"name")="patient"
- SET OUT("rest",1,"resource",10,"searchParam",1,"type")="reference"
+ DO ALTCAPR(.OUT,1,"Patient","http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient")
+ DO ALTCAPS(.OUT,1,"_id","token")
+ DO ALTCAPS(.OUT,1,"identifier","token")
+ DO ALTCAPS(.OUT,1,"name","string")
+ DO ALTCAPR(.OUT,2,"Observation","http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus")
+ SET OUT("rest",1,"resource",2,"supportedProfile",2)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
+ SET OUT("rest",1,"resource",2,"supportedProfile",3)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-blood-pressure"
+ DO ALTCAPS(.OUT,2,"patient","reference")
+ DO ALTCAPS(.OUT,2,"category","token")
+ DO ALTCAPS(.OUT,2,"code","token")
+ DO ALTCAPS(.OUT,2,"date","date")
+ DO ALTCAPR(.OUT,3,"Condition","http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns")
+ DO ALTCAPS(.OUT,3,"patient","reference")
+ DO ALTCAPS(.OUT,3,"category","token")
+ DO ALTCAPS(.OUT,3,"clinical-status","token")
+ DO ALTCAPS(.OUT,3,"onset-date","date")
+ DO ALTCAPR(.OUT,4,"Encounter","http://hl7.org/fhir/us/core/StructureDefinition/us-core-encounter")
+ DO ALTCAPS(.OUT,4,"patient","reference")
+ DO ALTCAPS(.OUT,4,"date","date")
+ DO ALTCAPS(.OUT,4,"class","token")
+ DO ALTCAPR(.OUT,5,"DiagnosticReport","http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-lab")
+ DO ALTCAPS(.OUT,5,"patient","reference")
+ DO ALTCAPS(.OUT,5,"category","token")
+ DO ALTCAPS(.OUT,5,"code","token")
+ DO ALTCAPR(.OUT,6,"Immunization","http://hl7.org/fhir/us/core/StructureDefinition/us-core-immunization")
+ DO ALTCAPS(.OUT,6,"patient","reference")
+ DO ALTCAPS(.OUT,6,"date","date")
+ DO ALTCAPR(.OUT,7,"Procedure","http://hl7.org/fhir/us/core/StructureDefinition/us-core-procedure")
+ DO ALTCAPS(.OUT,7,"patient","reference")
+ DO ALTCAPS(.OUT,7,"date","date")
+ DO ALTCAPR(.OUT,8,"MedicationRequest","http://hl7.org/fhir/us/core/StructureDefinition/us-core-medicationrequest")
+ DO ALTCAPS(.OUT,8,"patient","reference")
+ DO ALTCAPS(.OUT,8,"intent","token")
+ DO ALTCAPS(.OUT,8,"authoredon","date")
+ DO ALTCAPR(.OUT,9,"DocumentReference","http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference")
+ DO ALTCAPS(.OUT,9,"patient","reference")
+ DO ALTCAPS(.OUT,9,"category","token")
+ DO ALTCAPS(.OUT,9,"date","date")
+ DO ALTCAPR(.OUT,10,"ServiceRequest","http://hl7.org/fhir/us/core/StructureDefinition/us-core-servicerequest")
+ DO ALTCAPS(.OUT,10,"patient","reference")
+ DO ALTCAPR(.OUT,11,"Location","http://hl7.org/fhir/us/core/StructureDefinition/us-core-location")
+ DO ALTCAPS(.OUT,11,"name","string")
+ DO ALTCAPS(.OUT,11,"address","string")
+ DO ALTCAPR(.OUT,12,"Organization","http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization")
+ DO ALTCAPS(.OUT,12,"name","string")
+ DO ALTCAPS(.OUT,12,"address","string")
+ DO ALTCAPR(.OUT,13,"Practitioner","http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner")
+ DO ALTCAPS(.OUT,13,"name","string")
+ DO ALTCAPS(.OUT,13,"identifier","token")
  DO FINAL^C0FHIRBU(.OUT)
+ QUIT
+ ;
+ALTCAPR(OUT,N,TYPE,PROF) ; One CapStmt rest.resource row with read+search-type
+ SET OUT("rest",1,"resource",N,"type")=TYPE
+ SET OUT("rest",1,"resource",N,"interaction",1,"code")="read"
+ SET OUT("rest",1,"resource",N,"interaction",2,"code")="search-type"
+ IF $GET(PROF)'="" SET OUT("rest",1,"resource",N,"supportedProfile",1)=PROF
+ QUIT
+ ;
+ALTCAPS(OUT,N,NAME,TYP) ; Append one searchParam to CapStmt resource N
+ NEW P
+ SET P=1+$ORDER(OUT("rest",1,"resource",N,"searchParam",""),-1)
+ SET OUT("rest",1,"resource",N,"searchParam",P,"name")=NAME
+ SET OUT("rest",1,"resource",N,"searchParam",P,"type")=TYP
  QUIT
  ;
 WSSHOWFB(OUT,FILTER) ; Fallback when wsShow^SYNFHIR missing: old C0FHIR graph path + encode

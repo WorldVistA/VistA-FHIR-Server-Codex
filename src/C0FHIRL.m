@@ -67,7 +67,8 @@ LABMSONE(RTN,DFN,KIND,LOINC,NAME,VTYPE,VAL) ; One MS showcase lab Observation
  IF IDX="" QUIT
  SET RTN("entry",IDX,"resource","resourceType")="Observation"
  SET RTN("entry",IDX,"resource","id")=RID
- SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
+ SET RTN("entry",IDX,"resource","meta","profile",2)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
  SET RTN("entry",IDX,"resource","status")="final"
  SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
  SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="laboratory"
@@ -208,7 +209,8 @@ SETLAB(RTN,LINE,SUB,DFN,ORD) ; Map one VPR lab line to FHIR Observation
  IF VUID'="" DO
  . SET RTN("entry",IDX,"resource","code","coding",2,"system")="urn:va:vuid"
  . SET RTN("entry",IDX,"resource","code","coding",2,"code")=VUID
- SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
+ SET RTN("entry",IDX,"resource","meta","profile",2)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
  SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET RTN("entry",IDX,"resource","effectiveDateTime")=$$LABDT($PIECE(ID,";",2))
  ; USQC Must Support: Observation.issued

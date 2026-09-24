@@ -234,11 +234,23 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  ; Match ADDRES^C0FHIRBU key (SAFE id) so duplicates do not burn MAX.
  S KEY="Observation|"_$$SAFE^C0FHIRBU(RID)
  I $D(RTN("index",KEY)) Q
- ; Force laboratory category so CQL lab retrieves see tobacco/PHQ LOINCs.
- S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
- S RES("category",1,"coding",1,"code")="laboratory"
- S RES("category",1,"coding",1,"display")="Laboratory"
- S RES("category",1,"text")="Laboratory"
+ ; Category/profile: smoking LOINC must stay US Core smokingstatus (social-history).
+ ; Other kept LOINCs stay laboratory for CQL lab retrieves (PHQ / depression).
+ N CODE,I,SMOK
+ S (CODE,SMOK)=""
+ S I=0 F  S I=$O(RES("code","coding",I)) Q:'I  D  Q:SMOK
+ . S CODE=$G(RES("code","coding",I,"code"))
+ . I CODE="72166-2" S SMOK=1
+ I SMOK D
+ . S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ . S RES("category",1,"coding",1,"code")="social-history"
+ . S RES("category",1,"coding",1,"display")="Social History"
+ . S RES("category",1,"text")="Social History"
+ E  D
+ . S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ . S RES("category",1,"coding",1,"code")="laboratory"
+ . S RES("category",1,"coding",1,"display")="Laboratory"
+ . S RES("category",1,"text")="Laboratory"
  S RES("subject","reference")="Patient/"_+DFN
  D ADDRES^C0FHIRBU(.RTN,"Observation",RID,.IDX)
  Q:IDX=""
@@ -246,7 +258,12 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  S RTN("entry",IDX,"resource","id")=RID
  ; Keep graph fullUrl so DiagnosticReport.result urn:uuid / Observation/id resolve.
  S RTN("entry",IDX,"fullUrl")="urn:uuid:"_RID
- S RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
+ ; Prefer US Core profile URLs Inferno can resolve; dual-tag quality-core lab when still lab.
+ I SMOK D
+ . S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus"
+ E  D
+ . S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
+ . S RTN("entry",IDX,"resource","meta","profile",2)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
  S CNT=CNT+1
  Q
  ;

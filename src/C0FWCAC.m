@@ -449,9 +449,25 @@ SEARCH(FILTER,OUT,ERR) ; Build searchset Bundle from cache indexes
  S SAVEIEN=IEN,SAVEROOT=ROOT
  D GET(.REQ,.OUT)
  S IEN=SAVEIEN,ROOT=SAVEROOT
- S CID=$$CID(.REQ),CROOT=$NA(@ROOT@(IEN,"cache",CID))
+ ; Prefer newest cache for this patient (same rule as READ). Request-hash CID
+ ; alone can hit a stale sibling cache and return outdated Observation shapes.
+ S CID=$$NEWEST(ROOT,IEN,RES)
+ I CID="" S CID=$$CID(.REQ)
+ S CROOT=$NA(@ROOT@(IEN,"cache",CID))
  D FINDS(.FILTER,CROOT,RES,.OUT)
  Q
+ ;
+NEWEST(ROOT,IEN,RES) ; $$ - cache id with latest createdAt that indexes RES (or any)
+ N C,BEST,BESTT,T
+ S (BEST,BESTT)=""
+ S C="" F  S C=$O(@ROOT@(IEN,"cache",C)) Q:C=""  D
+ . I $G(RES)'="",'$D(@ROOT@(IEN,"cache",C,"POS","type",RES)) Q
+ . S T=+$G(@ROOT@(IEN,"cache",C,"meta","createdAt"))
+ . I BEST=""!(T>BESTT) S BEST=C,BESTT=T
+ I BEST="" S C="" F  S C=$O(@ROOT@(IEN,"cache",C)) Q:C=""  D
+ . S T=+$G(@ROOT@(IEN,"cache",C,"meta","createdAt"))
+ . I BEST=""!(T>BESTT) S BEST=C,BESTT=T
+ Q BEST
  ;
 ALLOWGLOB(RES,FILTER) ; $$ - resource/query may search without a patient id
  I RES="Patient"!(RES="Practitioner")!(RES="Organization")!(RES="Location") Q 1
@@ -459,7 +475,7 @@ ALLOWGLOB(RES,FILTER) ; $$ - resource/query may search without a patient id
  I $G(FILTER("identifier"))'="" Q 1
  Q 0
  ;
-SEARCHALL(FILTER,RES,OUT,ERR) ; Union FINDS across every cached patient row
+SEARCHALL(FILTER,RES,OUT,ERR) ; Union FINDS across patients using each row's newest cache
  N C,ENTRY,IEN,IDX,LIMIT,MATCH,ONE,ROOT,SEEN,SUB
  K OUT,ERR,MATCH,SEEN
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
@@ -467,17 +483,18 @@ SEARCHALL(FILTER,RES,OUT,ERR) ; Union FINDS across every cached patient row
  D INITSRCH(.MATCH)
  S LIMIT=+$G(FILTER("_count")) I LIMIT<1 S LIMIT=200
  S IEN=0 F  S IEN=$O(@ROOT@(IEN)) Q:+IEN<1!(MATCH("total")'<LIMIT)  D
- . S C="" F  S C=$O(@ROOT@(IEN,"cache",C)) Q:C=""!(MATCH("total")'<LIMIT)  D
- . . I '$D(@ROOT@(IEN,"cache",C,"POS","type",RES)) Q
- . . K ONE
- . . D FINDS(.FILTER,$NA(@ROOT@(IEN,"cache",C)),RES,.ONE)
- . . S IDX=0 F  S IDX=$O(ONE("entry",IDX)) Q:+IDX<1!(MATCH("total")'<LIMIT)  D
- . . . S SUB=$G(ONE("entry",IDX,"resource","resourceType"))_"/"_$G(ONE("entry",IDX,"resource","id"))
- . . . I SUB="/",$G(ONE("entry",IDX,"fullUrl"))'="" S SUB=ONE("entry",IDX,"fullUrl")
- . . . I SUB'="/",$D(SEEN(SUB)) Q
- . . . I SUB'="/" S SEEN(SUB)=""
- . . . S ENTRY=MATCH("total")+1,MATCH("total")=ENTRY
- . . . M MATCH("entry",ENTRY)=ONE("entry",IDX)
+ . ; One cache per patient — newest — so stale CIDs cannot shadow fixed resources.
+ . S C=$$NEWEST(ROOT,IEN,RES) Q:C=""
+ . I '$D(@ROOT@(IEN,"cache",C,"POS","type",RES)) Q
+ . K ONE
+ . D FINDS(.FILTER,$NA(@ROOT@(IEN,"cache",C)),RES,.ONE)
+ . S IDX=0 F  S IDX=$O(ONE("entry",IDX)) Q:+IDX<1!(MATCH("total")'<LIMIT)  D
+ . . S SUB=$G(ONE("entry",IDX,"resource","resourceType"))_"/"_$G(ONE("entry",IDX,"resource","id"))
+ . . I SUB="/",$G(ONE("entry",IDX,"fullUrl"))'="" S SUB=ONE("entry",IDX,"fullUrl")
+ . . I SUB'="/",$D(SEEN(SUB)) Q
+ . . I SUB'="/" S SEEN(SUB)=""
+ . . S ENTRY=MATCH("total")+1,MATCH("total")=ENTRY
+ . . M MATCH("entry",ENTRY)=ONE("entry",IDX)
  K OUT
  M OUT=MATCH
  D FINAL^C0FHIRBU(.OUT)
