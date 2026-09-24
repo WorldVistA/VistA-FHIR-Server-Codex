@@ -231,6 +231,27 @@ SETPROC(RTN,PROC,DFN,SRC) ; Map one source procedure to a FHIR Procedure resourc
  . IF CODEDISP'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=CODEDISP
  IF NAME="" SET NAME=CODEDISP
  IF NAME="" SET NAME=CODEVAL
+ ; Synthea V CPT rows often keep OS5 hybrids that never resolve to SCT/CPT —
+ ; fall back to a text→SNOMED map so quality measures see coded Procedures.
+ ; When a real CPT is already present (e.g. 77067 mammography), also attach
+ ; the matching SNOMED so CQL value sets that are SCT-only still match.
+ NEW HASC
+ SET HASC=$DATA(RTN("entry",IDX,"resource","code","coding",1,"code"))
+ IF NAME'="" DO
+ . DO PROCTXT(NAME,.SCT,.SDISP)
+ . IF SCT'="" DO
+ .. IF 'HASC DO
+ ... SET RTN("entry",IDX,"resource","code","coding",1,"system")="http://snomed.info/sct"
+ ... SET RTN("entry",IDX,"resource","code","coding",1,"code")=SCT
+ ... SET RTN("entry",IDX,"resource","code","coding",1,"code","\s")=""
+ ... IF SDISP'="" SET RTN("entry",IDX,"resource","code","coding",1,"display")=SDISP
+ ... E  SET RTN("entry",IDX,"resource","code","coding",1,"display")=NAME
+ .. E  IF $GET(RTN("entry",IDX,"resource","code","coding",1,"system"))'["snomed" DO
+ ... SET RTN("entry",IDX,"resource","code","coding",2,"system")="http://snomed.info/sct"
+ ... SET RTN("entry",IDX,"resource","code","coding",2,"code")=SCT
+ ... SET RTN("entry",IDX,"resource","code","coding",2,"code","\s")=""
+ ... IF SDISP'="" SET RTN("entry",IDX,"resource","code","coding",2,"display")=SDISP
+ ... E  SET RTN("entry",IDX,"resource","code","coding",2,"display")=NAME
  IF NAME'="" SET RTN("entry",IDX,"resource","code","text")=NAME
  SET DATE=+$GET(PROC("dateTime"))
  IF DATE>0 SET RTN("entry",IDX,"resource","performedDateTime")=$$FM2FHIR^C0FHIRBU(DATE)
@@ -264,6 +285,28 @@ PROCSNOM(CODE,SCT,SDISP) ; Recover procedure SNOMED from OS5/CPT via sct2os5 inv
  . SET SCT=X
  . SET SDISP=$GET(^SYN("2002.030","sct2os5","inverse",CODE,X))
  . SET HIT=1
+ QUIT
+ ;
+PROCTXT(NAME,SCT,SDISP) ; $$ text → SNOMED for common Synthea procedure narratives
+ NEW N
+ SET (SCT,SDISP)=""
+ SET N=$$UP^XLFSTR($GET(NAME))
+ IF N["DEPRESSION SCREEN" SET SCT=171207006,SDISP="Depression screening (procedure)" QUIT
+ IF N["SCREENING FOR DEPRESSION" SET SCT=171207006,SDISP="Depression screening (procedure)" QUIT
+ IF N["PHQ" SET SCT=715252007,SDISP="Depression screening using Patient Health Questionnaire Nine Item score (procedure)" QUIT
+ IF N["TOBACCO"!(N["SMOKING CESSATION")!(N["SMOKING STATUS")!(N["SUBSTANCE USE") DO  QUIT
+ . IF N["SUBSTANCE USE" SET SCT=428171000124100,SDISP="Assessment of substance use (procedure)" QUIT
+ . SET SCT=710081004,SDISP="Smoking cessation education (procedure)"
+ IF N["ASSESSMENT OF SUBSTANCE USE"!(N["ASSESSMENT OF SUBSTANCE ABUSE") SET SCT=428171000124100,SDISP="Assessment of substance use (procedure)" QUIT
+ IF N["ALCOHOL USE DISORDERS IDENTIFICATION"!(N["AUDIT") SET SCT=763302001,SDISP="Assessment using Alcohol Use Disorders Identification Test - Consumption (procedure)" QUIT
+ IF N["MAMMOG" SET SCT=24623002,SDISP="Screening mammography (procedure)" QUIT
+ IF N["COLONOSCOP" SET SCT=73761001,SDISP="Colonoscopy (procedure)" QUIT
+ IF N["SIGMOIDOSCOP" SET SCT=444783004,SDISP="Screening flexible sigmoidoscopy (procedure)" QUIT
+ IF N["FECAL OCCULT"!(N["OCCULT BLOOD")!(N["FIT TEST") SET SCT=1010305003,SDISP="Fecal occult blood testing (procedure)" QUIT
+ IF N["MEDICATION RECONCIL" SET SCT=430193006,SDISP="Medication reconciliation (procedure)" QUIT
+ IF N["HEALTH AND SOCIAL CARE NEEDS" SET SCT=710824005,SDISP="Assessment of health and social care needs (procedure)" QUIT
+ IF N["SCREENING FOR DOMESTIC ABUSE" SET SCT=866149003,SDISP="Screening for domestic abuse (procedure)" QUIT
+ IF N["SCREENING FOR DRUG ABUSE" SET SCT=713106006,SDISP="Screening for drug abuse (procedure)" QUIT
  QUIT
  ;
 ISCPT(CODE) ; $$ - true when code looks like CPT (not Synthea OS5 hybrids like 2870N)

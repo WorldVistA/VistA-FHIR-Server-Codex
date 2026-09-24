@@ -168,23 +168,36 @@ BSTSICD(SCT,FMDT) ; $$ - SNOMED CT code to ICD diagnosis ien via local RPMS BSTS
  . . S ICD=$$ICDIEN(CODE,"ICD-9-CM",FMDT)
  Q +$G(ICD)
  ;
-SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien via Lexicon map 5217693
+SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien (SCTMAP, then Lexicon)
+ ; Prefer explicit SCTMAP first so stale Lexicon R69. associations cannot win.
+ ; Reject Lexicon catch-all R69 / R69. — that is Illness, unspecified, not a map.
  N ICDTX,LEX,MAPVUID,RET,Y
  I $G(U)="" S U="^"
  S SCT=$G(SCT) I SCT="" Q 0
+ S ICDTX=$$SCTMAP(SCT)
+ S RET=0
+ I ICDTX'="" D
+ . S RET=$$ICDDX^ICDEX(ICDTX,30)
+ . I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
+ I +RET>0 Q +RET
  S MAPVUID=5217693
  K LEX S Y=$$GETASSN^LEXTRAN1(SCT,MAPVUID)
  S ICDTX="" S ICDTX=$O(LEX(1,ICDTX))
- S RET=0
+ I $$ISR69(ICDTX) S ICDTX=""
  I ICDTX'="" S RET=$$ICDDX^ICDEX(ICDTX,30)
  I +RET<1,ICDTX'="",ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
- I +RET>0 Q +RET
- S ICDTX=$$SCTMAP(SCT) I ICDTX="" Q 0
- S RET=$$ICDDX^ICDEX(ICDTX,30)
- I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
  Q $S(+RET>0:+RET,1:0)
  ;
-SCTMAP(SCT) ; $$ - Synthea SCT leftovers that Lexicon 5217693 does not map
+ISR69(CODE) ; $$ - 1 if ICD string is the Illness-unspecified catch-all
+ S CODE=$$UP($G(CODE))
+ I CODE="R69"!(CODE="R69.") Q 1
+ Q 0
+ ;
+SCTMAP(SCT) ; $$ - Explicit SCT→ICD-10 when Lexicon is stale or missing
+ ; HTN codes first: CMS165 value set; Lexicon 757.33 has returned R69. on fhir.
+ I SCT=59621000 Q "I10" ; Essential hypertension
+ I SCT=38341003 Q "I10" ; Hypertensive disorder
+ I SCT=1201005 Q "I10" ; Benign essential hypertension
  I SCT=109570002 Q "K02.9" ; Primary dental caries
  I SCT=80967001 Q "K02.9" ; Dental caries
  I SCT=278598003 Q "K08.59" ; Leaking dental filling
@@ -199,6 +212,24 @@ SCTMAP(SCT) ; $$ - Synthea SCT leftovers that Lexicon 5217693 does not map
  I SCT=278558000 Q "K08.59" ; Dental filling lost
  I SCT=278588009 Q "K08.59" ; Fractured dental filling
  I SCT=278602001 Q "K08.59" ; Loose dental filling
+ I SCT=44054006 Q "E11.9" ; Type 2 diabetes mellitus
+ I SCT=73211009 Q "E11.9" ; Diabetes mellitus
+ I SCT=46635009 Q "E10.9" ; Type 1 diabetes mellitus
+ I SCT=313436004 Q "E11.9" ; Type 2 diabetes mellitus without complication
+ I SCT=230572002 Q "E11.40" ; Diabetic neuropathy
+ ; Residual Synthea leftovers that Lexicon maps to R69 (P3 hygiene)
+ I SCT=235019006 Q "K05.10" ; Periodontal disease / gingivitis family
+ I SCT=735938006 Q "K05.10" ; Gingivitis
+ I SCT=735937001 Q "K05.10" ; Acute gingivitis
+ I SCT=735936005 Q "K05.10" ; Chronic gingivitis
+ I SCT=735952002 Q "K05.6" ; Gingival disease
+ I SCT=735938006 Q "K05.10"
+ I SCT=735930004 Q "G47.9" ; Sleep disorder
+ I SCT=442877003 Q "M54.5" ; Chronic pain? keep back-pain style
+ I SCT=735607009 Q "M25.50" ; Chronic pain (finding) → unspecified joint pain proxy when R69
+ I SCT=735950005 Q "Z73.4" ; Social isolation / inadequate social support proxy
+ I SCT=224960004 Q "Z56.0" ; Unemployed
+ I SCT=424553001 Q "O80" ; Uncomplicated pregnancy / normal pregnancy finding
  Q ""
  ;
 ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only
@@ -355,6 +386,9 @@ ADDPROB(ERR,DFN,ICD,NARR,FMDT,USER,SCT,SCTDES) ; $$ - file Problem List row
  S FDA(9000011,"+1,",.03)=NOW\1
  S FDA(9000011,"+1,",.05)=NARRIEN
  I FAC>0 S FDA(9000011,"+1,",.06)=FAC
+ ; .07 NMBR is required (unique per patient/location) — missing it yields
+ ; "lacks some required identifiers" on WorldVistA EHR / SYN loads.
+ S FDA(9000011,"+1,",.07)=$$NEXTNMBR(DFN,FAC)
  S FDA(9000011,"+1,",.08)=NOW\1
  S FDA(9000011,"+1,",.12)="A"
  I +$G(FMDT)>0 S FDA(9000011,"+1,",.13)=FMDT\1
@@ -367,6 +401,14 @@ ADDPROB(ERR,DFN,ICD,NARR,FMDT,USER,SCT,SCTDES) ; $$ - file Problem List row
  D UPDATE^DIE("","FDA","IEN","MSG")
  I $D(MSG) S ERR="Problem saving Problem List row: "_$G(MSG("DIERR",1,"TEXT",1)) Q 0
  Q +$G(IEN(1))
+ ;
+NEXTNMBR(DFN,FAC) ; $$ - next Problem List .07 NMBR for patient at location
+ N LAST
+ S FAC=+$G(FAC) I FAC<1 S FAC=+$O(^AUTTLOC(0))
+ S LAST=+$O(^AUPNPROB("AA",+$G(DFN),FAC,""),-1)
+ ; AA subscript is reverse NMBR in some builds — normalize to integer
+ I LAST>999999 S LAST=+$RE(+$RE(LAST))
+ Q LAST+1
  ;
 ADDPOV(ERR,DFN,VISIT,ICD,NARR,FMDT,USER,SCT) ; $$ - file V POV only, without adding a Problem List row
  N CLIN,FDA,IENS,LOC,MSG,NARRIEN,NEWIEN
