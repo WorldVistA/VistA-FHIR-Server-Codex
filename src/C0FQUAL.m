@@ -906,7 +906,11 @@ CALLEVAL(JSON,OUT,ERR) ; POST cohort eval request to cds1 quality-eval sidecar
  ; Cohort eval can take several minutes
  SET STATUS=$$%^%WC(.RET,"POST",URL,.PAYLOAD,"application/json",600,.HDR,.OPT)
  IF +$GET(STATUS)'=0 SET ERR="cds1 quality-eval curl exit status "_STATUS QUIT
- IF $GET(HDR("STATUS"))'="",($GET(HDR("STATUS"))<200!($GET(HDR("STATUS"))>299)) SET ERR="cds1 quality-eval HTTP status "_$GET(HDR("STATUS")) QUIT
+ IF $GET(HDR("STATUS"))'="",($GET(HDR("STATUS"))<200!($GET(HDR("STATUS"))>299)) DO  QUIT
+ . NEW B,I SET (B,I)=""
+ . FOR  SET I=$ORDER(RET(I)) QUIT:I=""  SET B=B_$GET(RET(I))
+ . SET ERR="cds1 quality-eval HTTP status "_$GET(HDR("STATUS"))
+ . IF B'="" SET ERR=ERR_": "_$EXTRACT(B,1,120)
  DO DECODE^XLFJSON("RET","OUT","ERR")
  IF $DATA(ERR) SET ERR="Unable to decode cds1 quality-eval response JSON" QUIT
  IF $GET(OUT("status"))="error" SET ERR=$GET(OUT("message"),"cds1 quality-eval error") QUIT
