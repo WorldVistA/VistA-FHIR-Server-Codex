@@ -701,9 +701,12 @@ SETESTD(RTN,IDX,VIEN) ; Add V STANDARD CODES rows as Encounter.reasonCode
  . . IF LEX'="",'$$ISPOVDIS(LEX) SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=LEX
  . E  IF DISP'="",'$$ISPOVDIS(DISP) SET RTN("entry",IDX,"resource","reasonCode",N,"coding",1,"display")=DISP
  . IF DISP'="",'$$ISPOVDIS(DISP) SET RTN("entry",IDX,"resource","reasonCode",N,"text")=DISP
+ . ; P2c: mark V STANDARD CODES origin so round-trips are not "reason-less"
+ . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"url")=$$STDURL()
+ . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"valueBoolean")="true"
  . IF SUP'="" DO
- . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"url")=$$RCSUPURL()
- . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",1,"valueString")=$$TRIM($$STDSUP(SUP))
+ . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",2,"url")=$$RCSUPURL()
+ . . SET RTN("entry",IDX,"resource","reasonCode",N,"extension",2,"valueString")=$$TRIM($$STDSUP(SUP))
  QUIT
  ;
 ISPOVDIS(X) ; $$ - true when text is VistA POV boilerplate, not a term display
@@ -761,6 +764,9 @@ STDSYS(SYS,CODE) ; Map V STANDARD CODES coding system to FHIR system URL
  ;
 RCSUPURL() ; Canonical reasonCode support extension URL
  QUIT "http://vistaplex.org/fhir/StructureDefinition/vista-reason-support"
+ ;
+STDURL() ; Canonical V STANDARD CODES reasonCode marker (P2c)
+ QUIT "http://vistaplex.org/fhir/StructureDefinition/vista-standard-code"
  ;
 SETEHF(RTN,IDX,VIEN) ; Add V Health Factor rows as Encounter extensions
  NEW EI,HFIEN,IEN,NAME,N,SEV,X0

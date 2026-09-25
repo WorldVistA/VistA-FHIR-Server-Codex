@@ -236,7 +236,7 @@ Audit of **current code** against §6 recommendations. SYN = Data-Loader; C0FW =
 
 ### Bottom line
 
-P0 + P1 close the visit-type PROCEDURE path, OS5 AMA mislabel, Lexicon R69 on POV, unified SCT→ICD, and write-side encounter-role gate. Remaining work is **P2** (map split / optional clinic defaults / STD CODES FHIR extension).
+P0 + P1 close the visit-type PROCEDURE path, OS5 AMA mislabel, Lexicon R69 on POV, unified SCT→ICD, and write-side encounter-role gate. P2 soft-splits OS5 maps by role, adds optional clinic visit-type defaults, and marks STD CODES on Encounter.reasonCode read.
 
 ---
 
@@ -258,13 +258,13 @@ P0 + P1 close the visit-type PROCEDURE path, OS5 AMA mislabel, Lexicon R69 on PO
 | **P1b** | Unify SCT→ICD order everywhere: tables / BSTS → Lexicon → reject R69 | C0FWENC, C0FWCON, SYNDHP61 | **DONE** | `SCT2ICD^SYNDHP61` prefers `SCTICD10^C0FWCON` when present; same reject policy |
 | **P1c** | Write-side role check: `Encounter.type` SCT must be encounter-set (`ISENCS` / `codes/encounter_sct.json`); refuse disorder SCT as visit-type | C0FWENC + SYNDHP61 | **DONE** | Disorder SCT `44054006` → no PROCEDURE; encounter SCT `185349003` → CPT `99202`; `308335008` added to `ENCSCT` |
 
-### P2 — structural / policy (open questions)
+### P2 — structural / policy
 
-| ID | Change | Notes |
-|----|--------|-------|
-| **P2a** | Split `sct2os5` into encounter-only vs procedure-only maps | Stops cross-role map hits |
-| **P2b** | Optional clinic → default visit-type table | Mirrors `ORWPCE AUTO VISIT TYPE SELECT`; only if a site asks |
-| **P2c** | Document STD CODES SCT POV as FHIR extension on read | Round-trips stop looking “reason-less” |
+| ID | Change | Where | Status | Done when |
+|----|--------|-------|--------|-----------|
+| **P2a** | Split `sct2os5` into encounter-only vs procedure-only maps | `SPLITOS5^SYNOS5LD` → `sct2os5enc` / `sct2os5prc`; consumers prefer role map | **DONE** | vehu10: 1041→61 enc / 986 prc; pure encounter SCT not on prc map |
+| **P2b** | Optional clinic → default visit-type table | `VTYDEF^C0FWENC` reads `^C0F("VTYDEF",LOC)` when type empty | **DONE** | Empty = no-op; set node when a site asks (no CPRS RPC coupling) |
+| **P2c** | Mark STD CODES SCT POV on FHIR read | `SETSTD^C0FHIR` + `vista-standard-code` extension | **DONE** | Every V STANDARD CODES reasonCode has `vista-standard-code` boolean |
 
 ### Suggested implementation order
 
@@ -272,7 +272,7 @@ P0 + P1 close the visit-type PROCEDURE path, OS5 AMA mislabel, Lexicon R69 on PO
 2. **P0b** (read-only export fix) → smoke `/fhir?dfn=` Encounter.type systems. ✅ (`ENCCOD` unit)  
 3. **P0a** (write visit-type PROCEDURE) → smoke type-only Encounter; confirm V CPT + still no Procedure resource for encounter-only OS5 (**R7**). ✅ (`ADDVTYP` unit on vehu10)  
 4. **P1a–P1c** → shared helper + role gate. ✅  
-5. **P2*** as separate map/ops work.
+5. **P2a–P2c** → role maps + clinic default hook + STD CODES marker. ✅
 
 ### Implementation log (2026-09-25)
 
@@ -283,6 +283,10 @@ P0 + P1 close the visit-type PROCEDURE path, OS5 AMA mislabel, Lexicon R69 on PO
 - **P1a/b:** `SCT2ICD^SYNDHP61` (C0FWCON → sct2icd → Lexicon, reject R69); `ENCTUPD` uses it.
 - **P1c:** `OKVTY` + `ISENCS` gate in `ADDVTYP^C0FWENC` and `ENCTUPD^SYNDHP61`; `308335008` in `ENCSCT^C0FHIRP`.
 - Code: Codex `src/C0FWENC.m`, `src/C0FHIR.m`, `src/C0FHIRP.m`; Data-Loader `src/SYNDHP61.m`.
+- **P2a:** `SPLITOS5^SYNOS5LD` builds `sct2os5enc`/`sct2os5prc`; `VTYMAP`/`ENCTUPD` prefer enc; `SCT2OS5P`/`SYNDHP65` prefer prc.
+- **P2b:** `VTYDEF` / `^C0F("VTYDEF",LOC)` optional clinic default when Encounter.type empty.
+- **P2c:** `SETSTD` emits `http://vistaplex.org/fhir/StructureDefinition/vista-standard-code`.
+- Code (P2): Codex `src/C0FWENC.m`, `src/C0FWPRC.m`, `src/C0FHIR.m`; Data-Loader `src/SYNOS5LD.m`, `src/SYNDHP61.m`, `src/SYNDHP65.m`, `src/SYNDHPMP.m`.
 
 
 ### Verification commands (after each P0)

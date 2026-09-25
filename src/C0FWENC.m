@@ -295,7 +295,8 @@ ADDVTYP(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Queue visit-type as DATA2PCE PROCEDUR
  ; Mirrors ENCTUPD^SYNDHP61: Encounter.type SCT/CPT → file 81 code → PROCEDURE row.
  ; Do not ICD-map visit-type SCT as POV (see docs/ENCOUNTER_VISIT_TYPE_AND_POV_CODING.md).
  ; P1c: SCT visit-type must be encounter-set (ISENCS); disorder SCT is skipped, not silent OS5.
- N CI,CODE,CODESYS,CPTIEN,CPTCODE,DISP,NAME,OS5,PI,SCT
+ ; P2b: if type empty, optional ^C0F("VTYDEF",LOC) clinic default before Synthea generic SCT.
+ N CI,CODE,CODESYS,CPTIEN,CPTCODE,DISP,LOC,NAME,OS5,PI,SCT
  I $D(ENCDATA("PROCEDURE")) Q
  S (CPTCODE,SCT,NAME)=""
  S CI=0 F  S CI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","type",1,"coding",CI)) Q:+CI=0  D
@@ -305,7 +306,11 @@ ADDVTYP(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Queue visit-type as DATA2PCE PROCEDUR
  . I CODE="" Q
  . I (CODESYS["CPT")!(CODESYS["HCPCS")!(CODESYS["OS5")!(CODESYS["C4"),CPTCODE="" S CPTCODE=CODE I NAME="" S NAME=DISP Q
  . I $$SCTSYS(CODESYS),SCT="" S SCT=CODE I NAME="" S NAME=DISP
- I CPTCODE="",SCT="" S SCT="185349003",NAME="Encounter for check up"
+ I CPTCODE="",SCT="" D
+ . S LOC=+$G(ENCDATA("ENCOUNTER",1,"HOS LOC"))
+ . S CPTCODE=$$VTYDEF(LOC)
+ . I CPTCODE'="" S NAME="Clinic default visit type" Q
+ . S SCT="185349003",NAME="Encounter for check up"
  I CPTCODE="" D  Q:CPTCODE=""
  . I '$$OKVTY(SCT) D LOG(ROOT,IEN,RIEN,"Visit-type PROCEDURE skipped; SCT "_SCT_" is not an encounter-set type") Q
  . S CPTCODE=$$VTYMAP(SCT)
@@ -329,15 +334,21 @@ OKVTY(SCT) ; $$ - 1 if SCT may be used as Encounter visit-type
  I $T(ISENCS^C0FHIRP)'="" Q $$ISENCS^C0FHIRP(SCT)
  Q 1
  ;
-VTYMAP(SCT) ; $$ - visit-type SCT → CPT or OS5 code (sct2cpt, then sct2os5)
+VTYDEF(LOC) ; $$ - optional site clinic→visit-type CPT/OS5 (P2b)
+ ; Populate ^C0F("VTYDEF",hospital-location-ien)=code when a site asks.
+ ; Empty = no clinic default (Synthea generic SCT still applies).
+ Q $G(^C0F("VTYDEF",+$G(LOC)))
+ ;
+VTYMAP(SCT) ; $$ - visit-type SCT → CPT or OS5 (sct2cpt, then sct2os5enc, then sct2os5)
  N MAP,OUT
  S SCT=$G(SCT),OUT=""
  I SCT="" Q ""
  I $T(+0^SYNDHPMP)'="" D
  . S MAP=$$MAP^SYNDHPMP("sct2cpt",SCT)
  . I +MAP=1 S OUT=$P(MAP,"^",2)
+ . I OUT="" S MAP=$$MAP^SYNDHPMP("sct2os5enc",SCT) I +MAP=1 S OUT=$P(MAP,"^",2)
  . I OUT="" S MAP=$$MAP^SYNDHPMP("sct2os5",SCT) I +MAP=1 S OUT=$P(MAP,"^",2)
- I OUT="" S OUT=$$SCT2OS5^C0FWPRC(SCT)
+ I OUT="" S OUT=$$SCT2OS5E^C0FWPRC(SCT)
  Q OUT
  ;
 ADDRC(ENCDATA,ROOT,IEN,RIEN,RCI,RCCNT,FMDT,USER,HASPOV) ; Add one Encounter.reasonCode entry

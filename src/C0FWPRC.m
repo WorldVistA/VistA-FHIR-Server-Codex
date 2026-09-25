@@ -31,7 +31,7 @@ LOADVEHU(ROOT,IEN,RIEN,RETURN) ; VEHU/SYN path via PRCADD^SYNDHP65
  . S HL7DT=$$FMTHL7^XLFDT(FMDT)
  . I HL7DT="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Procedure",TYPE,"Unable to convert visit date to HL7",.RETURN) Q
  ; Seed mapped OS5 into #81 so PRCADD/DATA2PCE can resolve the code (fhirprod gap).
- S OS5=$$SCT2OS5(SCT)
+ S OS5=$$SCT2OS5P(SCT)
  I OS5'="" S CPTIEN=$$ENSURECPT(OS5,$$CPTNAME(ROOT,IEN,RIEN,OS5,SCT))
  S CNT=1
  D DUZ^C0FWCTX(),IO^C0FWCTX()
@@ -71,7 +71,7 @@ LOADRPMS(ROOT,IEN,RIEN,RETURN) ; RPMS path: ensure CPT + DATA2PCE^PXAI (IEN poin
  I VISIT<1 D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Procedure",TYPE,"Procedure has no resolved encounter visit pointer",.RETURN) Q
  S SCT=$$SCT(ROOT,IEN,RIEN)
  S OS5=$$CPTCODE(ROOT,IEN,RIEN)
- I OS5="",SCT'="" S OS5=$$SCT2OS5(SCT)
+ I OS5="",SCT'="" S OS5=$$SCT2OS5P(SCT)
  I OS5="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Procedure",TYPE,"No CPT/OS5 mapping for Procedure.code (SCT="_SCT_")",.RETURN) Q
  S CPTIEN=$$ENSURECPT(OS5,$$CPTNAME(ROOT,IEN,RIEN,OS5,SCT))
  I CPTIEN<1 D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Procedure",TYPE,"Unable to resolve/seed CPT "_OS5_" in file #81",.RETURN) Q
@@ -199,6 +199,23 @@ SCT2OS5(SCT) ; $$ - map SNOMED CT to OS5/CPT code
  I SCT=713026007 Q "73060" ; Plain X-ray of humerus
  I SCT=168594001 Q "73000" ; Plain X-ray of clavicle
  Q ""
+ ;
+SCT2OS5E(SCT) ; $$ - encounter-role OS5/CPT (prefer sct2os5enc)
+ N MAP,OS5
+ S SCT=$G(SCT) I SCT="" Q ""
+ I $T(+0^SYNDHPMP)'="" D  I $G(OS5)'="" Q OS5
+ . S MAP=$$MAP^SYNDHPMP("sct2os5enc",SCT)
+ . I +MAP=1 S OS5=$P(MAP,"^",2)
+ Q $$SCT2OS5(SCT)
+ ;
+SCT2OS5P(SCT) ; $$ - procedure-role OS5/CPT (prefer sct2os5prc; skip pure encounter)
+ N MAP,OS5
+ S SCT=$G(SCT) I SCT="" Q ""
+ I $T(ISENCS^C0FHIRP)'="",$$ISENCS^C0FHIRP(SCT),$T(ISDUALS^C0FHIRP)'="",'$$ISDUALS^C0FHIRP(SCT) Q ""
+ I $T(+0^SYNDHPMP)'="" D  I $G(OS5)'="" Q OS5
+ . S MAP=$$MAP^SYNDHPMP("sct2os5prc",SCT)
+ . I +MAP=1 S OS5=$P(MAP,"^",2)
+ Q $$SCT2OS5(SCT)
  ;
 CPTNAME(ROOT,IEN,RIEN,OS5,SCT) ; $$ - display for seeded CPT
  N NAME
