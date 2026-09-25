@@ -39,6 +39,8 @@ TLS and ran cqm-execution. Per-measure IPP / DENOM / NUMER:
 | CMS165v14 (controlling BP) | 2 | 2 | 1 |
 | CMS2v15 (depression screening) | 4 | 4 | 0 |
 
+**Coding-gap follow-up (2026-09-25):** scan + plan + GO in `HL7-FHIR-quality-testing/docs/IRIS_CODING_GAP_PLAN_POINTER.md` — CMS2/125/130/165 NUMER lifted (4/4/4, 1/1/1, 2/2/2, 2/2/2); CMS122/138 held.
+
 Each measure's POP was then trimmed to its IPP members (fleet convention:
 curated POP = cohort of interest), which is also what keeps dashboards fast.
 
