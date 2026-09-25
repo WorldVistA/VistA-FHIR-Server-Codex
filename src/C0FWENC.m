@@ -294,6 +294,7 @@ ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension, reasonCod
 ADDVTYP(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Queue visit-type as DATA2PCE PROCEDURE (V CPT / OS5)
  ; Mirrors ENCTUPD^SYNDHP61: Encounter.type SCT/CPT → file 81 code → PROCEDURE row.
  ; Do not ICD-map visit-type SCT as POV (see docs/ENCOUNTER_VISIT_TYPE_AND_POV_CODING.md).
+ ; P1c: SCT visit-type must be encounter-set (ISENCS); disorder SCT is skipped, not silent OS5.
  N CI,CODE,CODESYS,CPTIEN,CPTCODE,DISP,NAME,OS5,PI,SCT
  I $D(ENCDATA("PROCEDURE")) Q
  S (CPTCODE,SCT,NAME)=""
@@ -305,8 +306,10 @@ ADDVTYP(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Queue visit-type as DATA2PCE PROCEDUR
  . I (CODESYS["CPT")!(CODESYS["HCPCS")!(CODESYS["OS5")!(CODESYS["C4"),CPTCODE="" S CPTCODE=CODE I NAME="" S NAME=DISP Q
  . I $$SCTSYS(CODESYS),SCT="" S SCT=CODE I NAME="" S NAME=DISP
  I CPTCODE="",SCT="" S SCT="185349003",NAME="Encounter for check up"
- I CPTCODE="" S CPTCODE=$$VTYMAP(SCT)
- I CPTCODE="" S CPTCODE="6456Q"
+ I CPTCODE="" D  Q:CPTCODE=""
+ . I '$$OKVTY(SCT) D LOG(ROOT,IEN,RIEN,"Visit-type PROCEDURE skipped; SCT "_SCT_" is not an encounter-set type") Q
+ . S CPTCODE=$$VTYMAP(SCT)
+ . I CPTCODE="" S CPTCODE="6456Q"
  I NAME="" S NAME=$S(SCT'="":"Visit type "_SCT,1:"Outpatient Encounter")
  S CPTIEN=$$ENSURECPT^C0FWPRC(CPTCODE,NAME)
  I CPTIEN<1 D LOG(ROOT,IEN,RIEN,"Visit-type PROCEDURE skipped; ENSURECPT failed for "_CPTCODE) Q
@@ -319,6 +322,12 @@ ADDVTYP(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Queue visit-type as DATA2PCE PROCEDUR
  S @ROOT@(IEN,"load","Encounter",RIEN,"parms","VTYCPT")=CPTCODE
  D LOG(ROOT,IEN,RIEN,"Visit-type PROCEDURE queued: "_CPTCODE_" (SCT="_SCT_")")
  Q
+ ;
+OKVTY(SCT) ; $$ - 1 if SCT may be used as Encounter visit-type
+ I $G(SCT)="" Q 0
+ I SCT=308335008 Q 1 ; Patient encounter procedure (Synthea default; also in encounter_sct.json)
+ I $T(ISENCS^C0FHIRP)'="" Q $$ISENCS^C0FHIRP(SCT)
+ Q 1
  ;
 VTYMAP(SCT) ; $$ - visit-type SCT → CPT or OS5 code (sct2cpt, then sct2os5)
  N MAP,OUT

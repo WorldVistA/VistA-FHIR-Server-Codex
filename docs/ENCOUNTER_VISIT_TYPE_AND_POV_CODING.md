@@ -229,14 +229,14 @@ Audit of **current code** against §6 recommendations. SYN = Data-Loader; C0FW =
 | R8 | TIU note title does not derive CPT | **PASS** | No title→CPT in C0FWENC / C0FWPRC / SYN encounter load. |
 | R9 | Clinic/stop = metadata only | **PASS** | Stop → `serviceType` text; clinic = location context. |
 | R10 | OS5 seed / ENSURECPT available | **PASS** | `SYNOS5PT`, `SYNGBLLD`, `ENSURECPT^C0FWPRC`. |
-| R11 | Role discipline (type ≠ reason ≠ procedure) | **PARTIAL** | Read dual-role guards (`ISDUALS`). Writes do **not** validate that `Encounter.type` SCT is encounter-set; disorder SCT as type can still become OS5 V CPT on SYN. |
+| R11 | Role discipline (type ≠ reason ≠ procedure) | **PASS** | Read dual-role guards (`ISDUALS`). Writes: `OKVTY`/`ISENCS` gate in `ADDVTYP^C0FWENC` and `ENCTUPD^SYNDHP61` — disorder SCT as type is skipped (not silent OS5). |
 | R12 | STD CODES fallback when POV map fails | **PASS** | SYN + C0FW both file SCT STD CODES / skip true V POV. |
 
-**Score:** 11 PASS · 1 PARTIAL · 0 FAIL (post-P0, 2026-09-25 evening)
+**Score:** 12 PASS · 0 PARTIAL · 0 FAIL (post-P1, 2026-09-25 evening)
 
 ### Bottom line
 
-P0 closed the C0FW visit-type PROCEDURE gap, OS5 AMA mislabel on Encounter.type export, and Lexicon R69 on encounter POV. Remaining gap is **R11** write-side role gate (P1c).
+P0 + P1 close the visit-type PROCEDURE path, OS5 AMA mislabel, Lexicon R69 on POV, unified SCT→ICD, and write-side encounter-role gate. Remaining work is **P2** (map split / optional clinic defaults / STD CODES FHIR extension).
 
 ---
 
@@ -252,11 +252,11 @@ P0 closed the C0FW visit-type PROCEDURE gap, OS5 AMA mislabel on Encounter.type 
 
 ### P1 — harden role + map consistency
 
-| ID | Change | Where | Done when |
-|----|--------|-------|-----------|
-| **P1a** | Reject R69 if `sct2icd` ever returns it (treat as unmapped) | `ENCTUPD^SYNDHP61` after MAP | SYN POV path same as PL |
-| **P1b** | Unify SCT→ICD order everywhere: tables / BSTS → Lexicon → reject R69 | C0FWENC, C0FWCON, SYNDHP61 | One shared helper or identical sequence |
-| **P1c** | Write-side role check: `Encounter.type` SCT must be encounter-set (`ISENCS` / `codes/encounter_sct.json`); refuse disorder SCT as visit-type | C0FWENC + optionally SYNFENC | Bad type codes → clear skip/warn, not silent OS5 |
+| ID | Change | Where | Status | Done when |
+|----|--------|-------|--------|-----------|
+| **P1a** | Reject R69 if `sct2icd` ever returns it (treat as unmapped) | `ENCTUPD^SYNDHP61` after MAP | **DONE** | SYN POV path uses `SCT2ICD` (never R69); HTN → `I10.` |
+| **P1b** | Unify SCT→ICD order everywhere: tables / BSTS → Lexicon → reject R69 | C0FWENC, C0FWCON, SYNDHP61 | **DONE** | `SCT2ICD^SYNDHP61` prefers `SCTICD10^C0FWCON` when present; same reject policy |
+| **P1c** | Write-side role check: `Encounter.type` SCT must be encounter-set (`ISENCS` / `codes/encounter_sct.json`); refuse disorder SCT as visit-type | C0FWENC + SYNDHP61 | **DONE** | Disorder SCT `44054006` → no PROCEDURE; encounter SCT `185349003` → CPT `99202`; `308335008` added to `ENCSCT` |
 
 ### P2 — structural / policy (open questions)
 
@@ -271,7 +271,7 @@ P0 closed the C0FW visit-type PROCEDURE gap, OS5 AMA mislabel on Encounter.type 
 1. **P0c** (small, stops R69 on C0FW POV) → smoke reasonCode Bundle. ✅  
 2. **P0b** (read-only export fix) → smoke `/fhir?dfn=` Encounter.type systems. ✅ (`ENCCOD` unit)  
 3. **P0a** (write visit-type PROCEDURE) → smoke type-only Encounter; confirm V CPT + still no Procedure resource for encounter-only OS5 (**R7**). ✅ (`ADDVTYP` unit on vehu10)  
-4. **P1a–P1c** → shared helper + role gate.  
+4. **P1a–P1c** → shared helper + role gate. ✅  
 5. **P2*** as separate map/ops work.
 
 ### Implementation log (2026-09-25)
@@ -280,7 +280,9 @@ P0 closed the C0FW visit-type PROCEDURE gap, OS5 AMA mislabel on Encounter.type 
 - **P0a:** `ADDVTYP` + `VTYMAP`; SCT `185349003` → PROCEDURE CPT `99202`.
 - **P0b:** `ENCCOD("6456Q")` → `urn:va:syn:os5`; real `99213` → AMA CPT.
 - **P0c:** `SCTICD10^C0FWENC` → `C0FWCON`; HTN `59621000` → `I10.`, not R69.
-- Code: `src/C0FWENC.m`, `src/C0FHIR.m` (uncommitted unless asked).
+- **P1a/b:** `SCT2ICD^SYNDHP61` (C0FWCON → sct2icd → Lexicon, reject R69); `ENCTUPD` uses it.
+- **P1c:** `OKVTY` + `ISENCS` gate in `ADDVTYP^C0FWENC` and `ENCTUPD^SYNDHP61`; `308335008` in `ENCSCT^C0FHIRP`.
+- Code: Codex `src/C0FWENC.m`, `src/C0FHIR.m`, `src/C0FHIRP.m`; Data-Loader `src/SYNDHP61.m`.
 
 
 ### Verification commands (after each P0)
