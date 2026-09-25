@@ -24,7 +24,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  S SOURCE="C0FW WRITEBACK"
  K ENCDATA,ZZERR,ZZERDESC
  D BUILD(.ENCDATA,ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,+$G(KNOWNVISIT))
- I +$G(KNOWNVISIT)>0,'$D(ENCDATA("HEALTH FACTOR")),'$D(ENCDATA("DX/PL")),'$D(ENCDATA("STD CODES")) D  Q
+ I +$G(KNOWNVISIT)>0,'$D(ENCDATA("HEALTH FACTOR")),'$D(ENCDATA("DX/PL")),'$D(ENCDATA("STD CODES")),'$D(ENCDATA("PROCEDURE")) D  Q
  . D LOG(ROOT,IEN,RIEN,"Encounter already has visitIen "_KNOWNVISIT_"; filing Encounter.note only")
  . D LOADED(ROOT,IEN,RIEN,KNOWNVISIT,"Encounter already linked to visit",.RETURN)
  . D HFROLL(ROOT,IEN,RIEN,.RETURN)
@@ -66,6 +66,7 @@ BUILD(ENCDATA,ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,VISIT) ; Build unified encounter D
  S ENCDATA("PROVIDER",1,"NAME")=USER
  S ENCDATA("PROVIDER",1,"PRIMARY")=1
  D ADDPOV(.ENCDATA,ROOT,IEN,RIEN,FMDT,USER)
+ D ADDVTYP(.ENCDATA,ROOT,IEN,RIEN,FMDT,USER)
  D ADDHF(.ENCDATA,ROOT,IEN,RIEN,FMDT,+$G(VISIT))
  Q
  ;
@@ -79,6 +80,7 @@ HASCLIN(ENCDATA) ; $$ - true if the encounter payload has visit-linked add-ons
  I $D(ENCDATA("HEALTH FACTOR")) Q 1
  I $D(ENCDATA("DX/PL")) Q 1
  I $D(ENCDATA("STD CODES")) Q 1
+ I $D(ENCDATA("PROCEDURE")) Q 1
  Q 0
  ;
 RPMS() ; $$ - true when RPMS PCC visit filing is available
@@ -289,6 +291,46 @@ ADDPOV(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Add Encounter POV extension, reasonCod
  I $G(HASPOV) D POVSTAT(ROOT,IEN,RIEN,"queued","POV queued: Z76.89 in place of SNOMED 308335008")
  Q
  ;
+ADDVTYP(ENCDATA,ROOT,IEN,RIEN,FMDT,USER) ; Queue visit-type as DATA2PCE PROCEDURE (V CPT / OS5)
+ ; Mirrors ENCTUPD^SYNDHP61: Encounter.type SCT/CPT → file 81 code → PROCEDURE row.
+ ; Do not ICD-map visit-type SCT as POV (see docs/ENCOUNTER_VISIT_TYPE_AND_POV_CODING.md).
+ N CI,CODE,CODESYS,CPTIEN,CPTCODE,DISP,NAME,OS5,PI,SCT
+ I $D(ENCDATA("PROCEDURE")) Q
+ S (CPTCODE,SCT,NAME)=""
+ S CI=0 F  S CI=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","type",1,"coding",CI)) Q:+CI=0  D
+ . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","type",1,"coding",CI,"code"))
+ . S CODESYS=$$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","type",1,"coding",CI,"system")))
+ . S DISP=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","type",1,"coding",CI,"display"))
+ . I CODE="" Q
+ . I (CODESYS["CPT")!(CODESYS["HCPCS")!(CODESYS["OS5")!(CODESYS["C4"),CPTCODE="" S CPTCODE=CODE I NAME="" S NAME=DISP Q
+ . I $$SCTSYS(CODESYS),SCT="" S SCT=CODE I NAME="" S NAME=DISP
+ I CPTCODE="",SCT="" S SCT="185349003",NAME="Encounter for check up"
+ I CPTCODE="" S CPTCODE=$$VTYMAP(SCT)
+ I CPTCODE="" S CPTCODE="6456Q"
+ I NAME="" S NAME=$S(SCT'="":"Visit type "_SCT,1:"Outpatient Encounter")
+ S CPTIEN=$$ENSURECPT^C0FWPRC(CPTCODE,NAME)
+ I CPTIEN<1 D LOG(ROOT,IEN,RIEN,"Visit-type PROCEDURE skipped; ENSURECPT failed for "_CPTCODE) Q
+ S PI=$O(ENCDATA("PROCEDURE",""),-1)+1
+ S ENCDATA("PROCEDURE",PI,"PROCEDURE")=+CPTIEN
+ S ENCDATA("PROCEDURE",PI,"QTY")=1
+ S ENCDATA("PROCEDURE",PI,"EVENT D/T")=FMDT
+ I +$G(USER)>0 S ENCDATA("PROCEDURE",PI,"ENC PROVIDER")=+USER
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","SCTCPT")=$S(SCT'="":SCT,1:CPTCODE)
+ S @ROOT@(IEN,"load","Encounter",RIEN,"parms","VTYCPT")=CPTCODE
+ D LOG(ROOT,IEN,RIEN,"Visit-type PROCEDURE queued: "_CPTCODE_" (SCT="_SCT_")")
+ Q
+ ;
+VTYMAP(SCT) ; $$ - visit-type SCT → CPT or OS5 code (sct2cpt, then sct2os5)
+ N MAP,OUT
+ S SCT=$G(SCT),OUT=""
+ I SCT="" Q ""
+ I $T(+0^SYNDHPMP)'="" D
+ . S MAP=$$MAP^SYNDHPMP("sct2cpt",SCT)
+ . I +MAP=1 S OUT=$P(MAP,"^",2)
+ . I OUT="" S MAP=$$MAP^SYNDHPMP("sct2os5",SCT) I +MAP=1 S OUT=$P(MAP,"^",2)
+ I OUT="" S OUT=$$SCT2OS5^C0FWPRC(SCT)
+ Q OUT
+ ;
 ADDRC(ENCDATA,ROOT,IEN,RIEN,RCI,RCCNT,FMDT,USER,HASPOV) ; Add one Encounter.reasonCode entry
  N CI,CODE,CODESYS,DISP,ICDCODE,ICDDISP,ICDSYS,NARR,PRI,SCTCODE,SCTDISP,SCTICD
  S PRI=$$RCPRIM(ROOT,IEN,RIEN,RCI)
@@ -307,7 +349,7 @@ ADDRC(ENCDATA,ROOT,IEN,RIEN,RCI,RCCNT,FMDT,USER,HASPOV) ; Add one Encounter.reas
  . I ICDCODE'="" D ADDCODE(.ENCDATA,ROOT,IEN,RIEN,ICDCODE,ICDSYS,$S(NARR'="":NARR,ICDDISP'="":ICDDISP,1:ICDCODE),1,FMDT,USER,.HASPOV) Q
  . I SCTCODE'="" D  Q:$G(HASPOV)
  . . S SCTICD=$$SCTICD10(SCTCODE)
- . . I SCTICD>0 D ADDDX(.ENCDATA,ROOT,IEN,RIEN,SCTICD,SCTCODE,$S(NARR'="":NARR,SCTDISP'="":SCTDISP,1:SCTCODE),FMDT,USER,.HASPOV) D POVSTAT(ROOT,IEN,RIEN,"queued","POV queued from SNOMED-to-ICD-10 Lexicon mapping: "_SCTCODE)
+ . . I SCTICD>0 D ADDDX(.ENCDATA,ROOT,IEN,RIEN,SCTICD,SCTCODE,$S(NARR'="":NARR,SCTDISP'="":SCTDISP,1:SCTCODE),FMDT,USER,.HASPOV) D POVSTAT(ROOT,IEN,RIEN,"queued","POV queued from SNOMED-to-ICD-10 map (tables/Lexicon, R69 rejected): "_SCTCODE)
  . D POVSTAT(ROOT,IEN,RIEN,"skipped","Primary reasonCode has no ICD-9/ICD-10 coding; true V POV requires ICD mapping.")
  Q
  ;
@@ -508,16 +550,9 @@ ICDIEN(CODE,SYS,FMDT) ; $$ - ICD diagnosis ien for Encounter POV
  I +RET<1,CS=30,CODE'?1.E1".",$L(CODE)=3 S RET=$$ICDDX^ICDEX(CODE_".",CS)
  Q $S(+RET>0:+RET,1:0)
  ;
-SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien via Lexicon map 5217693
- N ICDTX,LEX,MAPVUID,RET,Y
- S SCT=$G(SCT) I SCT="" Q 0
- S MAPVUID=5217693
- K LEX S Y=$$GETASSN^LEXTRAN1(SCT,MAPVUID)
- S ICDTX="" S ICDTX=$O(LEX(1,ICDTX))
- I ICDTX="" Q 0
- S RET=$$ICDDX^ICDEX(ICDTX,30)
- I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
- Q $S(+RET>0:+RET,1:0)
+SCTICD10(SCT) ; $$ - SNOMED CT → ICD-10 diagnosis ien; prefer maps, reject R69
+ ; Delegate to C0FWCON so Encounter POV and Problem List share one policy.
+ Q $$SCTICD10^C0FWCON($G(SCT))
  ;
 ICDCS(SYS,FMDT) ; $$ - ICDEX coding system id
  S SYS=$$UP($G(SYS))

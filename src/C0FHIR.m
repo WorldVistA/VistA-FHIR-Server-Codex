@@ -312,7 +312,9 @@ SETETYP(RTN,IDX,ENC) ; Populate Encounter.type from encounter CPT/OS5 when avail
  SET CODE=$PIECE($GET(ENC("type")),"^")
  SET TXT=$PIECE($GET(ENC("type")),"^",2)
  IF CODE'="" DO
- . SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://www.ama-assn.org/go/cpt"
+ . ; OS5 hybrids are not AMA CPT — only real CPT gets the AMA system URI.
+ . IF $$ISCPT^C0FHIRP(CODE) SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://www.ama-assn.org/go/cpt"
+ . E  SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="urn:va:syn:os5"
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code")=CODE
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code","\s")=""
  . IF TXT'="" SET RTN("entry",IDX,"resource","type",1,"coding",1,"display")=TXT
@@ -343,7 +345,9 @@ ENCCOD(CODE,NAME,TYPE) ; Add encounter coding from OS5/CPT and recovered SNOMED
  SET TYPE("coding",1,"code")=SCT
  SET TYPE("coding",1,"code","\s")=""
  IF SDISP'="" SET TYPE("coding",1,"display")=SDISP
- SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
+ ; Prefer SCT; second coding is real CPT or honest OS5 (never claim OS5 as AMA CPT).
+ IF $$ISCPT^C0FHIRP(CODE) SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
+ E  SET TYPE("coding",2,"system")="urn:va:syn:os5"
  SET TYPE("coding",2,"code")=CODE
  SET TYPE("coding",2,"code","\s")=""
  IF NAME'="" SET TYPE("coding",2,"display")=NAME
