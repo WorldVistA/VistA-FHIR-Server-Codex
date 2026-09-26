@@ -170,6 +170,10 @@ FIND(CMS) ;
  FOR  SET C=$ORDER(^C0FQUAL("MEAS",C)) QUIT:C=""  IF $$UPCASE^C0FHIR(C)=WANT QUIT
  QUIT C
  ;
+HASC0X() ; $$ - 1 when C0X population UI/API is installed on this lane
+ ; Iris (and other thin lanes) ship quality dashboards without C0XWS.
+ QUIT ($LENGTH($TEXT(+0^C0XWS))>0)
+ ;
 SETMEAS(CMS,TITLE,FOCUS,STAT,NOTE) ;
  SET CMS=$$NORM($GET(CMS))
  IF CMS="" QUIT
@@ -341,8 +345,10 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  DO ADDLN^C0FHIR(.RTN,"<div class=""links"">")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-quality-dashboards"">All active measures</a>")
  DO ADDLN^C0FHIR(.RTN,"<a href=""/fhir-dashboard"">FHIR dashboard</a>")
- SET CURL="/filesystem/c0x/index.html?measure="_CMS
- DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">C0X population IPP</a>")
+ ; C0X population UI only when the lane has C0XWS (Iris lane does not).
+ IF $$HASC0X() DO
+ . SET CURL="/filesystem/c0x/index.html?measure="_CMS
+ . DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">C0X population IPP</a>")
  SET CURL="/filesystem/quality/measurereports/"_CMS_"/summary-deqm.json"
  DO ADDLN^C0FHIR(.RTN,"<a href="""_CURL_""">DEQM Summary MeasureReport</a>")
  SET CURL="/filesystem/quality/measurereports/"_CMS_"/summary.json"
