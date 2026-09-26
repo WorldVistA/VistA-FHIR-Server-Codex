@@ -602,13 +602,32 @@ QMRPATH(PATH) ; $$ - measure id from /filesystem/quality/measurereports/{measure
  IF REST["/" QUIT $PIECE(REST,"/") ; measure only; ignore trailing file names
  QUIT REST
  ;
-QMRDIR() ; $$ - filesystem root for published MeasureReports
- NEW DIR,HOME
+QMRDIR() ; $$ - filesystem root for published MeasureReports (cached per $J)
+ ; Cache positive and negative: Iris/missing QMR paid 3x FTG^%ZISH per HASQMR row.
+ NEW DIR,HOME,WH,CAND,TRIED
+ IF $DATA(^TMP("C0FQMRDIR",$J)) QUIT $GET(^TMP("C0FQMRDIR",$J))
+ SET DIR="",TRIED=""
+ ; B: prefer M-web www root (^%webhome), then IRIS durable path.
+ SET WH=$GET(^%webhome)
+ IF WH'="" DO
+ . IF $EXTRACT(WH,$LENGTH(WH))'="/" SET WH=WH_"/"
+ . SET CAND=WH_"filesystem/quality/measurereports/"
+ . SET TRIED(CAND)=1
+ . IF $$QMRDIRX(CAND) SET DIR=CAND
+ IF DIR="" SET CAND="/durable/www/filesystem/quality/measurereports/"
+ IF DIR="",'$DATA(TRIED(CAND)) SET TRIED(CAND)=1 IF $$QMRDIRX(CAND) SET DIR=CAND
+ ; When ^%webhome is configured (Iris / fleet M-web), do not also probe GT.M homes.
+ IF DIR'=""!($GET(^%webhome)'="") GOTO QMRSTO
  SET HOME=$$ENV^C0FWOS("HOME")
- IF HOME'="" SET DIR=HOME_"/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
- SET DIR="/home/vehu/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
- SET DIR="/home/osehra/www/filesystem/quality/measurereports/" IF $$QMRDIRX(DIR) QUIT DIR
- QUIT ""
+ IF HOME'="" SET CAND=HOME_"/www/filesystem/quality/measurereports/"
+ IF HOME'="",'$DATA(TRIED(CAND)) SET TRIED(CAND)=1 IF $$QMRDIRX(CAND) SET DIR=CAND
+ IF DIR="" SET CAND="/home/vehu/www/filesystem/quality/measurereports/"
+ IF DIR="",'$DATA(TRIED(CAND)) SET TRIED(CAND)=1 IF $$QMRDIRX(CAND) SET DIR=CAND
+ IF DIR="" SET CAND="/home/osehra/www/filesystem/quality/measurereports/"
+ IF DIR="",'$DATA(TRIED(CAND)) SET TRIED(CAND)=1 IF $$QMRDIRX(CAND) SET DIR=CAND
+QMRSTO ;
+ SET ^TMP("C0FQMRDIR",$J)=DIR
+ QUIT DIR
  ;
 QMRDIRX(DIR) ; $$ - true when index.html exists in DIR
  NEW OK,TMP
@@ -621,11 +640,24 @@ QMRDIRX(DIR) ; $$ - true when index.html exists in DIR
 HASQMR(CMS,DFN) ; $$ - true when frozen Patient-{DFN}.json is published for CMS
  NEW DIR,OK,TMP
  SET DIR=$$QMRDIR() IF DIR="" QUIT 0
+ ; Stub tree (option C): EMPTY marker means no Patient-*.json freezes yet.
+ ; Avoid per-row FTG^%ZISH misses on Iris (~2s each) when only index.html exists.
+ IF $$QMREMPTY(DIR) QUIT 0
  SET CMS=$$FIND($GET(CMS)),DFN=+$GET(DFN) IF CMS=""!(DFN<1) QUIT 0
  SET TMP=$NA(^TMP("C0FQMRF",$J))
  KILL @TMP
  SET OK=$$FTGOK^C0FHIRWS(DIR_CMS_"/","Patient-"_DFN_".json",TMP)
  KILL @TMP
+ QUIT +OK
+ ;
+QMREMPTY(DIR) ; $$ - true when DIR has EMPTY stub marker (cached per $J)
+ NEW OK,TMP
+ IF $DATA(^TMP("C0FQMREMP",$J)) QUIT +$GET(^TMP("C0FQMREMP",$J))
+ SET TMP=$NA(^TMP("C0FQMREMPX",$J))
+ KILL @TMP
+ SET OK=$$FTGOK^C0FHIRWS(DIR,"EMPTY",TMP)
+ KILL @TMP
+ SET ^TMP("C0FQMREMP",$J)=+OK
  QUIT +OK
  ;
 HDR(RTN,TITLE,SUB) ;
