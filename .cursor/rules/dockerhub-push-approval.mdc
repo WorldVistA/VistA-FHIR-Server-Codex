@@ -1,0 +1,10 @@
+---
+description: Require explicit user approval before Docker Hub pushes
+alwaysApply: true
+---
+
+# Docker Hub Push Approval
+
+- Never push images to Docker Hub without stopping and asking the user first.
+- This applies to all Docker Hub operations that publish or overwrite remote image tags, including `docker push`, `docker buildx build --push`, and pushing `glilly/rpms:*`.
+- Before pushing, state the exact image name, tag, source container or build input, and what verification has passed. Wait for explicit user approval before running the push.

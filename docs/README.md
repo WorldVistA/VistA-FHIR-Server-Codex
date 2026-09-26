@@ -2,6 +2,8 @@
 
 This directory stores detailed project documentation for implementation tracking.
 
+- Workspace-level docs (`PROJECT_OVERVIEW.md`, `APPROACH_AND_BENEFITS.md`, `PATH_FORWARD.md`) and the compiled PDF reports live in the **`Vista-on-FHIR`** repo (`~/work/vista-stack/Vista-on-FHIR`, remote `glilly/Vista-on-FHIR`) — start there for ecosystem context.
+- `DEVELOPMENT_STATUS.md`: Current development state and gap analysis for this repo (every sibling repo has its own `DEVELOPMENT_STATUS.md`).
 - `PROJECT_CONTEXT_PUBLIC.md`: Repository-safe project goals, scope, and constraints.
 - Shared `tjson` tooling and `%wd` / `%wdgraph` maintainer material: sibling checkout **`~/work/vista-stack/tjson-tooling`** (symlink to **`~/tjson-tooling`**, git remote **`glilly/tjson-tools`**). Keep Codex focused on FHIR server behavior; browser TJSON vendoring lives in **`vendor/tjson/`**. Pair **`FHIR_BROWSER_TJSON.md`** (feasibility) and **`FHIR_BROWSER_TJSON_CODEX.md`** (runbook) are mirrored in **tjson-tooling** `docs/`—keep them in sync.
 - `FHIR_SOURCE_FINDINGS.md`: Findings from source corpus analysis and implementation implications.
@@ -17,6 +19,8 @@ This directory stores detailed project documentation for implementation tracking
 - `FHIR_BROWSER_TJSON_CODEX.md`: C0FHIR browser TJSON (WASM) integration: vendoring, `/filesystem/` paths, MIME/gzip pitfalls, `tjson_bg.wasm.b64`, sync scripts, **fhirdev22** (`fhirdev-codex-sync.sh` with SSH multiplexing). Mirrored under **`tjson-tooling/docs/`**; keep copies identical.
 - `FHIR_BROWSER_DOCUMENTREFERENCE_TEXT_DECODING_2026-04-20.md`: Follow-up note for the browser-side `DocumentReference` plain-text attachment decode path that base64-decodes stored Synthea note content before passing it to TJSON, while leaving raw JSON unchanged.
 - `FHIR_INTAKE_CURL_RECIPES.md`: Copy-paste curls for container sync, VEHU bundle pull, `POST /addpatient` and `POST /updatepatient`, and smoke checks.
+- `JAVA_DOCKER_CONTAINER_RUNBOOK.md`: General pattern for running Java code in `eclipse-temurin:17-jdk` with mounted workspace and build caches.
+- `SYNTHEA_DOCKER_PATIENT_GENERATION.md`: Dockerized Synthea workflow for generating a synthetic FHIR patient bundle and posting it to `/addpatient`.
 - `VISTA_VISIT_NOTE_ORDERING.md`: PCE visit vs TIU note ordering (visit-first integration vs CPRS note-first workflow), inpatient visit linkage and `ORWPCE1`/`PXRPC`/`PXAI` roles, and SYN/TIU caveats.
 - `FHIRDEV_INCIDENT_RESPONSE_2026-03-16.md`: Incident note covering the root-level malicious binaries found inside `fhirdev`, the cron persistence chain removed from the container, and the separate `%webreq` CLOSE_WAIT worker leak.
 - `FHIRDEV_MATCHR_WEBRSP_WORKERS_2026-03-25.md`: Characterization of `fhirdev` GT.M ZSY evidence showing HTTP workers accumulating CPU in `MATCHR+8^%webrsp` (and `URLDEC^%webutils`), distinct from malware and from `C0FHIR` application code; links to CLOSE_WAIT fix outline.
@@ -27,8 +31,12 @@ This directory stores detailed project documentation for implementation tracking
 - `VENDEV15_INCIDENT_RESPONSE_2026-04-11.md`: Live incident note for `vendev15` / `vapals` covering runaway `GTMLNX^HLCSGTM` jobs, exposed container SSH on `2222`, and the `13 GiB` `btmp` file that made `su - osehra` appear hung.
 - `M_WEBSERVER_HTTP_RESPONSE_ENHANCEMENTS.md`: Maintainer-facing request for two HTTP-layer improvements discovered during `/rehmp` integration: preserve caller-supplied JSON bodies on non-2xx responses and let POST handlers return explicit `200` success instead of forced `201`.
 - `RUNNING_DEMOS.md`: Living demo runbook for repository-backed demonstrations, starting with the `rehmp` regression demo, its commands, artifact layout, progress view, and current observable behaviors.
+- `RPMS_DUAL_STACK_READ_WRITEBACK_PLAN.md`: Detailed plan for running the Codex FHIR/SYN/reHMP stack on both VistA and RPMS, including the existing RPMS VPR/SYN demonstration baseline, read paths, writeback levels, and Reminders-on-FHIR.
+- `RPMS_ROUTINE_INSTALL_TEST_MATRIX.md`: Routine/package install and validation matrix for making the full Codex, SYN, reHMP, BSTS, reminders, and writeback stack operational on RPMS.
+- `UNIFIED_WRITEBACK_RESULTS_2026-06-24.md`: Completed unified writeback/RPMS-VistA implementation results, validation evidence, AI Consult/CDS changes, terminology status, and external RPMS artifact notes.
 - `BSTS_C0TS_FORMAT_WEB_SERVICES.md`: BSTS/C0TS `/bsts/*` HTTP `format=` behavior, past defects (empty JSON, line-count prefix), streaming JSON, and follow-on options.
 - `BSTS_INTEGRATION_PLAN.md`: Phased plan to integrate the parallel `bsts-vista` repo with M web, rehmp, and picklist/terminology needs (options A/B/C, risks, checklists). **Decisions** block: Option A first; see sibling **`bsts-vista` `docs/C0TS_HTTP_FORMAT_DEPLOY.md`** and **`rehmp` `docs/BSTS_TERMINOLOGY_OPTION_A.md`**.
+- `C0RG_TERMINOLOGY_GATEWAY_OPTIONS.md`: C0RG terminology gateway design using online BSTS, local BSTS/FileMan cache, and a C0T/VistA Lexicon provider, including the live `KBAITLEX` `/term/diabetes` example.
 - `M_WEBSERVER_CLOSE_WAIT_FIX_OUTLINE.md`: Fix outline for the server-side CLOSE_WAIT leak (WAIT/ETDC and timeout handling so workers close and exit when the client disconnects).
 - `M_WEBSERVER_RUNAWAY_JOBS_ANALYSIS_2026-03-12.md`: Maintainer-facing root-cause analysis and validated hotfix for `%webrsp` runaway `mumps -direct` worker leaks (SENDATA traversal).
 - `STEPS_TAKEN.md`: Chronological log of work completed.

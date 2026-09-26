@@ -36,7 +36,15 @@ encode_one_line() {
 }
 
 encode_one_line "$WASM" "$B64.part"
-mv -f "$B64.part" "$B64"
+# Wrap at 76 cols so %ZISH / WSASSET^C0FHIRWS can serve the sidecar without
+# truncating a single huge line (see docs/FHIR_BROWSER_TJSON_CODEX.md).
+if command -v fold >/dev/null 2>&1; then
+  tr -d '\r\n' <"$B64.part" | fold -w 76 >"$B64.wrap"
+  mv -f "$B64.wrap" "$B64"
+  rm -f "$B64.part"
+else
+  mv -f "$B64.part" "$B64"
+fi
 
 python3 - <<'PY' "$WASM" "$B64"
 import base64, pathlib, sys
