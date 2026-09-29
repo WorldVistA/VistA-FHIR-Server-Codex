@@ -171,22 +171,27 @@ BSTSICD(SCT,FMDT) ; $$ - SNOMED CT code to ICD diagnosis ien via local RPMS BSTS
 SCTICD10(SCT) ; $$ - SNOMED CT code to ICD-10 diagnosis ien (SCTMAP, then Lexicon)
  ; Prefer explicit SCTMAP first so stale Lexicon R69. associations cannot win.
  ; Reject Lexicon catch-all R69 / R69. — that is Illness, unspecified, not a map.
+ ; Reject inactive ICDDX rows (VEHU ships retired IENs that DATA2PCE refuses).
  N ICDTX,LEX,MAPVUID,RET,Y
  I $G(U)="" S U="^"
  S SCT=$G(SCT) I SCT="" Q 0
  S ICDTX=$$SCTMAP(SCT)
- S RET=0
- I ICDTX'="" D
- . S RET=$$ICDDX^ICDEX(ICDTX,30)
- . I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
+ S RET=$$ICDACT(ICDTX)
  I +RET>0 Q +RET
  S MAPVUID=5217693
  K LEX S Y=$$GETASSN^LEXTRAN1(SCT,MAPVUID)
  S ICDTX="" S ICDTX=$O(LEX(1,ICDTX))
  I $$ISR69(ICDTX) S ICDTX=""
- I ICDTX'="" S RET=$$ICDDX^ICDEX(ICDTX,30)
- I +RET<1,ICDTX'="",ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
+ S RET=$$ICDACT(ICDTX)
  Q $S(+RET>0:+RET,1:0)
+ ;
+ICDACT(ICDTX) ; $$ - ICDDX ien only when code is active (#10=1)
+ N RET
+ S RET=0,ICDTX=$G(ICDTX) I ICDTX="" Q 0
+ S RET=$$ICDDX^ICDEX(ICDTX,30)
+ I +RET<1,ICDTX'?1.E1".",$L(ICDTX)=3 S RET=$$ICDDX^ICDEX(ICDTX_".",30)
+ I +RET>0,$P(RET,U,10)'=1 S RET=0
+ Q RET
  ;
 ISR69(CODE) ; $$ - 1 if ICD string is the Illness-unspecified catch-all
  S CODE=$$UP($G(CODE))
@@ -194,20 +199,21 @@ ISR69(CODE) ; $$ - 1 if ICD string is the Illness-unspecified catch-all
  Q 0
  ;
 SCTMAP(SCT) ; $$ - Explicit SCT→ICD-10 when Lexicon is stale or missing
+ ; Use ACTIVE ICD-10-CM strings on current VEHU (trailing "." where required).
  ; HTN codes first: CMS165 value set; Lexicon 757.33 has returned R69. on fhir.
- I SCT=59621000 Q "I10" ; Essential hypertension
- I SCT=38341003 Q "I10" ; Hypertensive disorder
- I SCT=1201005 Q "I10" ; Benign essential hypertension
+ I SCT=59621000 Q "I10." ; Essential hypertension
+ I SCT=38341003 Q "I10." ; Hypertensive disorder
+ I SCT=1201005 Q "I10." ; Benign essential hypertension
  I SCT=109570002 Q "K02.9" ; Primary dental caries
  I SCT=80967001 Q "K02.9" ; Dental caries
  I SCT=278598003 Q "K08.59" ; Leaking dental filling
- I SCT=278860009 Q "M54.5" ; Chronic low back pain
+ I SCT=278860009 Q "M54.50" ; Chronic low back pain
  I SCT=274531002 Q "R93.1" ; Abnormal cardiac diagnostic imaging
  I SCT=66383009 Q "K05.10" ; Gingivitis
  I SCT=18718003 Q "K05.6" ; Gingival disease
  I SCT=195662009 Q "J02.9" ; Acute viral pharyngitis
- I SCT=237602007 Q "E88.81" ; Metabolic syndrome
- I SCT=433144002 Q "N18.3" ; Chronic kidney disease stage 3
+ I SCT=237602007 Q "E88.810" ; Metabolic syndrome
+ I SCT=433144002 Q "N18.30" ; Chronic kidney disease stage 3
  I SCT=1255252008 Q "K08.20" ; Alveolar process resorption
  I SCT=278558000 Q "K08.59" ; Dental filling lost
  I SCT=278588009 Q "K08.59" ; Fractured dental filling
@@ -225,11 +231,38 @@ SCTMAP(SCT) ; $$ - Explicit SCT→ICD-10 when Lexicon is stale or missing
  I SCT=735952002 Q "K05.6" ; Gingival disease
  I SCT=735938006 Q "K05.10"
  I SCT=735930004 Q "G47.9" ; Sleep disorder
- I SCT=442877003 Q "M54.5" ; Chronic pain? keep back-pain style
+ I SCT=442877003 Q "M54.50" ; Chronic pain? keep back-pain style
  I SCT=735607009 Q "M25.50" ; Chronic pain (finding) → unspecified joint pain proxy when R69
  I SCT=735950005 Q "Z73.4" ; Social isolation / inadequate social support proxy
  I SCT=224960004 Q "Z56.0" ; Unemployed
- I SCT=424553001 Q "O80" ; Uncomplicated pregnancy / normal pregnancy finding
+ I SCT=424553001 Q "O80." ; Uncomplicated pregnancy / normal pregnancy finding
+ ; showfhir harvest 2026-09-28 — high-frequency Condition errors
+ I SCT=444814009 Q "J01.90" ; Viral sinusitis
+ I SCT=72892002 Q "O80." ; Normal pregnancy
+ I SCT=1149222004 Q "T50.901A" ; Overdose
+ I SCT=125605004 Q "T14.90XA" ; Fracture of bone (unspecified)
+ I SCT=312608009 Q "S81.819A" ; Laceration - injury
+ I SCT=384709000 Q "S93.409A" ; Sprain (morphologic)
+ I SCT=44465007 Q "S93.401A" ; Sprain of ankle
+ I SCT=307426000 Q "N30.00" ; Acute infective cystitis
+ I SCT=266934004 Q "Z91.89" ; Transport problem (finding) — history/other
+ I SCT=110030002 Q "S06.0X0A" ; Concussion injury of brain
+ I SCT=6525002 Q "F19.20" ; Dependent drug abuse
+ I SCT=39848009 Q "S13.4XXA" ; Whiplash injury to neck
+ I SCT=48333001 Q "T30.0" ; Burn injury
+ I SCT=65966004 Q "S52.90XA" ; Fracture of forearm
+ I SCT=90460009 Q "S13.4XXA" ; Injury of neck
+ I SCT=157141000119108 Q "R80.9" ; Proteinuria due to type 2 DM
+ I SCT=307426000 Q "N30.00"
+ I SCT=254837009 Q "C50.919" ; Malignant neoplasm of breast (check active later)
+ I SCT=196416002 Q "J06.9" ; Acute upper respiratory infection
+ I SCT=203646004 Q "M54.50" ; Low back pain family
+ I SCT=403190006 Q "L82.1" ; Seborrheic keratosis family proxy
+ I SCT=403191005 Q "L82.1"
+ I SCT=312608009 Q "S81.819A"
+ I SCT=283371005 Q "S91.019A" ; Laceration of foot family
+ I SCT=284549007 Q "S61.419A" ; Laceration of hand
+ I SCT=125605004 Q "T14.90XA"
  Q ""
  ;
 ADDPL(ROOT,IEN,RIEN) ; $$ - 1=file to problem list (PL ADD), 0=visit POV only

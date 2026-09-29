@@ -9,6 +9,7 @@ DUZ() ; Establish minimal Kernel user context for C0FW update paths
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
  I +$G(DUZ(2))<1 S DUZ(2)=+$G(^TMP("C0FW",$J,"DUZ",2))
  I +$G(DUZ(2))<1 S DUZ(2)=500
+ I +$G(DT)<1 S DT=$$DT^XLFDT
  Q DUZ
  ;
 IO() ; Establish minimal IO variables used by filing APIs in web jobs

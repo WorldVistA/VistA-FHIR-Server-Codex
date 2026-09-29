@@ -343,13 +343,23 @@ ERR(MSG,OUT) ; Build OperationOutcome-like error payload
  SET OUT("issue",1,"diagnostics")=$GET(MSG)
  QUIT
  ;
-TOJSON(IN,OUT,ERR) ; Encode a local M structure with ENCODE^XLFJSON
- ; IN  = local array by reference
+TOJSON(IN,OUT,ERR) ; Encode a local M structure to JSON lines
+ ; Prefer YottaDB C plugin (C0RGFENC) → C0RGJSNE → Kernel XLFJSON.
+ ; IN  = local array by reference (call FINAL^C0FHIRBU first for Bundles)
  ; OUT = encoded JSON output nodes
  ; ERR = encoder error array
- DO FINAL(.IN)
- KILL OUT,ERR
- DO ENCODE^XLFJSON("IN","OUT","ERR")
+ ; Do NOT FINAL here: GETBNDLA already FINALs, and a second FINAL^ADDPROV
+ ; inside this formallist frame produced corrupted JSON with a duplicated
+ ; trailing suffix on large bundles (cds1 "Invalid JSON from /fhir?dfn=").
+ ; Materialize under real locals for $&c0rgenc.fromlvn (no formallist aliases).
+ NEW C0FBIN,C0FBOUT,C0FBERR
+ KILL OUT,ERR,C0FBIN,C0FBOUT,C0FBERR
+ MERGE C0FBIN=IN
+ IF $TEXT(ENCODE^C0RGFENC)'="" DO ENCODE^C0RGFENC("C0FBIN","C0FBOUT","C0FBERR")
+ ELSE  IF $TEXT(+0^C0RGJSNE)'="" DO ENCODE^C0RGJSNE("C0FBIN","C0FBOUT","C0FBERR")
+ ELSE  DO ENCODE^XLFJSON("C0FBIN","C0FBOUT","C0FBERR")
+ MERGE OUT=C0FBOUT
+ IF $DATA(C0FBERR) MERGE ERR=C0FBERR
  DO FORCESTR(.OUT)
  QUIT
  ;

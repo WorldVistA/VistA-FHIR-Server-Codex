@@ -1819,12 +1819,25 @@ GETBNDL(REQ,OUT) ; Return one Bundle response structure for a request
 GETBNDLJ(REQ,OUT,ERR) ; Return one Bundle response encoded as JSON
  ; OUT returns JSON output nodes from ENCODE^XLFJSON
  ; ERR returns encoder errors, if any
- NEW BUNDLE
+ ; Encode in this frame with real locals. Avoid TOJSON(IN,OUT) here: a
+ ; second FINAL inside that formallist path duplicated the JSON tail on
+ ; large bundles (cds1 "Invalid JSON from /fhir?dfn=").
+ NEW BUNDLE,C0FBIN,C0FBOUT,C0FBERR
  DO GETBNDLA(.REQ,.BUNDLE)
- DO TOJSON^C0FHIRBU(.BUNDLE,.OUT,.ERR)
+ KILL C0FBIN,C0FBOUT,C0FBERR
+ MERGE C0FBIN=BUNDLE
+ DO ENCODE^C0RGFENC("C0FBIN","C0FBOUT","C0FBERR")
+ IF $DATA(C0FBERR),$TEXT(+0^C0RGJSNE)'="" DO
+ . KILL C0FBOUT,C0FBERR
+ . DO ENCODE^C0RGJSNE("C0FBIN","C0FBOUT","C0FBERR")
+ KILL OUT,ERR
+ MERGE OUT=C0FBOUT
+ IF $DATA(C0FBERR) MERGE ERR=C0FBERR
+ DO FORCESTR^C0FHIRBU(.OUT)
  QUIT
  ;
 GETBNDLA(REQ,OUT) ; Return one Bundle response as a finalized native array
+ SET REQ("MODE")=$$REQMODE(.REQ)
  IF $T(GET^C0FWCAC)'="",$$GET^C0FWCAC(.REQ,.OUT) QUIT
  DO GETBNDL(.REQ,.OUT)
  DO FINAL^C0FHIRBU(.OUT)

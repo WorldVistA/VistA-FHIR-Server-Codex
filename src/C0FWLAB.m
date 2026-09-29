@@ -208,18 +208,32 @@ HL7DT(ROOT,IEN,RIEN) ; $$ - compact HL7 date/time with required time component
  I HL7="" Q ""
  I $L(HL7)=8 S HL7=HL7_"120000"
  I $L(HL7)'<14,$E(HL7,9,14)="000000" S HL7=$E(HL7,1,8)_"120000"
+ ; ISI VALLAB validates RESULT_DT via CHK^DIE(120.5,.01), which rejects
+ ; seconds (FileMan .HHMMSS). Zero seconds so HHMM remains (fhirprod/showfhir).
+ I $L(HL7)'<14 S HL7=$E(HL7,1,12)_"00"
  Q HL7
  ;
 LOCN(ROOT,IEN,RIEN) ; $$ - hospital location name for ISI LOCATION
  N LOC,LOCN,LOCIEN
- I $T(MAP^SYNQLDM)'="" S LOCN=$$MAP^SYNQLDM("OP","location") I LOCN'="",+LOCN'=-1,$O(^SC("B",LOCN,""))'="" Q LOCN
+ I $T(MAP^SYNQLDM)'="" S LOCN=$$MAP^SYNQLDM("OP","location") I LOCN'="",+LOCN'=-1,$$SCACT($O(^SC("B",LOCN,""))) Q LOCN
  S LOCIEN=$$LOC^C0FWVIT(ROOT,IEN,RIEN)
- I LOCIEN>0 S LOCN=$P($G(^SC(LOCIEN,0)),U) I LOCN'="" Q LOCN
+ I LOCIEN>0,$$SCACT(LOCIEN) S LOCN=$P($G(^SC(LOCIEN,0)),U) I LOCN'="" Q LOCN
  S LOCN="GENERAL MEDICINE"
- I $O(^SC("B",LOCN,""))'="" Q LOCN
- S LOC=$O(^SC(0))
+ I $$SCACT($O(^SC("B",LOCN,""))) Q LOCN
+ ; Fall back to first active clinic (ISI rejects inactivated #44).
+ S LOC=0 F  S LOC=$O(^SC(LOC)) Q:'LOC  I $$SCACT(LOC) Q
  I LOC>0 Q $P($G(^SC(LOC,0)),U)
  Q ""
+ ;
+SCACT(LOCIEN) ; $$ - 1 if hospital location is active for ISI VALLAB
+ N IDT,RDT
+ I +$G(LOCIEN)<1 Q 0
+ I +$G(DT)<1 S DT=$$DT^XLFDT
+ S IDT=$P($G(^SC(LOCIEN,"I")),U),RDT=$P($G(^SC(LOCIEN,"I")),U,2)
+ I IDT'="",RDT="",IDT<DT Q 0
+ I RDT'="",RDT>IDT,RDT>DT Q 0
+ I RDT'="",RDT<IDT,IDT<DT Q 0
+ Q 1
  ;
 CSAMP(LOINC,TEST) ; $$ - collection sample name
  N UTEST

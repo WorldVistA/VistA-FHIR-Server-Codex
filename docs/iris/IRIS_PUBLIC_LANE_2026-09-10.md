@@ -51,13 +51,12 @@ curated POP = cohort of interest), which is also what keeps dashboards fast.
   got `Invalid JSON from …?dfn=1` (cds1 hit the portal HTML). Set
   `^C0FQUAL("FHIRBASE")="https://irisfhir.vistaplex.org/fhir"`. This matches
   `FHIRBASE^C0FQUAL`, which appends `/fhir` when deriving from the request host.
-- **Per-measure dashboards are slow on this box** — each builds a FHIR bundle
-  per curated POP DFN (~12s/patient, single-threaded listener, 2 vCPU, large
-  Synthea bundles), and the render doesn't reuse a table cache. Curated (IPP-only)
-  POP keeps every measure under Caddy's window (12–48s). Caddy `reverse_proxy`
-  timeouts raised to 300s as headroom. **Perf follow-up**: cache the dashboard
-  table bundles or parallelize; today it is correct-but-slow, not a hang (a full
-  12-patient POP rendered correctly at 144s direct on :9080).
+- **Per-measure dashboards were slow on this box** — measured later as uncached
+  `FTG^%ZISH` probes for a missing `measurereports/` tree (`HASQMR` → `QMRDIR`),
+  not per-patient FHIR bundle builds. Fixed 2026-09-25 (QMRDIR cache +
+  `^%webhome`/`/durable` preference + stub `index.html`/`EMPTY`). See
+  `docs/iris/IRIS_QUALITY_DASHBOARD_PERF.md`. Caddy `reverse_proxy` timeouts
+  remain raised to 300s as headroom for CQL re-eval and large FHIR reads.
 
 ## C0FHIR browser static assets (`^%webhome`)
 
