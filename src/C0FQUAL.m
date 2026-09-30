@@ -411,7 +411,7 @@ MEASURE(RTN,CMS) ; HTML single-measure dashboard
  . SET LNK=LNK_" · <a href=""/fhir-quality-report?measure="_CMS_"&amp;dfn="_DFN_"&amp;bundle=1"">Bundle</a>"
  . SET LNK=LNK_" "_$$TJBTN("/fhir?view=browser&amp;source=qualityreport&amp;measure="_CMS_"&amp;dfn="_DFN,"TJSON",1)
  . SET ROW=ROW_"<td>"_LNK_"</td>"
- . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-dfn="""_DFN_""" data-op=""validate"">"
+ . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-dfn="""_DFN_""" data-op=""validate"" title=""Validate DEQM Individual MeasureReport and refresh this patient's CQL IPP/DENOM/NUMER/DENEX"">"
  . SET ROW=ROW_"Validate</button><br><span class=""muted"" id=""st-validate-"_CMS_"-"_DFN_""">"
  . SET ROW=ROW_$$HTMLESC^C0FHIR($$OPSTAT^C0FQRPT(CMS,"validate",DFN))_"</span>"_$$OUTLNK^C0FQRPT(CMS,"validate",DFN)_"</td>"
  . SET ROW=ROW_"<td><button type=""button"" class=""btn rptop"" data-m="""_CMS_""" data-dfn="""_DFN_""" data-op=""submit"">"
@@ -853,6 +853,47 @@ REEVALJ(CMS) ; Background worker: cds1 evaluate-cohort → SETPOP/SETSUM
  SET SUM("cohort")="cds1 /quality/evaluate-cohort ("_BASE_")"
  DO RESUM(CMS,.SUM)
  SET ^C0FQUAL("REEVAL",CMS)="done^"_$$NOW^XLFDT_"^"_+$GET(SUM("ipp"))_"/"_+$GET(SUM("denom"))_"/"_+$GET(SUM("numer"))_"^"_BASE
+ QUIT
+ ;
+REEVAL1(CMS,DFN,OUT,ERR) ; One-patient CQL via cds1 → SETPOP + RESUM (used by Validate)
+ NEW BASE,BND,FIL,PAYLOAD,REF,REQ,RESP,SLOT,SUM
+ KILL OUT,ERR
+ SET CMS=$$FIND($GET(CMS)),DFN=+$GET(DFN)
+ IF CMS=""!(DFN<1) SET ERR="REEVAL1 needs measure and DFN" QUIT
+ IF '$$HASPOP(CMS,DFN) SET ERR="No SETPOP row for "_CMS_" DFN "_DFN QUIT
+ SET BASE=$$FHIRBASE(.REQ)
+ IF BASE="" SET BASE=$GET(^C0FQUAL("FHIRBASE"))
+ IF BASE="" SET BASE="https://showfhir.vistaplex.org/fhir"
+ ; Always inline+refresh so Quality AI Consult writebacks are visible without a full cohort re-eval.
+ SET REF=1
+ KILL REQ
+ SET REQ("measureId")=CMS
+ SET REQ("fhirBase")=BASE
+ SET REQ("inlineBundles")=1
+ SET REQ("patients",1)=DFN
+ KILL BND,FIL
+ SET FIL("dfn")=+DFN,FIL("arrayOnly")=1,FIL("refresh")=1
+ DO GETFHIR^C0FHIR(.BND,.FIL)
+ IF '$DATA(BND) SET ERR="Unable to build FHIR bundle for DFN "_DFN QUIT
+ IF $GET(BND("resourceType"))'="Bundle" SET ERR="GETFHIR did not return a Bundle for DFN "_DFN QUIT
+ SET REQ("bundles",1,"dfn")=+DFN
+ MERGE REQ("bundles",1,"bundle")=BND
+ DO TOJSON^C0FHIRBU(.REQ,.PAYLOAD,.ERR)
+ IF $DATA(ERR) SET ERR="Unable to encode single-patient evaluate-cohort request" QUIT
+ DO CALLEVAL(.PAYLOAD,.RESP,.ERR)
+ IF $GET(ERR)'="" QUIT
+ SET SLOT=$ORDER(RESP("patients",0))
+ IF '+SLOT SET ERR="cds1 evaluate-cohort returned no patient row" QUIT
+ IF +$GET(RESP("patients",SLOT,"dfn"))>0,+$GET(RESP("patients",SLOT,"dfn"))'=DFN SET ERR="cds1 returned DFN "_+$GET(RESP("patients",SLOT,"dfn"))_" expected "_DFN QUIT
+ DO SETPOP(CMS,DFN,+$GET(RESP("patients",SLOT,"ipp")),+$GET(RESP("patients",SLOT,"denom")),+$GET(RESP("patients",SLOT,"numer")),+$GET(RESP("patients",SLOT,"denex")),"cds1-quality-eval","official-cql")
+ KILL SUM
+ SET SUM("cohort")="cds1 /quality/evaluate-cohort single-DFN ("_BASE_")"
+ DO RESUM(CMS,.SUM)
+ SET OUT("ipp")=+$GET(RESP("patients",SLOT,"ipp"))
+ SET OUT("denom")=+$GET(RESP("patients",SLOT,"denom"))
+ SET OUT("numer")=+$GET(RESP("patients",SLOT,"numer"))
+ SET OUT("denex")=+$GET(RESP("patients",SLOT,"denex"))
+ SET OUT("sum","numer")=+$GET(SUM("numer"))
  QUIT
  ;
 FHIRBASE(BODY) ; $$ - FHIR base for THIS host (audit / override; remote cds1 fetch when public)

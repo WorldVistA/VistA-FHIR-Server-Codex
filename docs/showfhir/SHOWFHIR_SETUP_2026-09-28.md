@@ -45,7 +45,8 @@ Loads: `HL7-FHIR-quality-testing/scripts/load-cohort.sh` against `https://showfh
 | `https://showfhir.vistaplex.org/demos/cprs/` | 200 |
 | `https://showfhir.vistaplex.org/ping` | 200 |
 | `/fhir` patient index | 200; rows link to `/demos/cprs/…&rehmpBase=/rehmp` |
-| Encoder | **Live `C0RG ENCODER=ZYENCODE`** (A/B vs fhirdev PLUGIN). `COMPARE^C0RGFENCT` still has JSNE+PLUGIN+ZYENCODE available. |
+| Encoder | **Live `C0RG ENCODER=JSNE`** (switched 2026-09-30; ZYENCODE A/B poisoned CQL). `COMPARE^C0RGFENCT` still has JSNE+PLUGIN+ZYENCODE available. |
+| Graph labs | **`^C0FHIR("EXPERIMENT","GRAPHLABS")=1`** (enabled 2026-09-30). Required so CMS2 Assessment Observations (`73832-8`) retained by `C0FWLAB` appear on `/fhir`. Initial setup synced the routines but omitted this flag (fhirdev/vehu10/rpms got it via dedicated GRAPHLABS deploy). |
 | TJSON browser | `^%webhome=/home/vehu/www/` + vendored `www/filesystem/tjson/web/` → `/filesystem/tjson/web/index.js` 200 |
 | OS5 seed | `D LOADOS5^SYNOS5LD` → `$$COUNT^SYNOS5LD=1041`; `D EN^SYNOS5PT` (wired into `showfhir-setup.sh`) |
 | Synthea 180 | All 180 present on index (ledger had 21 “missing” after HTTPS abort; they landed via `:9080` resume) |

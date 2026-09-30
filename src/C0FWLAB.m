@@ -39,6 +39,9 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File lab Observation (ISI) or accept into fhir-inta
  S LOCN=$$LOCN(ROOT,IEN,RIEN)
  I LOCN="" D ERR^C0FWSTAT(ROOT,IEN,RIEN,"Lab",TYPE,"Unable to resolve hospital location name",.RETURN) Q
  S CSAMP=$$CSAMP(LOINC,TEST)
+ ; ISI's batch result editor (V45^ISIIMPL9) re-prompts forever on a value its
+ ; #63 input transform rejects, spinning the web job at 100% CPU. Pre-check.
+ I '$$VALOK(TEST,VAL) D GRAPHOK(ROOT,IEN,RIEN,TYPE,"Lab Observation retained in fhir-intake (value "_VAL_" fails the #60 "_TEST_" input transform)",.RETURN) Q
  ; LABADD / LRPARAM require Kernel DUZ(2) and IO context in web jobs.
  D DUZ^C0FWCTX(),IO^C0FWCTX()
  K RETSTA
@@ -234,6 +237,19 @@ SCACT(LOCIEN) ; $$ - 1 if hospital location is active for ISI VALLAB
  I RDT'="",RDT>IDT,RDT>DT Q 0
  I RDT'="",RDT<IDT,IDT<DT Q 0
  Q 1
+ ;
+VALOK(TEST,VAL) ; $$ - 1 if VAL passes the #60 test's result input transform
+ ; ^LAB(60,IEN,0) piece 12 names the #63.04 data field; its DD input
+ ; transform (e.g. S Q9="0,500,1" D ^LRNUM) kills X when VAL is invalid.
+ ; An erroring transform counts as invalid so ISI is never entered with it.
+ N C0FLTS,C0FLND,C0FLXF,X,$ET,$ES
+ S C0FLTS=+$O(^LAB(60,"B",$G(TEST),0)) I 'C0FLTS Q 1
+ S C0FLND=$P($G(^LAB(60,C0FLTS,0)),"^",12) I C0FLND="" Q 1
+ S C0FLND="^"_C0FLND_"0)" I '$D(@C0FLND) Q 1
+ S C0FLXF=$P(@C0FLND,"^",5,99) I C0FLXF="" Q 1
+ S $ET="Q:$ES  S $EC="""" Q 0"
+ S X=$G(VAL) X C0FLXF
+ Q $D(X)#2
  ;
 CSAMP(LOINC,TEST) ; $$ - collection sample name
  N UTEST

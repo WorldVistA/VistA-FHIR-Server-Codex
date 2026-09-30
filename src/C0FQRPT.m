@@ -247,7 +247,7 @@ SUBT ; TaskMan entry: submit live Bundle; CMS/DFN restored via ZTSAVE
  QUIT
  ;
 VALJ(CMS,DFN) ; Background worker: live report -> cds1 /quality/validate-report
- NEW DET,ERR,FIRST,KN,LINES,NA,PROF,RAW,REP,RESP,ST
+ NEW CQLERR,CQLOUT,DET,ERR,FIRST,KN,LINES,NA,PROF,RAW,REP,RESP,ST
  SET CMS=$$FIND^C0FQUAL($GET(CMS)) QUIT:CMS=""
  SET DFN=+$GET(DFN)
  DO REPORTER(.REP)
@@ -261,11 +261,23 @@ VALJ(CMS,DFN) ; Background worker: live report -> cds1 /quality/validate-report
  ELSE  DO ADDLN^C0FHIR(.LINES,"}")
  DO CALLCDS1("/quality/validate-report",.LINES,.RESP,.ERR,.RAW)
  DO SAVERAW(CMS,"validate",.RAW,DFN)
- IF $GET(ERR)'="" DO LOGRUN(CMS,"validate","error",ERR,DFN) QUIT
+ ; Per-patient Validate also refreshes official CQL flags so IPP/DENOM/NUMER update without a full cohort re-eval.
+ IF DFN>0 DO
+ . KILL CQLERR,CQLOUT
+ . DO REEVAL1^C0FQUAL(CMS,DFN,.CQLOUT,.CQLERR)
+ IF $GET(ERR)'="" DO  QUIT
+ . SET DET=$GET(ERR)
+ . IF DFN>0 DO
+ . . IF $GET(CQLERR)'="" SET DET=DET_"; cqlRefresh="_$EXTRACT(CQLERR,1,60)
+ . . ELSE  SET DET=DET_"; cql IPP/DENOM/NUMER/DENEX="_+$GET(CQLOUT("ipp"))_"/"_+$GET(CQLOUT("denom"))_"/"_+$GET(CQLOUT("numer"))_"/"_+$GET(CQLOUT("denex"))
+ . DO LOGRUN(CMS,"validate","error",DET,DFN)
  SET ST=$GET(RESP("status")) IF ST="" SET ST="error"
  SET NA=$$NCOUNT(.RESP,"actionableErrors"),KN=$$NCOUNT(.RESP,"knownIgNoise")
  SET DET="errors="_+$GET(RESP("severityCounts","error"))_" warnings="_+$GET(RESP("severityCounts","warning"))_" actionable="_NA_" knownNoise="_KN
  IF ST="fail" SET FIRST=$GET(RESP("actionableErrors",1,"text")) IF FIRST'="" SET DET=DET_"; "_$EXTRACT(FIRST,1,80)
+ IF DFN>0 DO
+ . IF $GET(CQLERR)'="" SET DET=DET_"; cqlRefresh="_$EXTRACT(CQLERR,1,60)
+ . ELSE  SET DET=DET_"; cql "_+$GET(CQLOUT("ipp"))_"/"_+$GET(CQLOUT("denom"))_"/"_+$GET(CQLOUT("numer"))_"/"_+$GET(CQLOUT("denex"))
  DO LOGRUN(CMS,"validate",ST,DET,DFN)
  QUIT
  ;
@@ -437,7 +449,7 @@ WSRPTPG(RTN,FILTER) ; GET /fhir-quality-reporting — pipeline page (HTML)
  DO ADDLN^C0FHIR(.RTN,"<ol>")
  DO ADDLN^C0FHIR(.RTN,"<li><strong>Calculate</strong> — the <em>Re-evaluate CQL</em> button on each measure dashboard runs official cqm-execution CQL on cds1 and stores per-patient flags and aggregates on this server.</li>")
  DO ADDLN^C0FHIR(.RTN,"<li><strong>Build</strong> — the <em>live report</em> links below generate a DEQM STU5 Summary MeasureReport from those aggregates at the moment you click, on this server, in M.</li>")
- DO ADDLN^C0FHIR(.RTN,"<li><strong>Validate</strong> — the <em>Validate</em> button sends the live report to the HL7 validator (davinci-deqm 5.0.0 package, hosted on cds1) and records the outcome below.</li>")
+ DO ADDLN^C0FHIR(.RTN,"<li><strong>Validate</strong> — the <em>Validate</em> button sends the live report to the HL7 validator (davinci-deqm 5.0.0 package, hosted on cds1) and records the outcome below. On a patient row it also re-runs official CQL for that DFN and updates IPP/DENOM/NUMER/DENEX.</li>")
  DO ADDLN^C0FHIR(.RTN,"<li><strong>Submit</strong> — the <em>Submit</em> button sends the transaction Bundle (reporter Organization + MeasureReport) to the hosted reference DEQM receiver (deqm-test-server on cds1) and records the receiver response below.</li>")
  DO ADDLN^C0FHIR(.RTN,"</ol>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">This replaces QRDA Category III aggregate reporting on the CMS FHIR dQM path. Live exports are tagged <code>setsum-live</code> with cohort provenance; frozen artifacts under the MeasureReport index hold the reviewed official-cql freeze used for exchange.</p>")

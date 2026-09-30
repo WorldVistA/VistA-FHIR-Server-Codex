@@ -191,6 +191,7 @@ SCT2OS5(SCT) ; $$ - map SNOMED CT to OS5/CPT code
  I SCT=73761001 Q "90471" ; Colonoscopy (screening proxy when CPT present)
  I SCT=444783004 Q "45378" ; Screening colonoscopy
  I SCT=171207006 Q "G0101" ; Depression screening (proxy HCPCS if present)
+ I SCT=1344991005 Q "C0DFU" ; CMS2 adult depression follow-up counseling (unique OS5→SCT)
  I SCT=241046008 Q "70300" ; Dental plain X-ray bitewing
  I SCT=314971001 Q "92250" ; Camera fundoscopy / fundus photography
  I SCT=700070005 Q "92134" ; Optical coherence tomography of retina
@@ -222,6 +223,7 @@ CPTNAME(ROOT,IEN,RIEN,OS5,SCT) ; $$ - display for seeded CPT
  S NAME=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","text"))
  I NAME="" S NAME=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",1,"display"))
  I NAME="" D
+ . I OS5="C0DFU"!(SCT=1344991005) S NAME="Counseling about signs and symptoms of mental health problem" Q
  . I OS5="0583H" S NAME="Mammography (procedure)" Q
  . I OS5="1571J" S NAME="Screening mammography (procedure)" Q
  . I $G(SCT)'="" S NAME="Procedure "_SCT Q

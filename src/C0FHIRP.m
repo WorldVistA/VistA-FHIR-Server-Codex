@@ -278,6 +278,8 @@ PROCSNOM(CODE,SCT,SDISP) ; Recover procedure SNOMED from OS5/CPT via sct2os5 inv
  SET (SCT,SDISP)=""
  SET CODE=$PIECE($GET(CODE),"^")
  IF CODE="" QUIT
+ ; Built-in CMS2 depression follow-up OS5 (unique; not in commercial CPT)
+ IF CODE="C0DFU" SET SCT=1344991005,SDISP="Counseling about signs and symptoms of mental health problem" QUIT
  SET (HIT,X)=0
  FOR  SET X=$ORDER(^SYN("2002.030","sct2os5","inverse",CODE,X)) Q:X=""  DO  Q:HIT
  . ; Skip encounter-only SNOMEDs; duals may still appear on Procedure.
@@ -294,6 +296,7 @@ PROCTXT(NAME,SCT,SDISP) ; $$ text → SNOMED for common Synthea procedure narrat
  IF N["DEPRESSION SCREEN" SET SCT=171207006,SDISP="Depression screening (procedure)" QUIT
  IF N["SCREENING FOR DEPRESSION" SET SCT=171207006,SDISP="Depression screening (procedure)" QUIT
  IF N["PHQ" SET SCT=715252007,SDISP="Depression screening using Patient Health Questionnaire Nine Item score (procedure)" QUIT
+ IF N["COUNSELING ABOUT SIGNS AND SYMPTOMS OF MENTAL HEALTH" SET SCT=1344991005,SDISP="Counseling about signs and symptoms of mental health problem" QUIT
  IF N["TOBACCO"!(N["SMOKING CESSATION")!(N["SMOKING STATUS")!(N["SUBSTANCE USE") DO  QUIT
  . IF N["SUBSTANCE USE" SET SCT=428171000124100,SDISP="Assessment of substance use (procedure)" QUIT
  . SET SCT=710081004,SDISP="Smoking cessation education (procedure)"
