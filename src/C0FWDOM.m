@@ -8,6 +8,7 @@ LOAD(RETURN,IEN,ARGS) ; Process appended update resources through C0FW policy
  ; domain filers (PSO/TIU/PCE) can KILL common names like LAST without
  ; NEWing them (seen: %YDB-E-LVUNDEF on LAST mid-bundle via LOAD^C0FWMED).
  N ROOT,BUNDLE,RIEN,TYPE,DOMAIN,COUNT,C0FWFST,C0FWLST
+ D IO^C0FWCTX() ; home IO(0) on the null device before any filer runs
  S ROOT=$$ROOT^C0FWGRT("fhir-intake")
  Q:ROOT=""
  D DEPCHK(ROOT,IEN,.RETURN)

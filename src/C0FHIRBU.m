@@ -352,12 +352,17 @@ TOJSON(IN,OUT,ERR) ; Encode a local M structure to JSON lines
  ; inside this formallist frame produced corrupted JSON with a duplicated
  ; trailing suffix on large bundles (cds1 "Invalid JSON from /fhir?dfn=").
  ; Materialize under real locals for $&c0rgenc.fromlvn (no formallist aliases).
- NEW C0FBIN,C0FBOUT,C0FBERR
+ ; Pick the encoder once: DO with arguments does not restore $TEST, so an
+ ; IF/DO/ELSE chain ran a second (and third) encoder whenever the first left
+ ; $TEST=0; XLFJSON re-wrote lines 1..n-1 and the first encoder's last line
+ ; survived as a duplicated trailing suffix (cds1 reeval "must be JSON").
+ NEW C0FBIN,C0FBOUT,C0FBERR,C0FBENC
  KILL OUT,ERR,C0FBIN,C0FBOUT,C0FBERR
  MERGE C0FBIN=IN
- IF $TEXT(ENCODE^C0RGFENC)'="" DO ENCODE^C0RGFENC("C0FBIN","C0FBOUT","C0FBERR")
- ELSE  IF $TEXT(+0^C0RGJSNE)'="" DO ENCODE^C0RGJSNE("C0FBIN","C0FBOUT","C0FBERR")
- ELSE  DO ENCODE^XLFJSON("C0FBIN","C0FBOUT","C0FBERR")
+ SET C0FBENC=$SELECT($TEXT(ENCODE^C0RGFENC)'="":1,$TEXT(+0^C0RGJSNE)'="":2,1:3)
+ IF C0FBENC=1 DO ENCODE^C0RGFENC("C0FBIN","C0FBOUT","C0FBERR")
+ IF C0FBENC=2 DO ENCODE^C0RGJSNE("C0FBIN","C0FBOUT","C0FBERR")
+ IF C0FBENC=3 DO ENCODE^XLFJSON("C0FBIN","C0FBOUT","C0FBERR")
  MERGE OUT=C0FBOUT
  IF $DATA(C0FBERR) MERGE ERR=C0FBERR
  DO FORCESTR(.OUT)

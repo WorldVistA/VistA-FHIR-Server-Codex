@@ -13,6 +13,12 @@ DUZ() ; Establish minimal Kernel user context for C0FW update paths
  Q DUZ
  ;
 IO() ; Establish minimal IO variables used by filing APIs in web jobs
+ ; Web jobs have no Kernel home device: ^%ZISC sets IO(0)=$P (the client
+ ; socket) when IO(0) is undefined, after which VistA echo output (e.g. the
+ ; DIC patient display from EN^LRDPA) lands ahead of the HTTP headers.
+ ; Home IO/IO(0) on the current device, which %webrsp sets to /dev/null.
+ I $G(IO(0))="" S IO(0)=$IO
+ I $G(IO)="" S IO=$IO
  I $G(IOST)="" S IOST="C-VT100"
  I +$G(IOM)<1 S IOM=80
  I +$G(IOSL)<1 S IOSL=24
