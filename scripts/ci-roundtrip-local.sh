@@ -18,6 +18,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CPRS_HARNESS="${CPRS_HARNESS:-$ROOT/../CPRS-on-FHIR/harness/CFH-WRITE-001/harness.py}"
 C0RGENC_INSTALL="${C0RGENC_INSTALL:-$ROOT/../rehmp/plugin/c0rgenc/install-vehu10.sh}"
+SYN_SRC="${SYN_SRC:-$ROOT/../VistA-FHIR-Data-Loader/src}"
 IMAGE="${CI_FHIR_IMAGE:-glilly/fhir-dev-server:latest}"
 PORT="${CI_FHIR_PORT:-19080}"
 KEEP=0
@@ -108,6 +109,25 @@ else
   row "B3 c0rgenc plugin" FAIL "see c0rgenc.log: $(tail -1 "$WORK/c0rgenc.log" 2>/dev/null)"; KEEP=1; finish
 fi
 
+# B4. SYN loader routines + SCT->OS5 maps (same as showfhir-setup.sh). The
+#     image's SYN*.m are older and its ^SYN sct2os5 has no prc/enc role maps,
+#     so ~80% of Synthea Procedures fail "Code ... not mapped". docker cp keeps
+#     repo mtimes, which are older than the image's compiled .o, so YDB would
+#     keep the stale objects ($T returns "" -> "SYNDHP65 is not installed");
+#     touch forces recompile on next link.
+for f in "$SYN_SRC"/SYN*.m; do docker cp "$f" "$NAME:/home/vehu/p/" >/dev/null 2>&1; done
+docker exec "$NAME" bash -c 'touch /home/vehu/p/SYN*.m; chown vehu:vehu /home/vehu/p/SYN*.m'
+printf '%s\n' 'D LOADOS5^SYNOS5LD' 'D EN^SYNOS5PT' \
+  'W "OS5COUNT=",$$COUNT^SYNOS5LD,!' \
+  'W "PRCADD=",$L($T(PRCADD^SYNDHP65))>0,!' 'H' \
+  | docker exec -i "$NAME" su - vehu -c 'cd /tmp && mumps -dir' >"$WORK/os5.log" 2>&1
+OS5N="$(grep -o 'OS5COUNT=[0-9]*' "$WORK/os5.log" | cut -d= -f2)"
+if [[ "${OS5N:-0}" -gt 0 ]] && grep -q 'PRCADD=1' "$WORK/os5.log"; then
+  row "B4 SYN + OS5 maps" PASS "$(ls "$SYN_SRC"/SYN*.m | wc -l) SYN routines, sct2os5 count=$OS5N, PRCADD^SYNDHP65 linked"
+else
+  row "B4 SYN + OS5 maps" FAIL "OS5COUNT='${OS5N:-}' see os5.log: $(grep -m1 -E 'YDB-E|ERROR' "$WORK/os5.log")"; KEEP=1; finish
+fi
+
 # C. routine sync (zlinks src/*.m, registers routes, starts the listener)
 if FHIR_CONTAINER="$NAME" FHIR_HTTP_BASE="$BASE" FHIR_REMOTE_P=/home/vehu/p \
    FHIR_REMOTE_WWW=/home/vehu/www/filesystem FHIR_M_USER=vehu \
@@ -142,7 +162,10 @@ HTTP="$(curl -sS -o "$WORK/add.json" -w '%{http_code}' --max-time 600 -H 'Expect
   -H 'Content-Type: application/json' --data-binary "@$BUNDLE" "$BASE/addpatient?load=1" || echo 000)"
 DFN="$(python3 -c "import json;print(json.load(open('$WORK/add.json')).get('dfn',''))" 2>/dev/null || true)"
 if [[ ( "$HTTP" == "200" || "$HTTP" == "201" ) && -n "$DFN" ]]; then
-  row "D2 addpatient" PASS "HTTP $HTTP dfn=$DFN loadStatus=$(python3 -c "import json;print(json.load(open('$WORK/add.json')).get('loadStatus',''))" 2>/dev/null)"
+  row "D2 addpatient" PASS "HTTP $HTTP dfn=$DFN $(python3 -c "
+import json,collections;d=json.load(open('$WORK/add.json'))
+e=collections.Counter(((d.get('domains') or {}).get('Procedure') or {}).get('entries') or [])
+print(f\"loadStatus={d.get('loadStatus','')} Procedure={dict(e)}\")" 2>/dev/null)"
 else
   row "D2 addpatient" FAIL "HTTP $HTTP dfn='$DFN' body: $(head -c 200 "$WORK/add.json" 2>/dev/null)"; KEEP=1; finish
 fi
