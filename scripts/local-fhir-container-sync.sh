@@ -302,7 +302,7 @@ restart_web_and_register() {
   } | docker exec -i "$FHIR_CONTAINER" su - "$FHIR_M_USER" -c \
     "cd ${remote_p_q} && ${m_q} -dir"
   docker exec "$FHIR_CONTAINER" su - "$FHIR_M_USER" -c \
-    "${M} -run %XCMD \"d stop^%webreq d go^%webreq\""
+    "${M} -run %XCMD \"d stop^%webreq h 11 d go^%webreq\""
 }
 
 if [[ "${TJSON_SKIP_VERIFY_TOKEN:-0}" != "1" ]]; then

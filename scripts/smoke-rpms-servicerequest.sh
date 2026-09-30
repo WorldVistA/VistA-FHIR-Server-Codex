@@ -20,7 +20,7 @@ ZL "C0FRABOOT"
 ZL "C0FWSR"
 ZL "C0FWPOL"
 W "BOOT=",$$EN^C0FRABOOT,!
-D stop^%webreq H 1 D go^%webreq
+D stop^%webreq H 11 D go^%webreq
 W "ok",!
 H
 M

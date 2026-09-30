@@ -18,7 +18,7 @@ usage() {
   echo "Usage: $0 [options] LOCAL_BUNDLE.json"
   echo "  LOCAL_BUNDLE.json   FHIR Bundle file to POST to addpatient"
   echo "  --register          Run addService^%webutils for POST addpatient (once per site)"
-  echo "  --restart-webreq    d stop^%webreq d go^%webreq (implied after --register unless --no-restart-webreq)"
+  echo "  --restart-webreq    d stop^%webreq h 11 d go^%webreq (implied after --register unless --no-restart-webreq)"
   echo "  --no-restart-webreq Skip listener restart (use with --register if routes already picked up)"
   echo "  --remote-path PATH  Staging path on host (default /tmp/synthea-patient-PID.json)"
   echo "Env: FHIRDEV_HOST (default $FHIRDEV_HOST)"
@@ -95,7 +95,7 @@ fi
 if [[ "$RESTART_WEBREQ" -ne 0 ]]; then
   echo "restart %webreq in $FHIRDEV_CONTAINER"
   ssh -o BatchMode=yes "$FHIRDEV_HOST" \
-    "docker exec -u vehu $FHIRDEV_CONTAINER bash -lc 'source $VEHU_ENV >/dev/null 2>&1; mumps -run %XCMD \"d stop^%webreq d go^%webreq\"'"
+    "docker exec -u vehu $FHIRDEV_CONTAINER bash -lc 'source $VEHU_ENV >/dev/null 2>&1; mumps -run %XCMD \"d stop^%webreq h 11 d go^%webreq\"'"
 fi
 
 echo "POST $HTTP_URL/addpatient (Expect disabled)"

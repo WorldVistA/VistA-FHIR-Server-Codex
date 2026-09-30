@@ -210,7 +210,7 @@ docker exec -u vehu -w /tmp "\$NAME" bash -lc '
   set +a
   printf "%s\n" "D EN^SYNWEBRG" "H" | mumps -direct || true
   printf "%s\n" "D stop^%webreq" "H" | mumps -direct || true
-  sleep 1
+  sleep 11  # listener polls the stop flag every 10s; go sooner and it overwrites the flag
   printf "%s\n" "D go^%webreq" "H" | mumps -direct || true
   sleep 3
   printf "%s\n" "W \$G(^%webhttp(0,\"listener\")),!" "H" | mumps -direct || true
