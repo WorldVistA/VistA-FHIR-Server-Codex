@@ -113,7 +113,9 @@ cp -f "$ROOT"/src/*.m "$STAGE_LOCAL/"
 cp -f "$REHMP_ROOT"/C0RG/*.m "$STAGE_LOCAL/" 2>/dev/null || true
 [[ -f "$ROOT/SYNWEBUT.m" ]] && cp -f "$ROOT/SYNWEBUT.m" "$STAGE_LOCAL/"
 if [[ -d "$LOADER_ROOT/src" ]]; then
-  # SYN* needed for addpatient / WEBRG on a stock VEHU image
+  # SYN* needed for addpatient / WEBRG on a stock VEHU image.
+  # Copied from the loader's working tree (current branch, not master).
+  echo "SYN source: $LOADER_ROOT/src $(git -C "$LOADER_ROOT" branch --show-current)@$(git -C "$LOADER_ROOT" rev-parse --short HEAD)$(git -C "$LOADER_ROOT" diff --quiet -- src || echo +dirty)"
   cp -f "$LOADER_ROOT"/src/SYN*.m "$STAGE_LOCAL/" 2>/dev/null || true
 fi
 # tjson web for /filesystem
@@ -209,6 +211,9 @@ docker exec -u vehu -w /tmp "\$NAME" bash -lc '
   . /home/vehu/etc/env
   set +a
   printf "%s\n" "D EN^SYNWEBRG" "H" | mumps -direct || true
+  # CMS2 Assessment / survey Observations are graph-retained (no #60 map).
+  # Without GRAPHLABS they never appear on /fhir and official CQL NUMER stays 0.
+  printf "%s\n" "S ^C0FHIR(\"EXPERIMENT\",\"GRAPHLABS\")=1" "W \"GRAPHLABS=\",\$\$ON^C0FHIRLG,!" "H" | mumps -direct || true
   printf "%s\n" "D stop^%webreq" "H" | mumps -direct || true
   sleep 11  # listener polls the stop flag every 10s; go sooner and it overwrites the flag
   printf "%s\n" "D go^%webreq" "H" | mumps -direct || true

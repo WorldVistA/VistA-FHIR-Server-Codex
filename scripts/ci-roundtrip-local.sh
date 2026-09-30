@@ -122,8 +122,10 @@ printf '%s\n' 'D LOADOS5^SYNOS5LD' 'D EN^SYNOS5PT' \
   'W "PRCADD=",$L($T(PRCADD^SYNDHP65))>0,!' 'H' \
   | docker exec -i "$NAME" su - vehu -c 'cd /tmp && mumps -dir' >"$WORK/os5.log" 2>&1
 OS5N="$(grep -o 'OS5COUNT=[0-9]*' "$WORK/os5.log" | cut -d= -f2)"
+# SYN_SRC is the loader working tree: whatever branch is checked out, not master.
+SYNREV="$(git -C "$SYN_SRC" branch --show-current)@$(git -C "$SYN_SRC" rev-parse --short HEAD)$(git -C "$SYN_SRC" diff --quiet -- . || echo +dirty)"
 if [[ "${OS5N:-0}" -gt 0 ]] && grep -q 'PRCADD=1' "$WORK/os5.log"; then
-  row "B4 SYN + OS5 maps" PASS "$(ls "$SYN_SRC"/SYN*.m | wc -l) SYN routines, sct2os5 count=$OS5N, PRCADD^SYNDHP65 linked"
+  row "B4 SYN + OS5 maps" PASS "$(ls "$SYN_SRC"/SYN*.m | wc -l) SYN routines from $SYNREV, sct2os5 count=$OS5N, PRCADD^SYNDHP65 linked"
 else
   row "B4 SYN + OS5 maps" FAIL "OS5COUNT='${OS5N:-}' see os5.log: $(grep -m1 -E 'YDB-E|ERROR' "$WORK/os5.log")"; KEEP=1; finish
 fi
