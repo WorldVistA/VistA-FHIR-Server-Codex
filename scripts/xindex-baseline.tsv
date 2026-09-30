@@ -1,0 +1,83 @@
+C0FHIR	WSSHOWFB	F	Reference to routine '^SYNJSON'. That isn't in this UCI.
+C0FWCON	ADDPROB	F	Reference to routine '^APCDALV2'. That isn't in this UCI.
+C0FWCON	ADDPROB	F	Reference to routine '^APCDALV2'. That isn't in this UCI.
+C0FWENC	RPMS	F	Reference to routine '^APCDALV'. That isn't in this UCI.
+C0FWENC	RPMS	F	Reference to routine '^APCDALVR'. That isn't in this UCI.
+C0FWENC	RPMSVF	F	Reference to routine '^APCDALVR'. That isn't in this UCI.
+C0FWENC	RPMSVIS	F	Reference to routine '^APCDALV'. That isn't in this UCI.
+C0FWGRT	ROOT	F	Reference to routine '^%wd'. That isn't in this UCI.
+C0FWOS	ISGTM	F	Invalid or wrong number of arguments to a function.
+C0RGORD	ACTIONONLY	F	Reference to routine '^OROS'. That isn't in this UCI.
+C0RGORD	LIST	F	Reference to routine '^OROS'. That isn't in this UCI.
+C0RGZYEN	DECODEZY	F	Non-standard (Undefined) 'Z' command.
+C0RGZYEN	ENCODEZY	F	Non-standard (Undefined) 'Z' command.
+C0RGZYEN	READY	F	Non-standard (Undefined) 'Z' command.
+C0TSWS	wsCDLIST	F	Block structure mismatch.
+C0TSWS	wsCDLIST	F	Reference to routine '^C0TSWSD'. That isn't in this UCI.
+C0TSWS	wsCDSETS	F	Reference to routine '^C0TSWSD'. That isn't in this UCI.
+C0TSWS	wsCDSETS	F	Reference to routine '^C0TSWSD'. That isn't in this UCI.
+C0TSWS	wsCODE	F	Reference to routine '^C0TSFM'. That isn't in this UCI.
+C0TSWS	wsCON	F	Reference to routine '^C0TSFM'. That isn't in this UCI.
+C0TSWS	wsSUBLST	F	Block structure mismatch.
+C0TSWS	wsSUBLST	F	Reference to routine '^C0TSWSD'. That isn't in this UCI.
+C0TSWSU	G1SETJ	F	Reference to routine '^C0TSWSD'. That isn't in this UCI.
+C0TSWSU	TESTADD	F	Non-standard (Undefined) 'Z' command.
+C0TSWSU	TESTHTML	F	Non-standard (Undefined) 'Z' command.
+SYNBSTS1	matchbsts	F	Reference to routine '^C0TSUTL'. That isn't in this UCI.
+SYNBSTS1	matchbsts	F	Reference to routine '^C0TSUTL'. That isn't in this UCI.
+SYNDHP69	T1	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNDHP69	TEST	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNFALG2	TEST	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNFHF	UPDIE	F	Non-standard (Undefined) 'Z' command.
+SYNFHIR	wsShow	F	Reference to routine '^SYNJSON'. That isn't in this UCI.
+SYNFHIR2	SYNFARY	F	Reference to routine '^C0XF2N'. That isn't in this UCI.
+SYNFHIR2	TEST1	F	Non-standard (Undefined) 'Z' command.
+SYNFHIR2	TEST1	F	Reference to routine '^C0XGET1'. That isn't in this UCI.
+SYNFMED	TEST	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNFMED2	medsum	F	Non-standard (Undefined) 'Z' command.
+SYNFMED2	medsum	F	Non-standard (Undefined) 'Z' command.
+SYNFMEDT	SYNFMEDT	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNFMEDT	T0	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNFMEDT	T2	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNFMEDT	T4	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNFTIU	INTROOT	F	Reference to routine '^%wd'. That isn't in this UCI.
+SYNFUTL	replace	F	UNDEFINED COMMAND (rest of line not checked).
+SYNFUTL	testAdb	F	Non-standard (Undefined) 'Z' command.
+SYNGRAF	ary2file	F	UNDEFINED COMMAND (rest of line not checked).
+SYNGRAF	beautify	F	Non-standard (Undefined) 'Z' command.
+SYNHTM	toppage	F	Reference to routine '^%yottagr'. That isn't in this UCI.
+SYNHTM	toppage	F	Reference to routine '^%yottautl'. That isn't in this UCI.
+SYNHTM	toppage	F	Reference to routine '^%yottaweb'. That isn't in this UCI.
+SYNINIT	TEST	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNINIT	TESTHL	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNINIT	TESTPROV	F	Reference to routine '^%ut'. That isn't in this UCI.
+SYNLINIT	BLDKBAP	F	Invalid or wrong number of arguments to a function.
+SYNVPR	CCDA	F	Reference to routine '^KBAICDA'. That isn't in this UCI.
+SYNVPR	CCRXML	F	Reference to routine '^C0CCCR'. That isn't in this UCI.
+SYNVPR	GET2	F	Reference to routine '^KBAINHIN'. That isn't in this UCI.
+SYNVPR	LABS	F	Reference to routine '^C0CLABS'. That isn't in this UCI.
+SYNVPR	SMART	F	Reference to routine '^C0SMART'. That isn't in this UCI.
+SYNVPR	VPRM	F	Reference to routine '^SYNVPRE'. That isn't in this UCI.
+SYNVPR	wsGtree	F	Reference to routine '^VWXPAT'. That isn't in this UCI.
+SYNVPR	wsGtree	F	Reference to routine '^VWXPAT'. That isn't in this UCI.
+SYNWD	addgraph	F	Reference to routine '^%wd'. That isn't in this UCI.
+SYNWD	purgegraph	F	Reference to routine '^%wd'. That isn't in this UCI.
+SYNWD	rootOf	F	Reference to routine '^%wd'. That isn't in this UCI.
+SYNWD	setroot	F	Reference to routine '^%wd'. That isn't in this UCI.
+SYNWEBUT	REFSIZEGTM	F	Undefined Function.
+SYNWEBUT	REFSIZEGTM	F	Undefined Function.
+SYNWEBUT	UNKARGS	F	Reference to routine '^VPRJRUT'. That isn't in this UCI.
+SYNWEBUT	VARSIZEGTM	F	Undefined Function.
+SYNWEBUT	VARSIZEGTM	F	Undefined Function.
+SYNYOTTA	build	F	Non-standard (Undefined) 'Z' command.
+SYNYOTTA	multout	F	Reference to routine '^%yottautl'. That isn't in this UCI.
+SYNYOTTA	multout	F	Reference to routine '^%yottaweb'. That isn't in this UCI.
+SYNYOTTA	rewrite	F	Reference to routine '^%yottaweb'. That isn't in this UCI.
+SYNYOTTA	scan	F	Non-standard (Undefined) 'Z' command.
+SYNYOTTA	show	F	Non-standard (Undefined) 'Z' command.
+SYNYOTTA	show	F	Non-standard (Undefined) 'Z' command.
+SYNYOTTA	stat	F	Non-standard (Undefined) 'Z' command.
+SYNYOTTA	wssee	F	Reference to routine '^%W0'. That isn't in this UCI.
+SYNYOTTA	wssee	F	Reference to routine '^%yottahtm'. That isn't in this UCI.
+SYNYOTTA	wssee	F	Reference to routine '^VPRJRUT'. That isn't in this UCI.
+SYNYOTTA	wssee	F	Reference to routine '^VPRJRUT'. That isn't in this UCI.

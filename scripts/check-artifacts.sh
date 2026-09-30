@@ -3,7 +3,8 @@
 #
 # Guards the mirrored/vendored artifacts that have silently drifted or been
 # clobbered before:
-#   1. vendor/tjson/web/** and vendored C0TS*.m — sha256 manifest drift check
+#   1. vendor/tjson/web/**, vendor/m-web-server/**, vendor/m-wc/** and vendored C0TS*.m —
+#      sha256 manifest drift check
 #   2. HL7-FHIR-quality-testing measure value_sets*.json — must parse, be
 #      non-empty, and carry concepts (refuses the "empty VSAC overwrite"
 #      failure mode)
@@ -19,7 +20,7 @@ MANIFEST="$ROOT/scripts/artifacts.sha256"
 FAILED=0
 
 manifest_paths() {
-  ( cd "$ROOT" && find vendor/tjson -type f | sort
+  ( cd "$ROOT" && find vendor/tjson vendor/m-web-server vendor/m-wc -type f | sort
     ls src/C0TSWS.m src/C0TSWSU.m 2>/dev/null )
 }
 

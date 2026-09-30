@@ -1,0 +1,16 @@
+{
+ "okPct": {
+  "Allergy": 100.0,
+  "CarePlan": 100.0,
+  "Condition": 98.3,
+  "DocumentReference": 100.0,
+  "Encounter": 100.0,
+  "Immunization": 100.0,
+  "Lab": 85.7,
+  "Medication": 100.0,
+  "Observation": 100.0,
+  "Procedure": 100.0,
+  "Smoking": 100.0
+ },
+ "patients": 20
+}
