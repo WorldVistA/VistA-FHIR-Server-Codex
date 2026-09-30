@@ -4,6 +4,7 @@
 # One script, disposable container, full round trip:
 #   A. docker run a fresh glilly/fhir-dev-server container (nothing shared)
 #   B. wait for the M web listener
+#   B3. build the c0rgenc encoder plugin (C0RG envelopes fail loud without it)
 #   C. sync the working-tree routines into it (local-fhir-container-sync.sh)
 #   D. generate one Synthea patient -> POST /addpatient?load=1 -> capture DFN
 #   E. readback parity: source bundle resourceType counts vs GET /fhir?dfn=
@@ -16,6 +17,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CPRS_HARNESS="${CPRS_HARNESS:-$ROOT/../CPRS-on-FHIR/harness/CFH-WRITE-001/harness.py}"
+C0RGENC_INSTALL="${C0RGENC_INSTALL:-$ROOT/../rehmp/plugin/c0rgenc/install-vehu10.sh}"
 IMAGE="${CI_FHIR_IMAGE:-glilly/fhir-dev-server:latest}"
 PORT="${CI_FHIR_PORT:-19080}"
 KEEP=0
@@ -94,6 +96,16 @@ if docker cp vehu10:/home/vehu/lib/M-Web-Server/src "$WORK/mws" >/dev/null 2>&1 
   row "B2 web server routines" PASS "M-Web-Server src vendored from vehu10"
 else
   row "B2 web server routines" FAIL "could not vendor %web* routines (is vehu10 up?)"; KEEP=1; finish
+fi
+
+# B3. C0RG envelopes fail loud (ENCODE^C0RGFENC) without the c0rgenc C plugin,
+#     and the raw image lacks it. Build it before stage C starts the listener
+#     so HTTP workers inherit GTMXC_c0rgenc.
+if FHIR_CONTAINER="$NAME" "$C0RGENC_INSTALL" >"$WORK/c0rgenc.log" 2>&1 \
+   && docker exec "$NAME" su - vehu -c 'mumps -run %XCMD "W \"ping=\",\$&c0rgenc.ping,!"' 2>&1 | grep -q 'ping=1'; then
+  row "B3 c0rgenc plugin" PASS "built in container, \$&c0rgenc.ping=1"
+else
+  row "B3 c0rgenc plugin" FAIL "see c0rgenc.log: $(tail -1 "$WORK/c0rgenc.log" 2>/dev/null)"; KEEP=1; finish
 fi
 
 # C. routine sync (zlinks src/*.m, registers routes, starts the listener)
