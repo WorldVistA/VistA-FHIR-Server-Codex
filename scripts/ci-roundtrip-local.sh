@@ -34,7 +34,7 @@ done
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 NAME="ci-roundtrip-$TS"
 BASE="http://127.0.0.1:$PORT"
-REPORT_DIR="$ROOT/docs/ci-reports"
+REPORT_DIR="${CI_REPORT_DIR:-$ROOT/docs/ci-reports}"
 REPORT="$REPORT_DIR/ROUNDTRIP_$TS.md"
 WORK="$(mktemp -d)"
 mkdir -p "$REPORT_DIR"
