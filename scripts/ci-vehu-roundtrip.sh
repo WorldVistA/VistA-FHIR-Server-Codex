@@ -101,6 +101,16 @@ echo "== ci-vehu-roundtrip: $NAME on $BASE (L0–L$LEVEL, encoder=$ENCODER) =="
 PROV+=("sources: codex \`$(rev "$ROOT")\`, loader \`$(rev "$WS/VistA-FHIR-Data-Loader")\`, rehmp \`$(rev "$WS/rehmp")\`, CPRS-on-FHIR \`$(rev "$WS/CPRS-on-FHIR")\`")
 
 # ---- L0 boot -------------------------------------------------------------
+# A failed run keeps its container for inspection; it lives until the next run,
+# which clears it so a kept container can never hold the port and block the
+# night after (2026-10-03). CI_VEHU_KEEP_OLD=1 skips the cleanup.
+if [[ "${CI_VEHU_KEEP_OLD:-0}" != "1" ]]; then
+  OLD="$(docker ps -a --format '{{.Names}}' | grep '^ci-vehu-' | tr '\n' ' ')"
+  if [[ -n "$OLD" ]]; then
+    docker rm -f $OLD >/dev/null 2>&1
+    row "L0 cleanup" INFO "removed previous lane container(s): $OLD"
+  fi
+fi
 DIGEST="$(docker image inspect --format '{{index .RepoDigests 0}}' "$IMAGE" 2>/dev/null | sed 's/.*@//' | cut -c1-19)"
 if docker run -d --name "$NAME" -p "127.0.0.1:$PORT:9080" "$IMAGE" >/dev/null 2>&1; then
   BOOTED=0
