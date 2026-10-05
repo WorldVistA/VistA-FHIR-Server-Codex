@@ -72,6 +72,12 @@ finish() {
 
 echo "== ci-roundtrip: $NAME on $BASE =="
 
+# A0. a failed run keeps its container for inspection; clear any previous
+#     ci-roundtrip container on THIS port so it cannot block the next night
+#     (other kept containers on other ports are left alone).
+OLD="$(docker ps -a --format '{{.Names}} {{.Ports}}' | awk -v p="127.0.0.1:$PORT->" '$1 ~ /^ci-roundtrip-/ && index($0, p) {print $1}' | tr '\n' ' ')"
+if [[ -n "$OLD" ]]; then docker rm -f $OLD >/dev/null 2>&1; row "A0 cleanup" INFO "removed previous container(s) on port $PORT: $OLD"; fi
+
 # A. fresh container
 if docker run -d --name "$NAME" -p "127.0.0.1:$PORT:9080" "$IMAGE" >/dev/null 2>&1; then
   row "A container up" PASS "$IMAGE"
