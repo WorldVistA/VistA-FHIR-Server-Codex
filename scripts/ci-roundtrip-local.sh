@@ -117,17 +117,25 @@ fi
 #     touch forces recompile on next link.
 for f in "$SYN_SRC"/SYN*.m; do docker cp "$f" "$NAME:/home/vehu/p/" >/dev/null 2>&1; done
 docker exec "$NAME" bash -c 'touch /home/vehu/p/SYN*.m; chown vehu:vehu /home/vehu/p/SYN*.m'
-printf '%s\n' 'D LOADOS5^SYNOS5LD' 'D EN^SYNOS5PT' \
-  'W "OS5COUNT=",$$COUNT^SYNOS5LD,!' \
-  'W "PRCADD=",$L($T(PRCADD^SYNDHP65))>0,!' 'H' \
-  | docker exec -i "$NAME" su - vehu -c 'cd /tmp && mumps -dir' >"$WORK/os5.log" 2>&1
-OS5N="$(grep -o 'OS5COUNT=[0-9]*' "$WORK/os5.log" | cut -d= -f2)"
+# One retry: 2026-10-04 failed once with OS5COUNT empty and replayed fine in
+# the kept container; on a second failure the log tail goes into the report.
+for try in 1 2; do
+  printf '%s\n' 'D LOADOS5^SYNOS5LD' 'D EN^SYNOS5PT' \
+    'W "OS5COUNT=",$$COUNT^SYNOS5LD,!' \
+    'W "PRCADD=",$L($T(PRCADD^SYNDHP65))>0,!' 'H' \
+    | docker exec -i "$NAME" su - vehu -c 'cd /tmp && mumps -dir' >"$WORK/os5.log" 2>&1
+  echo "docker-exec-rc=$?" >>"$WORK/os5.log"
+  OS5N="$(grep -o 'OS5COUNT=[0-9]*' "$WORK/os5.log" | cut -d= -f2)"
+  [[ "${OS5N:-0}" -gt 0 ]] && break
+  [[ $try -eq 1 ]] && { cp "$WORK/os5.log" "$WORK/os5-try1.log"; sleep 15; }
+done
+[[ -f "$WORK/os5-try1.log" ]] && row "B4 retry" INFO "first OS5 load attempt failed: $(grep -v -E '^\s*$|DBFILEXT' "$WORK/os5-try1.log" | tail -3 | tr '\n' ' ' | cut -c1-300)"
 # SYN_SRC is the loader working tree: whatever branch is checked out, not master.
 SYNREV="$(git -C "$SYN_SRC" branch --show-current)@$(git -C "$SYN_SRC" rev-parse --short HEAD)$(git -C "$SYN_SRC" diff --quiet -- . || echo +dirty)"
 if [[ "${OS5N:-0}" -gt 0 ]] && grep -q 'PRCADD=1' "$WORK/os5.log"; then
   row "B4 SYN + OS5 maps" PASS "$(ls "$SYN_SRC"/SYN*.m | wc -l) SYN routines from $SYNREV, sct2os5 count=$OS5N, PRCADD^SYNDHP65 linked"
 else
-  row "B4 SYN + OS5 maps" FAIL "OS5COUNT='${OS5N:-}' see os5.log: $(grep -m1 -E 'YDB-E|ERROR' "$WORK/os5.log")"; KEEP=1; finish
+  row "B4 SYN + OS5 maps" FAIL "OS5COUNT='${OS5N:-}' os5.log tail: $(grep -v -E '^\s*$|DBFILEXT' "$WORK/os5.log" | tail -4 | tr '\n' ' ' | cut -c1-400)"; KEEP=1; finish
 fi
 
 # C. routine sync (zlinks src/*.m, registers routes, starts the listener)
