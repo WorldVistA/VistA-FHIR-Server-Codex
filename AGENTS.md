@@ -7,23 +7,17 @@
 3. Touch only what you must. Clean up only your own mess.
 4. Define success criteria. Loop until verified.
 
-Shared context source (primary):
+Shared context source (primary — local clone of `git@github.com:glilly/ops.git`):
 
-- `https://github.com/glilly/ai-m/blob/master/agent-context/README.md`
-- `https://github.com/glilly/ai-m/blob/master/agent-context/workflow.md`
-- `https://github.com/glilly/ai-m/blob/master/agent-context/commands-template.md`
-- `https://github.com/glilly/ai-m/blob/master/agent-context/security.md`
-- `https://github.com/glilly/ai-m/blob/master/agent-context/checklist.md`
-- `https://github.com/glilly/ai-m/blob/master/agent-context/vista-container-developer-guide.md`
+- `/home/glilly/ops/agent-context/README.md`
+- `/home/glilly/ops/agent-context/workflow.md`
+- `/home/glilly/ops/agent-context/commands-template.md`
+- `/home/glilly/ops/agent-context/security.md`
+- `/home/glilly/ops/agent-context/checklist.md`
+- `/home/glilly/ops/agent-context/vista-container-developer-guide.md`
 
-Shared context source (local clone equivalent):
-
-- `/home/glilly/ai-m/agent-context/README.md`
-- `/home/glilly/ai-m/agent-context/workflow.md`
-- `/home/glilly/ai-m/agent-context/commands-template.md`
-- `/home/glilly/ai-m/agent-context/security.md`
-- `/home/glilly/ai-m/agent-context/checklist.md`
-- `/home/glilly/ai-m/agent-context/vista-container-developer-guide.md`
+(`https://github.com/glilly/ai-m/tree/master/agent-context` is an older
+snapshot of the same files, last updated 2026-03; `~/ops` is current.)
 
 Repo-specific overrides:
 
