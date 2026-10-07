@@ -16,7 +16,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REHMP="${REHMP_ROOT:-$ROOT/../rehmp}"
-HOSTS="${UI_CHECK_HOSTS:-devfhir.vistaplex.org irisfhir.vistaplex.org rpmsfhir.vistaplex.org fhir.vistaplex.org}"
+HOSTS="${UI_CHECK_HOSTS:-devfhir.vistaplex.org irisfhir.vistaplex.org rpmsfhir.vistaplex.org fhir.vistaplex.org showfhir.vistaplex.org}"
 
 EXPECT=""
 if [[ -d "$REHMP/.git" ]]; then
