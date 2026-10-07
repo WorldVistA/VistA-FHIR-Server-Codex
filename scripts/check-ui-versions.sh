@@ -7,6 +7,10 @@
 # Sep 9 / Aug 6 / Jul 13). Called at the end of deploy-quality-all.sh;
 # also rerunnable standalone.
 #
+# A served commit that differs from HEAD is NOT drift when nothing under
+# ehmp-ui/rehmp-cprs-demo changed between them (HEAD moves for AGENTS.md,
+# plugin, .gitignore commits too — 2026-10-07 false positive on all lanes).
+#
 # Exit: 0 all match, 1 drift or missing stamp (callers may treat as WARN).
 set -uo pipefail
 
@@ -32,6 +36,10 @@ for H in $HOSTS; do
     FAIL=1
   elif [[ "$GOT" == "$EXPECT" || "$GOT" == "$EXPECT-dirty" ]]; then
     echo "ui-versions: OK   $H — $GOT"
+  elif [[ "$GOT" != *-dirty ]] \
+    && git -C "$REHMP" cat-file -e "$GOT^{commit}" 2>/dev/null \
+    && git -C "$REHMP" diff --quiet "$GOT" HEAD -- ehmp-ui/rehmp-cprs-demo 2>/dev/null; then
+    echo "ui-versions: OK   $H — $GOT (demo tree identical to HEAD $EXPECT)"
   else
     echo "ui-versions: WARN $H — serving $GOT, rehmp HEAD is $EXPECT (run rehmp/deploy/publish-ui-all.sh)"
     FAIL=1
