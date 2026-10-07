@@ -44,12 +44,12 @@ Repo-specific overrides:
 - Current test SSH target: `osehra@127.0.0.1:2223`
 - Current test SSH key: `/home/glilly/.ssh/id_ed25519_cursor_agent_test`
 - Agent note: a full SSH session to this target often takes **40+ seconds**; the default agent command wait is **30s**, so SSH can be backgrounded and look “stuck” before it finishes. Use **`block_until_ms` ≥ 60000** (or read the terminal file after backgrounding) and request **`network`** permission when running SSH from the agent.
-- The `127.0.0.1:2223` SSH target is **local test access only**. Do **not** use port `2223` for public hosts. For remote Codex deploys, use the documented remote paths first: `scripts/fhirdev-codex-sync.sh` defaults to `root@devfhir.vistaplex.org` / container `fhirdev22`; production is `root@fhir.vistaplex.org` / container `fhir` unless `docker ps` on that host says otherwise.
+- The `127.0.0.1:2223` SSH target is **local test access only**. Do **not** use port `2223` for public hosts. For remote Codex deploys, use the documented remote paths first: `scripts/fhirdev-codex-sync.sh` defaults to `root@devfhir.vistaplex.org` / container `fhirdev22`; production is `root@fhir.vistaplex.org` / container **`wvehr`** (user `wv`; the WorldVistA EHR that replaced the old `fhir` container on 2026-09-13 — `fhir` is stopped for rollback, never remove it) unless `docker ps` on that host says otherwise.
 - **Quality dashboards / hosted Inferno demo host:** **fhirdev** (`https://devfhir.vistaplex.org`). FHIR base for Inferno: `https://devfhir.vistaplex.org/fhir`. Dashboards: `https://devfhir.vistaplex.org/fhir-quality-dashboards`. Deploy with `./scripts/fhirdev-codex-sync.sh`; re-apply curated SETPOP via `HL7-FHIR-quality-testing/scripts/fhirdev-apply-setpop.sh`. Local vehu10 is a sandbox only for this track — Inferno will not target a local system.
 - **Exact phrases: "deploy-quality-all", "deploy quality to all active", or "fix this and deploy-quality-all"** mean:
   1. Apply the requested fix first (if any).
   2. Add/update a machine-check in `scripts/smoke-quality-host.sh` when the bug is a contract (labels, IPP vs NUMER, missing preset, dashboard brief).
-  3. Run `./scripts/deploy-quality-all.sh` (needs Docker/SSH/`all` permissions). Default targets: **fhirdev**, **vehu10**, **rpms-candidate**, **fhirprod**.
+  3. Run `./scripts/deploy-quality-all.sh` (needs Docker/SSH/`all` permissions). Default targets (mirror the script's `TARGETS=` line): **fhirdev**, **vehu10**, **rpms-candidate**, **rpmsfhir**, **wvehr**, **irisfhir** (irisfhir is non-blocking: WARN only).
   4. Report the script’s per-host SUMMARY (OK/FAIL). Do **not** stop after the first host; do **not** treat a single-host sync as done for this phrase.
   5. Optional: `QUALITY_REINDEX=1` if population scans need code-triple enrich; `QUALITY_DEPLOY_TARGETS="…"` to narrow the set.
   6. **cds1** is not in the default set (Java Stage2 / quality-eval only when that code changed).
