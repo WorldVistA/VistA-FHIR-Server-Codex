@@ -356,6 +356,14 @@ TOJSON(IN,OUT,ERR) ; Encode a local M structure to JSON lines
  ; IF/DO/ELSE chain ran a second (and third) encoder whenever the first left
  ; $TEST=0; XLFJSON re-wrote lines 1..n-1 and the first encoder's last line
  ; survived as a duplicated trailing suffix (cds1 reeval "must be JSON").
+ DO ENC(.IN,.OUT,.ERR)
+ DO FORCESTR(.OUT)
+ QUIT
+ ;
+ENC(IN,OUT,ERR) ; Encode a local M structure to JSON lines, no FHIR string-forcing
+ ; Same encoder choice as TOJSON (plugin -> C0RGJSNE -> XLFJSON). Use for
+ ; non-FHIR envelopes (C0FW responses): Kernel XLFJSON in M mode \u-escapes
+ ; bytes 128-159, splitting UTF-8 characters (an em dash became E2 \u0080\u0094).
  NEW C0FBIN,C0FBOUT,C0FBERR,C0FBENC
  KILL OUT,ERR,C0FBIN,C0FBOUT,C0FBERR
  MERGE C0FBIN=IN
@@ -365,7 +373,6 @@ TOJSON(IN,OUT,ERR) ; Encode a local M structure to JSON lines
  IF C0FBENC=3 DO ENCODE^XLFJSON("C0FBIN","C0FBOUT","C0FBERR")
  MERGE OUT=C0FBOUT
  IF $DATA(C0FBERR) MERGE ERR=C0FBERR
- DO FORCESTR(.OUT)
  QUIT
  ;
 FORCESTR(OUT) ; Ensure id/code/valueString numeric JSON literals are emitted as strings

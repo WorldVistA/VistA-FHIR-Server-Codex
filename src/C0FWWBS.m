@@ -56,7 +56,7 @@ WSLIST(RESULT,ARGS) ; GET /writebacksaves
  . S IDX="" F  S IDX=$O(@ROOT@("index","created",IDX),-1) Q:IDX=""  D  Q:COUNT'<MAX
  . . S ID="" F  S ID=$O(@ROOT@("index","created",IDX,ID)) Q:ID=""  D ADDLIST(.OUT,ROOT,ID,.COUNT,MAX) Q:COUNT'<MAX
  S OUT("count")=COUNT
- D ENCODE^XLFJSON("OUT","RESULT")
+ N C0FWJE D ENC^C0FHIRBU(.OUT,.RESULT,.C0FWJE)
  Q ""
  ;
 WSGET(RESULT,ARGS) ; GET /writebacksaves/{id}
@@ -177,7 +177,7 @@ ENCODEONE(RESULT,ROOT,ID) ; encode one artifact response
  S OUT("status")="ok"
  S OUT("id")=ID
  M OUT("artifact")=@ROOT@("items",ID,"artifact")
- D ENCODE^XLFJSON("OUT","RESULT")
+ N C0FWJE D ENC^C0FHIRBU(.OUT,.RESULT,.C0FWJE)
  Q
  ;
 PATHID() ; $$ - saved writeback id from broad route path fallback
@@ -192,6 +192,6 @@ ERR(RESULT,CODE,MESSAGE) ; encode error response
  S OUT("status")="error"
  S OUT("error","code")=CODE
  S OUT("error","message")=MESSAGE
- D ENCODE^XLFJSON("OUT","RESULT")
+ N C0FWJE D ENC^C0FHIRBU(.OUT,.RESULT,.C0FWJE)
  Q
  ;

@@ -86,7 +86,7 @@ RESP(OUT,ROOT,ID,STATUS) ; Encode apply-review response
  S RESP("message")=MSG
  M RESP("updatepatient")=@ROOT@("items",ID,"artifact","post","updatepatient")
  M RESP("artifact")=@ROOT@("items",ID,"artifact")
- D ENCODE^XLFJSON("RESP","OUT")
+ N C0FWJE D ENC^C0FHIRBU(.RESP,.OUT,.C0FWJE)
  Q
  ;
 OO(OUT,MSG) ; Encode apply-review error
@@ -96,6 +96,6 @@ OO(OUT,MSG) ; Encode apply-review error
  S TMP("status")="error"
  S TMP("error","code")="exception"
  S TMP("error","message")=$G(MSG)
- D ENCODE^XLFJSON("TMP","OUT")
+ N C0FWJE D ENC^C0FHIRBU(.TMP,.OUT,.C0FWJE)
  Q
  ;

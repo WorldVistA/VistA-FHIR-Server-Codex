@@ -21,7 +21,7 @@ WSPAT(ARGS,BODY,RESULT) ; POST /addpatient
  . S HTTPERR=400
  . D ERR(.RESULT,"VALIDATION","FHIR Bundle entry array not found")
  D ADDJSON(.ARGS,.GR1,.RETURN)
- D ENCODE^XLFJSON("RETURN","RESULT")
+ N C0FWJE D ENC^C0FHIRBU(.RETURN,.RESULT,.C0FWJE)
  Q 1
  ;
 ADDJSON(ARGS,GR1,RETURN) ; ingest decoded Bundle array GR1 into fhir-intake (+ optional load)
@@ -436,6 +436,6 @@ ERR(RESULT,CODE,MESSAGE) ; Encode JSON error
  S OUT("status")="error"
  S OUT("error","code")=$G(CODE)
  S OUT("error","message")=$G(MESSAGE)
- D ENCODE^XLFJSON("OUT","RESULT")
+ N C0FWJE D ENC^C0FHIRBU(.OUT,.RESULT,.C0FWJE)
  Q
  ;
