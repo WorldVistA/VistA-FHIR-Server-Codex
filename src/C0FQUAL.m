@@ -504,11 +504,11 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  DO ADDLN^C0FHIR(.RTN,"<div class=""card"">")
  DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Population criteria (brief)</h2>")
  IF IPP'="" DO ADDLN^C0FHIR(.RTN,"<p><strong>Initial Population:</strong> "_$$HTMLESC^C0FHIR(IPP)_"</p>")
- ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">IPP criteria not yet documented for this measure.</p>")
+ IF IPP="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">IPP criteria not yet documented for this measure.</p>")
  IF DENOMB'="" DO ADDLN^C0FHIR(.RTN,"<p><strong>Denominator:</strong> "_$$HTMLESC^C0FHIR(DENOMB)_"</p>")
- ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted""><strong>Denominator:</strong> not yet documented.</p>")
+ IF DENOMB="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted""><strong>Denominator:</strong> not yet documented.</p>")
  IF NUMERB'="" DO ADDLN^C0FHIR(.RTN,"<p><strong>Numerator:</strong> "_$$HTMLESC^C0FHIR(NUMERB)_"</p>")
- ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted""><strong>Numerator:</strong> not yet documented.</p>")
+ IF NUMERB="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted""><strong>Numerator:</strong> not yet documented.</p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
  DO ADDLN^C0FHIR(.RTN,"<div class=""card stats"">")
@@ -538,7 +538,7 @@ MHEAD(RTN,CMS,STAT,FOCUS,NOTE) ; Measure header cards
  DO ADDLN^C0FHIR(.RTN,"<h2 style=""margin-top:0"">Measure calculation</h2>")
  DO ADDLN^C0FHIR(.RTN,"<p><strong>CQM tools:</strong> "_$$HTMLESC^C0FHIR(TOOLS)_"</p>")
  IF DOCS'="" DO ADDLN^C0FHIR(.RTN,"<p><a href="""_$$HTMLESC^C0FHIR(DOCS)_""">Documentation of measure calculation</a></p>")
- ELSE  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">No calculation doc link configured.</p>")
+ IF DOCS="" DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">No calculation doc link configured.</p>")
  DO ADDLN^C0FHIR(.RTN,"<p class=""muted"">Per-DFN flags: SETPOP^C0FQUAL. MeasureReports from SETPOP_MANIFEST under <a href=""/filesystem/quality/measurereports/index.html"">/filesystem/quality/measurereports/index.html</a> (directory URLs are not listable).</p>")
  DO ADDLN^C0FHIR(.RTN,"</div>")
  ;
