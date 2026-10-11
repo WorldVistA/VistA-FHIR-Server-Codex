@@ -14,7 +14,8 @@ C0FHIRLG ; Codex - RPMS labs from fhir-intake graph ;Aug 03, 2026
  ;   @ROOT@(IEN,"POS","code",LOINC,purl) / SPO(purl,"rien",RIEN)
  ; Always includes LOINC 72166-2 (tobacco), 44249-1 (PHQ-9), 73832-8 / 73831-0
  ; (CMS2 depression assessment), and other Observations with category laboratory.
- ; Panel DiagnosticReports keep graph ids/fullUrls so result[] links resolve.
+ ; Panel DiagnosticReports (lab category LAB, vital-signs category vital-signs)
+ ; keep graph ids/fullUrls so result[] links resolve.
  ;
  Q
  ;
@@ -55,7 +56,7 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  F  S DT=$O(BYDT(DT),-1) Q:DT=""!(CNT'<MAX)  D
  . S RIEN=0
  . F  S RIEN=$O(BYDT(DT,RIEN)) Q:'RIEN!(CNT'<MAX)  D EMIT(.RTN,ROOT,IEN,RIEN,DFN,.CNT)
- ; Lab panel DiagnosticReports (category LAB) with result[] links
+ ; Panel DiagnosticReports (category LAB or vital-signs) with result[] links
  D GETGRPDR(.RTN,ROOT,IEN,DFN,BEG,END)
  ; REFFIX re-points panel result[] at in-bundle Observations (MAX / ^LR).
  ; It does not EMIT the rest: that added ~3,800 Observations and ~50 C0RG
@@ -65,11 +66,11 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  Q
  ;
 GETGRPNL(RTN,DFN,BEG,END) ; Append graph panel DiagnosticReports ONLY (VistA hosts)
- ; ^LR stores individual results, not panel groupings, so lab panels exist
- ; only in fhir-intake (C0FWLAB GRAPHOK). When graph labs are OFF (labs-of-
- ; record are ^LR), merge just the panels: no graph Observations are added,
- ; so ISI-filed labs are not duplicated. result[] references keep their graph
- ; Observation ids and may not resolve inside the returned bundle.
+ ; ^LR and GMV store individual results, not panel groupings, so lab and
+ ; vital-sign panels exist only in fhir-intake (C0FWLAB GRAPHOK). When graph
+ ; labs are OFF, merge just the panels: no graph Observations are added, so
+ ; ISI-filed labs are not duplicated. REFFIX re-points result[] at the
+ ; in-bundle Observations (vitals are already in the bundle; labs are ^LR).
  N IEN,ROOT
  S DFN=+$G(DFN) Q:DFN<1
  S ROOT=$$ROOT^C0FWFUTL() Q:ROOT=""
@@ -101,9 +102,12 @@ REFFIX(RTN,ROOT,IEN,DFN) ; Re-point panel result[] refs at in-bundle ^LR Observa
  . I NM'="" D KEYADD(.OIDX,"N|"_NM_"|"_TK,VAL,OID)
  . ; FOIA #60 names drift with trailing digits (GLUCOSE1); index stripped too.
  . I NM?.E1N S NM=$$DIGSTRIP(NM) I NM'="" D KEYADD(.OIDX,"N|"_NM_"|"_TK,VAL,OID)
- . S LNC="",J=0
- . F  S J=$O(RTN("entry",I,"resource","code","coding",J)) Q:'J!(LNC'="")  I $G(RTN("entry",I,"resource","code","coding",J,"system"))["loinc" S LNC=$G(RTN("entry",I,"resource","code","coding",J,"code"))
- . I LNC'="" D KEYADD(.OIDX,"L|"_LNC_"|"_TK,VAL,OID)
+ . ; Every LOINC coding, not just the first. Pulse ox is filed as 2708-6 and
+ . ; read back as 59408-5 plus 2708-6; indexing only the first misses the panel.
+ . S J=0
+ . F  S J=$O(RTN("entry",I,"resource","code","coding",J)) Q:'J  D
+ . . S LNC=$G(RTN("entry",I,"resource","code","coding",J,"code"))
+ . . I LNC'="",$G(RTN("entry",I,"resource","code","coding",J,"system"))["loinc" D KEYADD(.OIDX,"L|"_LNC_"|"_TK,VAL,OID)
  ; Rewrite unresolved DiagnosticReport result refs
  S I=0
  F  S I=$O(RTN("entry",I)) Q:I<1  D
@@ -114,7 +118,10 @@ REFFIX(RTN,ROOT,IEN,DFN) ; Re-point panel result[] refs at in-bundle ^LR Observa
  . . Q:$P(REF,"/")'="Observation"
  . . S GID=$P(REF,"/",2) Q:GID=""
  . . Q:$D(RTN("index","Observation|"_GID))  ; already resolves in-bundle
- . . S RIEN=+$O(@ROOT@(IEN,"SPO","urn:uuid:"_GID,"rien","")) Q:RIEN<1
+ . . ; Synthea fullUrls are urn:uuid:; hand-authored charts use Observation/id.
+ . . ; A re-posted chart can leave two entries under one fullUrl; the newest
+ . . ; is the one the panel was authored against.
+ . . S RIEN=$$REFRIEN(ROOT,IEN,GID) Q:RIEN<1
  . . N GR S GR=$NA(@ROOT@(IEN,"json","entry",RIEN,"resource"))
  . . S LNC="",J=0
  . . F  S J=$O(@GR@("code","coding",J)) Q:'J!(LNC'="")  I $G(@GR@("code","coding",J,"system"))["loinc" S LNC=$G(@GR@("code","coding",J,"code"))
@@ -267,7 +274,7 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  S CNT=CNT+1
  Q
  ;
-WANTDR(ROOT,IEN,RIEN) ; $$ - lab panel DiagnosticReport (not AI Consult)
+WANTDR(ROOT,IEN,RIEN) ; $$ - lab or vital-sign panel DiagnosticReport (not AI Consult)
  N CAT,CODE,I,J,RESN
  I $TEXT(ISAIC^C0FWAIC)'="",$$ISAIC^C0FWAIC(ROOT,IEN,RIEN) Q 0
  Q:$G(@ROOT@(IEN,"json","entry",RIEN,"resource","resourceType"))'="DiagnosticReport" 0
@@ -275,15 +282,15 @@ WANTDR(ROOT,IEN,RIEN) ; $$ - lab panel DiagnosticReport (not AI Consult)
  S (RESN,I)=0
  F  S I=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","result",I)) Q:'I  S RESN=RESN+1
  Q:RESN<1 0
- ; Prefer category LAB / Laboratory; also accept LABPATHOLOGY
+ ; LAB / Laboratory / LABPATHOLOGY, or vital-signs (observation-category)
  S I=0 F  S I=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","category",I)) Q:'I  D  Q:$G(CAT)
  . S J=0 F  S J=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","category",I,"coding",J)) Q:'J  D  Q:$G(CAT)
  . . S CODE=$$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","category",I,"coding",J,"code")))
- . . I CODE="LAB"!(CODE="LABORATORY")!(CODE="LABPATHOLOGY") S CAT=1
+ . . I CODE="LAB"!(CODE="LABORATORY")!(CODE="LABPATHOLOGY")!(CODE="VITAL-SIGNS") S CAT=1
  Q +$G(CAT)
  ;
-EMITDR(RTN,ROOT,IEN,RIEN,DFN) ; Copy/normalize one graph lab DiagnosticReport
- N IDX,N,REF,RES,RID,SEQ
+EMITDR(RTN,ROOT,IEN,RIEN,DFN) ; Copy/normalize one graph panel DiagnosticReport
+ N IDX,N,REF,RES,RID,SEQ,VIT
  Q:'$D(@ROOT@(IEN,"json","entry",RIEN,"resource"))
  M RES=@ROOT@(IEN,"json","entry",RIEN,"resource")
  Q:$G(RES("resourceType"))'="DiagnosticReport"
@@ -292,11 +299,14 @@ EMITDR(RTN,ROOT,IEN,RIEN,DFN) ; Copy/normalize one graph lab DiagnosticReport
  I RID="" S RID=IEN_"-"_RIEN
  I $E(RID,1,4)="GDR-" S RID=$E(RID,5,$L(RID))
  I $D(RTN("index","DiagnosticReport|"_RID)) Q
- ; Force LAB category to match GETLAB^C0FHIRL panel reports
- S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/v2-0074"
- S RES("category",1,"coding",1,"code")="LAB"
- S RES("category",1,"coding",1,"display")="Laboratory"
- S RES("category",1,"text")="Laboratory"
+ S VIT=$$VITCAT(.RES)
+ ; Lab panels: force LAB so they match GETLAB^C0FHIRL. Vital panels keep
+ ; category vital-signs so the browser groups them without calling them labs.
+ I 'VIT D
+ . S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/v2-0074"
+ . S RES("category",1,"coding",1,"code")="LAB"
+ . S RES("category",1,"coding",1,"display")="Laboratory"
+ . S RES("category",1,"text")="Laboratory"
  S RES("subject","reference")="Patient/"_+DFN
  ; Normalize result refs to Observation/{graph-id}
  S SEQ=0 F  S SEQ=$O(RES("result",SEQ)) Q:'SEQ  D
@@ -307,6 +317,7 @@ EMITDR(RTN,ROOT,IEN,RIEN,DFN) ; Copy/normalize one graph lab DiagnosticReport
  M RTN("entry",IDX,"resource")=RES
  S RTN("entry",IDX,"resource","id")=RID
  S RTN("entry",IDX,"fullUrl")="urn:uuid:"_RID
+ I VIT Q
  S RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-diagnosticreport-lab"
  ; Prefer graph performer; else attach a minimal lab Organization (no ORGMS^C0FHIR).
  I '$D(RES("performer")) D
@@ -314,6 +325,13 @@ EMITDR(RTN,ROOT,IEN,RIEN,DFN) ; Copy/normalize one graph lab DiagnosticReport
  . S RTN("entry",IDX,"resource","performer",1,"display")="Laboratory"
  . D GRPLABORG(.RTN)
  Q
+ ;
+VITCAT(RES) ; $$ - 1 when a copied DiagnosticReport is a vital-sign panel
+ N CODE,I,J
+ S I=0 F  S I=$O(RES("category",I)) Q:'I  D
+ . S J=0 F  S J=$O(RES("category",I,"coding",J)) Q:'J  D
+ . . I $$UP($G(RES("category",I,"coding",J,"code")))="VITAL-SIGNS" S CODE=1
+ Q +$G(CODE)
  ;
 GRPLABORG(RTN) ; Minimal Organization for graph lab DiagnosticReport performers
  N IDX
@@ -324,6 +342,13 @@ GRPLABORG(RTN) ; Minimal Organization for graph lab DiagnosticReport performers
  S RTN("entry",IDX,"resource","active")="true"
  S RTN("entry",IDX,"resource","name")="Laboratory"
  Q
+ ;
+REFRIEN(ROOT,IEN,GID) ; $$ - newest graph entry for this Observation id
+ N BEST,K,R
+ F K="urn:uuid:"_GID,"Observation/"_GID D
+ . S R=""
+ . F  S R=$O(@ROOT@(IEN,"SPO",K,"rien",R)) Q:R=""  S BEST=+R
+ Q +$G(BEST)
  ;
 MAPOREF(REF) ; $$ - urn:uuid:x or Observation/x -> Observation/x (strip GOBS-)
  N ID,P
