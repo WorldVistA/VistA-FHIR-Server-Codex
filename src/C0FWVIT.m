@@ -16,6 +16,8 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Observation vital sign
  I TYPE<1 D STATUS(ROOT,IEN,RIEN,"skipped",$G(WHY,"Unable to map vital type"),.RETURN) Q
  S VAL=$$VALUE(ROOT,IEN,RIEN,ABBR,.WHY)
  I VAL="" D STATUS(ROOT,IEN,RIEN,"error",$G(WHY,"Missing vital value"),.RETURN) Q
+ ; GMV stores HT in inches, WT in lb, T in F; FHIR vitals arrive in cm/kg/Cel.
+ S VAL=$$CNV(ABBR,VAL,$$UNIT(ROOT,IEN,RIEN))
  S FMDT=$$FMDT(ROOT,IEN,RIEN)
  I FMDT<1 D STATUS(ROOT,IEN,RIEN,"error","Missing or invalid effectiveDateTime",.RETURN) Q
  S LOC=$$LOC(ROOT,IEN,RIEN)

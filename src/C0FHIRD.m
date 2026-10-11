@@ -267,6 +267,7 @@ GETOBS(RTN,DFN,BEG,END,MAX) ; Add Observation resources (vitals) for patient/dat
  .. KILL VIT
  .. DO EN1^VPRDGMV(IEN,.VIT)
  .. IF '$DATA(VIT) QUIT
+ .. IF $DATA(VIT("removed")) QUIT  ; marked entered-in-error (GMV MARK ERROR); CPRS hides these too
  .. DO SETOBS(.RTN,.VIT,DFN)
  .. SET CNT=CNT+1
  KILL ^UTILITY($J,"GMRVD")
