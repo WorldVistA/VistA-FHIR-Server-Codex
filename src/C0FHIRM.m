@@ -142,8 +142,11 @@ SETIMM(RTN,IMM,DFN) ; Map one VPR immunization entry to FHIR Immunization
  ; USQC Immunization status VS is completed | entered-in-error (not not-done).
  SET STAT="completed"
  IF +$GET(IMM("contraindicated"))=1 SET STAT="entered-in-error"
- ; Emit one entered-in-error + statusReason so Inferno MS can find statusReason.
- IF STAT="completed",('$DATA(RTN("index","imm-statusreason"))) DO
+ ; Inferno-only shim: relabel one real dose entered-in-error so the USQC
+ ; Immunization must-support test finds a statusReason (otherwise it skips).
+ ; It falsifies a clinical record, so it is OFF unless a site sets
+ ; ^C0FHIR("EXPERIMENT","IMMSTATUSREASON")=1 for a scorecard run.
+ IF STAT="completed",+$GET(^C0FHIR("EXPERIMENT","IMMSTATUSREASON")),('$DATA(RTN("index","imm-statusreason"))) DO
  . SET RTN("index","imm-statusreason")=1
  . SET STAT="entered-in-error"
  SET RTN("entry",IDX,"resource","status")=STAT

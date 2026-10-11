@@ -180,6 +180,20 @@ printf "%s\n" \
   "I \$\$COUNT^SYNOS5LD<1 W \"ERROR: sct2os5 map empty after LOADOS5\",! H 1" \
   "H" | mumps -direct
 '
+# Loader environment init (what EN^SYNINIT does at KIDS install; the stock VEHU
+# image never ran it). Without PHARMACIST,UNKNOWN SYNTHEA every Rx files in #52
+# with no entering person, CPRS rejects the ORM ("Missing or invalid entering
+# person", ^ORYX("ORERR")), and MedicationRequest never reads back (2026-10-11).
+# SYNMENU must exist first (PROV/PHARM point field 201 at it). Idempotent.
+docker exec -u vehu -w /tmp "\$NAME" bash -lc 'set -a; . /home/vehu/etc/env; set +a
+printf "%s\n" \
+  "S DUZ=.5,DUZ(0)=\"@\",U=\"^\",DT=\$\$DT^XLFDT" \
+  "I \$\$FIND1^DIC(19,\"\",\"QX\",\"SYNMENU\",\"B\")<1 N FDA,IEN S FDA(19,\"?+1,\",.01)=\"SYNMENU\",FDA(19,\"?+1,\",1)=\"Synthea Loader Menu\",FDA(19,\"?+1,\",4)=\"M\" D UPDATE^DIE(\"E\",\$NA(FDA),\$NA(IEN))" \
+  "W \"syn provider: \",\$\$PROV^SYNINIT(0),!" \
+  "W \"syn pharmacist: \",\$\$PHARM^SYNINIT(0),!" \
+  "W \"pharmacy site: \",\$\$PSOSITE^SYNINIT(),!" \
+  "H" | mumps -direct
+'
 # build plugin inside guest
 if [ -d "\$STAGE/c0rgenc" ]; then
   docker cp "\$STAGE/c0rgenc/." "\$NAME:/tmp/c0rgenc/"
