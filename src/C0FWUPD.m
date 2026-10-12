@@ -84,6 +84,9 @@ wsUpdatePatient(ARGS,BODY,RESULT) ; POST /updatepatient
  . S RETURN("load","message")="No DFN resolved for updatepatient graph row"
  I $G(ARGS("returngraph"))=1 D TXLOAD^C0FWIDX(.RETURN,IEN,LASTRIEN+1,LASTRIEN+CNT)
  I $T(INV^C0FWCAC)'="" D INV^C0FWCAC(IEN,ROOT)
+ ; POPIDX for this DFN only. Same reason as C0FWADD: do not call
+ ; INDEX^C0XIDX here; it rewrites the whole graph.
+ I RDFN'="",$L($T(ENRICH^C0XIDX)) D ENRICH^C0XIDX(IEN,ROOT,+RDFN)
  K C0FWBUNDLE
  N C0FWJE D ENC^C0FHIRBU(.RETURN,.RESULT,.C0FWJE)
  Q 1

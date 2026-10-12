@@ -89,6 +89,9 @@ ADDJSON(ARGS,GR1,RETURN) ; ingest decoded Bundle array GR1 into fhir-intake (+ o
  . I $G(RETURN("loadStatus"))="" S RETURN("loadStatus")="skipped"
  . S RETURN("load","message")="No DFN resolved for addpatient graph row"
  I $G(ARGS("returngraph"))=1 D TXLOAD^C0FWIDX(.RETURN,IEN,1,LASTRIEN)
+ ; POPIDX for this DFN only. ENRICH, not INDEX^C0XIDX (that also
+ ; rewrites the whole graph through INDEX^C0FWIDX).
+ I RDFN>0,$L($T(ENRICH^C0XIDX)) D ENRICH^C0XIDX(IEN,ROOT,RDFN)
  K C0FWBUNDLE,GR
  Q
  ;
