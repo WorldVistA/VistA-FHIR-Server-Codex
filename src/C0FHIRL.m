@@ -37,6 +37,7 @@ GETLAB(RTN,DFN,BEG,END,MAX) ; Add lab Observations and panel DiagnosticReports
  ; the ^LR Observations above so REFFIX can re-point panel result[] refs at
  ; the in-bundle ^LR rows (browser nests member Observations under panels).
  IF 'GRAPHON,$TEXT(GETGRPNL^C0FHIRLG)'="" DO GETGRPNL^C0FHIRLG(.RTN,DFN,BEG,END)
+ IF $TEXT(GETGRPCL^C0FHIRLG)'="" DO GETGRPCL^C0FHIRLG(.RTN,DFN)
  QUIT
  ;
 LABOCNT(RTN) ; $$ - Observation entries currently in lab bundle

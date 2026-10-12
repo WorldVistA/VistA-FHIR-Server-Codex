@@ -101,6 +101,7 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  I TYPE="Patient" D PAT(CROOT,SUB,RES) Q
  D REF(CROOT,SUB,"patient",$G(@RES@("patient","reference")))
  D REF(CROOT,SUB,"patient",$G(@RES@("subject","reference")))
+ D REF(CROOT,SUB,"patient",$G(@RES@("beneficiary","reference")))
  D REF(CROOT,SUB,"subject",$G(@RES@("subject","reference")))
  I TYPE="Provenance" D PROV(CROOT,SUB,RES)
  D REF(CROOT,SUB,"encounter",$G(@RES@("encounter","reference")))
@@ -445,16 +446,17 @@ SEARCH(FILTER,OUT,ERR) ; Build searchset Bundle from cache indexes
  I ROOT="" S ERR="FHIR graph root is unavailable" Q
  S IEN=$$DFN2IEN^C0FWFUTL(DFN)
  I IEN<1 S ERR="Patient graph row not found" Q
- S REQ("DFN")=DFN,REQ("MODE")="DATERANGE",REQ("MAX")=$S(+$G(FILTER("_count"))>0:+$G(FILTER("_count")),1:200)
+ ; _count limits the search result in FINDS. It must not shrink the bundle
+ ; that gets indexed, or a small page hides older must-support vitals.
+ S REQ("DFN")=DFN,REQ("MODE")="DATERANGE",REQ("MAX")=200
+ I +$G(FILTER("_count"))>200 S REQ("MAX")=+$G(FILTER("_count"))
  S REQ("DOMAIN","ALL")=1
  I +$G(FILTER("refresh")) S REQ("REFRESH")=1
  S SAVEIEN=IEN,SAVEROOT=ROOT
  D GET(.REQ,.OUT)
  S IEN=SAVEIEN,ROOT=SAVEROOT
- ; Prefer newest cache for this patient (same rule as READ). Request-hash CID
- ; alone can hit a stale sibling cache and return outdated Observation shapes.
- S CID=$$NEWEST(ROOT,IEN,RES)
- I CID="" S CID=$$CID(.REQ)
+ ; Search this request's cache. A newer smaller sibling cache must not shadow it.
+ S CID=$$CID(.REQ)
  S CROOT=$NA(@ROOT@(IEN,"cache",CID))
  D FINDS(.FILTER,CROOT,RES,.OUT)
  Q

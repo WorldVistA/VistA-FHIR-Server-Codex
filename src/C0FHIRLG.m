@@ -46,7 +46,7 @@ GETGRPLAB(RTN,DFN,BEG,END,MAX) ; Append graph Observations + panel DiagnosticRep
  ; All Observation entries that WANT() accepts
  S RIEN=0
  F  S RIEN=$O(@ROOT@(IEN,"type","Observation",RIEN)) Q:'RIEN  D
- . I $$WANT(ROOT,IEN,RIEN) S KEEP(RIEN)=""
+ . I $$WANT(ROOT,IEN,RIEN)!$$MSVIT(ROOT,IEN,RIEN) S KEEP(RIEN)=""
  ; Newest effective/issued first (MAX keeps the newest, not newest IEN).
  S RIEN=0
  F  S RIEN=$O(KEEP(RIEN)) Q:'RIEN  D
@@ -218,6 +218,80 @@ WANT(ROOT,IEN,RIEN) ; $$ - include this Observation from graph
  . . I $$UP($G(@ROOT@(IEN,"json","entry",RIEN,"resource","category",I,"coding",J,"code")))="SURVEY" S CAT=1
  Q +$G(CAT)
  ;
+MSVIT(ROOT,IEN,RIEN) ; $$ - BMI, oxygen flow rate, or a data-absent vital component
+ N CODE,HIT,I
+ S I=0 F  S I=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",I)) Q:'I  D
+ . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",I,"code"))
+ . I CODE="39156-5" S HIT=1
+ I $G(HIT) Q 1
+ S I=0 F  S I=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","component",I)) Q:'I  D
+ . I $D(@ROOT@(IEN,"json","entry",RIEN,"resource","component",I,"dataAbsentReason")) S HIT=1
+ . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","component",I,"code","coding",1,"code"))
+ . I CODE="3151-8" S HIT=1
+ Q +$G(HIT)
+ ;
+VITOBS(RES) ; $$ - copied Observation is a vital profile, not a lab
+ N CODE,HIT,I
+ S I=0 F  S I=$O(RES("code","coding",I)) Q:'I  D
+ . S CODE=$G(RES("code","coding",I,"code"))
+ . I CODE="39156-5"!(CODE="85354-9")!(CODE="59408-5")!(CODE="2708-6") S HIT=1
+ Q +$G(HIT)
+ ;
+VITPROF(RES) ; $$ - US Core profile URL for a graph vital
+ N CODE,I,PROF
+ S I=0 F  S I=$O(RES("code","coding",I)) Q:'I  D
+ . S CODE=$G(RES("code","coding",I,"code"))
+ . I CODE="39156-5" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-bmi"
+ . I CODE="85354-9" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-blood-pressure"
+ . I CODE="59408-5"!(CODE="2708-6") S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-pulse-oximetry"
+ Q $G(PROF)
+ ;
+GETGRPCL(RTN,DFN) ; Chart resources the loader does not file, from the intake graph
+ N IEN,ROOT,TYPE
+ Q:$TEXT(ROOT^C0FWFUTL)=""
+ S DFN=+$G(DFN) Q:DFN<1
+ S ROOT=$$ROOT^C0FWFUTL() Q:ROOT=""
+ S IEN=$$DFN2IEN^C0FWFUTL(DFN) Q:IEN<1
+ F TYPE="Coverage","CareTeam","RelatedPerson","Goal","CarePlan","ServiceRequest","Provenance" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
+ Q
+ ;
+GRPTYPE(RTN,ROOT,IEN,DFN,TYPE) ;
+ N RIEN
+ S RIEN=0
+ F  S RIEN=$O(@ROOT@(IEN,"type",TYPE,RIEN)) Q:'RIEN  D EMITCL(.RTN,ROOT,IEN,RIEN,DFN,TYPE)
+ Q
+ ;
+EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bundle
+ N IDX,PROF,RES,RID
+ Q:'$D(@ROOT@(IEN,"json","entry",RIEN,"resource"))
+ M RES=@ROOT@(IEN,"json","entry",RIEN,"resource")
+ Q:$G(RES("resourceType"))'=TYPE
+ S RID=$G(RES("id")) Q:RID=""
+ I $G(RES("subject","reference"))["Patient/" S RES("subject","reference")="Patient/"_+DFN
+ I $G(RES("patient","reference"))["Patient/" S RES("patient","reference")="Patient/"_+DFN
+ I $G(RES("beneficiary","reference"))["Patient/" S RES("beneficiary","reference")="Patient/"_+DFN
+ I TYPE="ServiceRequest",$G(RES("category",1,"coding",1,"code"))="" D
+ . S RES("category",1,"coding",1,"system")="http://snomed.info/sct"
+ . S RES("category",1,"coding",1,"code")="3457005"
+ . S RES("category",1,"coding",1,"display")="Patient referral"
+ S PROF=$$CLPROF(TYPE)
+ I PROF'="" S RES("meta","profile",1)=PROF
+ D ADDRES^C0FHIRBU(.RTN,TYPE,RID,.IDX)
+ Q:IDX=""
+ M RTN("entry",IDX,"resource")=RES
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"fullUrl")=TYPE_"/"_RID
+ Q
+ ;
+CLPROF(TYPE) ; $$ - US Quality Core profile, or empty
+ I TYPE="Coverage" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-coverage"
+ I TYPE="CareTeam" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-careteam"
+ I TYPE="RelatedPerson" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-relatedperson"
+ I TYPE="Goal" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-goal"
+ I TYPE="CarePlan" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-careplan"
+ I TYPE="ServiceRequest" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-servicerequest"
+ Q ""
+ ;
 INWIN(ROOT,IEN,RIEN,BEG,END) ; $$ - effective time in window (FM)
  N DT,ISO
  S ISO=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","effectiveDateTime"))
@@ -253,6 +327,11 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  . S RES("category",1,"coding",1,"code")="social-history"
  . S RES("category",1,"coding",1,"display")="Social History"
  . S RES("category",1,"text")="Social History"
+ E  I $$VITOBS(.RES) D
+ . S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ . S RES("category",1,"coding",1,"code")="vital-signs"
+ . S RES("category",1,"coding",1,"display")="Vital Signs"
+ . S RES("category",1,"text")="Vital Signs"
  E  D
  . S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
  . S RES("category",1,"coding",1,"code")="laboratory"
@@ -269,6 +348,8 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  ; Prefer US Core profile URLs Inferno can resolve; dual-tag quality-core lab when still lab.
  I SMOK D
  . S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus"
+ E  I $$VITOBS(.RES) D
+ . I $$VITPROF(.RES)'="" S RTN("entry",IDX,"resource","meta","profile",1)=$$VITPROF(.RES)
  E  D
  . S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
  . S RTN("entry",IDX,"resource","meta","profile",2)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
@@ -287,6 +368,7 @@ LOINCD(RES) ; Official LOINC display. A short name fails US Core validation.
 LOINCNM(C0FCD) ; $$ - validator display, or empty
  I C0FCD="98979-8" Q "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI 2021)/1.73 sq M"
  I C0FCD="77353-1" Q "Noninvasive colorectal cancer DNA and occult blood screening [Interpretation] in Stool Narrative"
+ I C0FCD="39156-5" Q "Body mass index (BMI) [Ratio]"
  Q ""
  ;
 WANTDR(ROOT,IEN,RIEN) ; $$ - lab or vital-sign panel DiagnosticReport (not AI Consult)

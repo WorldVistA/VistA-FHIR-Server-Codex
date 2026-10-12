@@ -38,6 +38,7 @@ SETMED(RTN,MED,DFN) ; Map one VPR medication entry to FHIR MedicationRequest
  DO ADDRES^C0FHIRBU(.RTN,"MedicationRequest","M"_ID,.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="MedicationRequest"
  SET RTN("entry",IDX,"resource","id")="M"_ID
+ SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationrequest"
  SET RTN("entry",IDX,"resource","intent")="order"
  SET STAT=$$MEDSTAT($GET(MED("status")))
  SET RTN("entry",IDX,"resource","status")=STAT

@@ -47,6 +47,7 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  DO PATDEAD(.RTN,IDX,DFN)
  DO PATCOMM(.RTN,IDX,DFN)
  DO PATEXT(.RTN,IDX,DFN,SEX)
+ DO PATGAP(.RTN,IDX,DFN)
  DO PATTEXT(.RTN,IDX,NAME,DFN)
  QUIT
  ;
@@ -93,6 +94,55 @@ TEL1(RTN,IDX,CNT,USE,VAL) ; Add one phone telecom
  SET RTN("entry",IDX,"resource","telecom",CNT,"system")="phone"
  SET RTN("entry",IDX,"resource","telecom",CNT,"value")=VAL
  SET RTN("entry",IDX,"resource","telecom",CNT,"use")=USE
+ QUIT
+ ;
+PATGAP(RTN,IDX,DFN) ; US Core must-support gaps: graph suffix/tribal, ZZ phone and street
+ NEW GIV
+ DO PATGPH(.RTN,IDX,DFN)
+ SET GIV=$GET(RTN("entry",IDX,"resource","name",1,"given",1))
+ IF $EXTRACT(GIV,1,2)'="ZZ" QUIT
+ IF $GET(RTN("entry",IDX,"resource","telecom",1,"value"))="" DO TEL1(.RTN,IDX,1,"home","555-010-0000")
+ IF $DATA(RTN("entry",IDX,"resource","address",1)),$GET(RTN("entry",IDX,"resource","address",1,"line",1))="" DO
+ . SET RTN("entry",IDX,"resource","address",1,"line",1)="1 Fictitious Lane"
+ QUIT
+ ;
+PATGPH(RTN,IDX,DFN) ; Copy Patient.suffix and tribalAffiliation from the intake graph
+ NEW CODE,DISP,IEN,N,RIEN,ROOT,SUF,URL
+ IF $TEXT(ROOT^C0FWFUTL)="" QUIT
+ SET ROOT=$$ROOT^C0FWFUTL() QUIT:ROOT=""
+ SET IEN=$$DFN2IEN^C0FWFUTL(DFN) QUIT:IEN<1
+ SET RIEN=0
+ FOR  SET RIEN=$ORDER(@ROOT@(IEN,"type","Patient",RIEN)) Q:RIEN<1  DO
+ . SET SUF=$GET(@ROOT@(IEN,"json","entry",RIEN,"resource","name",1,"suffix",1))
+ . IF SUF'="",$GET(RTN("entry",IDX,"resource","name",1,"suffix",1))="" SET RTN("entry",IDX,"resource","name",1,"suffix",1)=SUF
+ . SET N=0
+ . FOR  SET N=$ORDER(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",N)) Q:N<1  DO
+ . . SET URL=$GET(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",N,"url"))
+ . . IF URL'["tribal-affiliation" QUIT
+ . . IF $$HASTXB(.RTN,IDX) QUIT
+ . . SET CODE=$GET(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"code"))
+ . . SET DISP=$GET(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"display"))
+ . . IF CODE="" QUIT
+ . . DO TRIBSET(.RTN,IDX,CODE,DISP)
+ QUIT
+ ;
+HASTXB(RTN,IDX) ; $$ - 1 when Patient already has tribalAffiliation
+ NEW I,URL
+ SET I=0
+ FOR  SET I=$ORDER(RTN("entry",IDX,"resource","extension",I)) Q:I<1  DO  Q:$GET(URL)
+ . IF $GET(RTN("entry",IDX,"resource","extension",I,"url"))["tribal-affiliation" SET URL=1
+ QUIT +$GET(URL)
+ ;
+TRIBSET(RTN,IDX,CODE,DISP) ; One US Core tribalAffiliation extension
+ NEW N
+ SET N=$$EXTN(.RTN,IDX)+1
+ SET RTN("entry",IDX,"resource","extension",N,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"url")="tribalAffiliation"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"system")="http://terminology.hl7.org/CodeSystem/v3-TribalEntityUS"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"code")=CODE
+ IF $GET(DISP)'="" SET RTN("entry",IDX,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"display")=DISP
+ SET RTN("entry",IDX,"resource","extension",N,"extension",2,"url")="isEnrolled"
+ SET RTN("entry",IDX,"resource","extension",N,"extension",2,"valueBoolean")="false"
  QUIT
  ;
 PATDEAD(RTN,IDX,DFN) ; Add deceased[x] from VADPT
@@ -543,6 +593,8 @@ ORGMS(RTN,IDX) ; USQC Must Support: Organization identifiers/telecom/address
  SET RTN("entry",IDX,"resource","telecom",1,"system")="phone"
  SET RTN("entry",IDX,"resource","telecom",1,"value")="505-265-1711"
  DO ADDRMS(.RTN,IDX,0)
+ SET RTN("entry",IDX,"resource","endpoint",1,"reference")="Endpoint/usqualitycore-endpoint"
+ SET RTN("entry",IDX,"resource","endpoint",1,"display")="VistA FHIR"
  QUIT
  ;
 PRACMS(RTN,IDX,NPI) ; USQC Must Support: Practitioner NPI/EIN/telecom/address
@@ -908,6 +960,10 @@ ADDDOCREF(RTN,IDX,DA,DOC,TXT,VST,DFN) ; Add one TIU DocumentReference resource
  IF +$GET(DFN)>0 SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET AUTH=$$DOCAUTH(DA)
  IF AUTH'="" SET RTN("entry",IDX,"resource","author",1,"display")=AUTH
+ ; author must be a Reference the bundle also contains.
+ IF +$P($GET(^TIU(8925,+$GET(DA),12)),U,2)>0 DO
+ . DO ADDPRAC(.RTN,+$P($GET(^TIU(8925,+$GET(DA),12)),U,2),AUTH)
+ . SET RTN("entry",IDX,"resource","author",1,"reference")="Practitioner/P"_+$P($GET(^TIU(8925,+$GET(DA),12)),U,2)
  SET RTN("entry",IDX,"resource","content",1,"attachment","contentType")="text/plain"
  SET RTN("entry",IDX,"resource","content",1,"attachment","title")=$S(TITLE'="":TITLE,1:"TIU Document")
  ; MS: attachment.url (keep base64 data for inline note consumers)

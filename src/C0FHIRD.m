@@ -652,7 +652,11 @@ SETALGY(RTN,REAC,DFN) ; Map one VPR allergy entry to FHIR AllergyIntolerance
  IF SEV'="" SET TAG="low"
  IF SEV="severe" SET TAG="high"
  IF TAG'="" SET RTN("entry",IDX,"resource","criticality")=TAG
- IF +$GET(REAC("entered"))>0 SET RTN("entry",IDX,"resource","recordedDate")=$$FM2FHIR^C0FHIRBU($GET(REAC("entered")))
+ IF +$GET(REAC("entered"))>0 DO
+ . SET RTN("entry",IDX,"resource","recordedDate")=$$FM2FHIR^C0FHIRBU($GET(REAC("entered")))
+ . ; VistA has no separate onset. The entered date is the occurrence we know.
+ . SET RTN("entry",IDX,"resource","onsetDateTime")=$$FM2FHIR^C0FHIRBU($GET(REAC("entered")))
+ . SET RTN("entry",IDX,"resource","lastOccurrence")=$PIECE($$FM2FHIR^C0FHIRBU($GET(REAC("entered"))),"T")
  DO ALGREAC(.RTN,.REAC,IDX,SEV)
  DO ALGNOTE(.RTN,.REAC,IDX)
  QUIT
