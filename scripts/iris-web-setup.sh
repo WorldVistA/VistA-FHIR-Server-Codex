@@ -148,6 +148,10 @@ N C,I S C=0,I=0 F  S I=\$O(^%web(17.6001,I)) Q:'I  S C=C+1
 W \"routes after c0rg: \",C,!
 S ^C0FQUAL(\"FHIRBASE\")=\"https://${HOST#*@}/fhir\"
 W \"FHIRBASE: \",^C0FQUAL(\"FHIRBASE\"),!
+; IRIS has no YottaDB C plugin. AUTO would hard-fail encode (plugin-not-ready)
+; and the CPRS bridge reports that as a bundle-size error. JSNE only.
+D SET^C0RGPAR(\"ENCODER\",\"JSNE\")
+W \"ENCODER: \",\$\$GETPAR^C0RGPAR(\"ENCODER\"),!
 H
 EOF"
 else
