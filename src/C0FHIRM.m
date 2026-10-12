@@ -224,6 +224,8 @@ CVXDISP(CODE) ; $$ - validator-preferred CVX display overrides
  IF CODE="218" QUIT "COVID-19, mRNA, LNP-S, PF, 30 mcg/0.3 mL dose, tris-sucrose"
  IF CODE="219" QUIT "COVID-19, mRNA, LNP-S, PF, 10 mcg/0.2 mL dose, tris-sucrose"
  IF CODE="221" QUIT "COVID-19, mRNA, LNP-S, PF, 50 mcg/0.5 mL dose"
+ ; VistA stores CVX 135 as INFLUENZA, HIGH DOSE SEASONAL. US Core rejects that.
+ IF CODE="135" QUIT "Influenza, high-dose, trivalent, PF"
  IF CODE="141" QUIT "Influenza, seasonal, injectable"
  IF CODE="140" QUIT "Influenza, seasonal, injectable, preservative free"
  IF CODE="150" QUIT "Influenza, injectable, quadrivalent, preservative free"

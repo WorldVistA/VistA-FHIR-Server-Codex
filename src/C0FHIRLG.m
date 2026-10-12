@@ -258,6 +258,7 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  . S RES("category",1,"coding",1,"code")="laboratory"
  . S RES("category",1,"coding",1,"display")="Laboratory"
  . S RES("category",1,"text")="Laboratory"
+ D LOINCD(.RES)
  S RES("subject","reference")="Patient/"_+DFN
  D ADDRES^C0FHIRBU(.RTN,"Observation",RID,.IDX)
  Q:IDX=""
@@ -273,6 +274,20 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  . S RTN("entry",IDX,"resource","meta","profile",2)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
  S CNT=CNT+1
  Q
+ ;
+LOINCD(RES) ; Official LOINC display. A short name fails US Core validation.
+ N C0FCD,C0FI,C0FNM
+ S C0FI=0
+ F  S C0FI=$O(RES("code","coding",C0FI)) Q:'C0FI  D
+ . S C0FCD=$G(RES("code","coding",C0FI,"code"))
+ . S C0FNM=$$LOINCNM(C0FCD) Q:C0FNM=""
+ . S RES("code","coding",C0FI,"display")=C0FNM
+ Q
+ ;
+LOINCNM(C0FCD) ; $$ - validator display, or empty
+ I C0FCD="98979-8" Q "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI 2021)/1.73 sq M"
+ I C0FCD="77353-1" Q "Noninvasive colorectal cancer DNA and occult blood screening [Interpretation] in Stool Narrative"
+ Q ""
  ;
 WANTDR(ROOT,IEN,RIEN) ; $$ - lab or vital-sign panel DiagnosticReport (not AI Consult)
  N CAT,CODE,I,J,RESN

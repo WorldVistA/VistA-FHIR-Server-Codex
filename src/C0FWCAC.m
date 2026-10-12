@@ -116,7 +116,9 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  I $G(@RES@("intent"))'="" D SET(CROOT,SUB,"intent",$G(@RES@("intent")))
  D BOOL(CROOT,SUB,"do-not-perform",$$DONOT(RES))
  D DATE(CROOT,SUB,"date",$G(@RES@("effectiveDateTime")))
- D DATE(CROOT,SUB,"date",$G(@RES@("issued")))
+ ; Observation date is effective[x]. issued is the cache-build time, so
+ ; indexing it under date returned 2021 vitals for a gt2023 search.
+ I TYPE'="Observation" D DATE(CROOT,SUB,"date",$G(@RES@("issued")))
  ; Keep shared "date" for generic date= search, but also index typed predicates
  ; so Inferno onset-date / asserted-date / abatement-date / period / authoredon
  ; check the field they name instead of any date on the resource.
