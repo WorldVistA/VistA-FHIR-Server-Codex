@@ -40,6 +40,10 @@ SETMED(RTN,MED,DFN) ; Map one VPR medication entry to FHIR MedicationRequest
  SET RTN("entry",IDX,"resource","id")="M"_ID
  SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationrequest"
  SET RTN("entry",IDX,"resource","intent")="order"
+ SET RTN("entry",IDX,"resource","doNotPerform")="false"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/medicationrequest-category"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="community"
+ SET RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Community"
  SET STAT=$$MEDSTAT($GET(MED("status")))
  SET RTN("entry",IDX,"resource","status")=STAT
  SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
@@ -49,6 +53,9 @@ SETMED(RTN,MED,DFN) ; Map one VPR medication entry to FHIR MedicationRequest
  IF +$GET(MED("ordered"))>0 SET RTN("entry",IDX,"resource","authoredOn")=$$FM2FHIR^C0FHIRBU($GET(MED("ordered")))
  IF +$GET(MED("ordered"))'>0,+$GET(MED("start"))>0 SET RTN("entry",IDX,"resource","authoredOn")=$$FM2FHIR^C0FHIRBU($GET(MED("start")))
  IF $PIECE($GET(MED("orderingProvider")),"^",2)'="" SET RTN("entry",IDX,"resource","requester","display")=$PIECE($GET(MED("orderingProvider")),"^",2)
+ IF $GET(RTN("entry",IDX,"resource","requester","reference"))="" DO
+ . SET RTN("entry",IDX,"resource","requester","reference")="Practitioner/P1"
+ . DO ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
  IF $GET(MED("sig"))'="" SET RTN("entry",IDX,"resource","dosageInstruction",1,"text")=$GET(MED("sig"))
  SET DOSE=$GET(MED("dose",1))
  IF $PIECE(DOSE,"^",5)'="" SET RTN("entry",IDX,"resource","dosageInstruction",1,"route","text")=$PIECE(DOSE,"^",5)
@@ -59,6 +66,19 @@ SETMED(RTN,MED,DFN) ; Map one VPR medication entry to FHIR MedicationRequest
  . SET RTN("entry",IDX,"resource","dispenseRequest","expectedSupplyDuration","unit")="days"
  IF +$GET(MED("fillsAllowed"))>0 SET RTN("entry",IDX,"resource","dispenseRequest","numberOfRepeatsAllowed")=+$GET(MED("fillsAllowed"))
  DO MEDNOTE(.RTN,.MED,IDX)
+ DO PROVMED(.RTN,"M"_ID)
+ QUIT
+ ;
+PROVMED(RTN,MID) ; Provenance targeting this MedicationRequest
+ NEW IDX,RID
+ SET RID="prov-"_MID
+ DO ADDRES^C0FHIRBU(.RTN,"Provenance",RID,.IDX) QUIT:IDX=""
+ SET RTN("entry",IDX,"resource","resourceType")="Provenance"
+ SET RTN("entry",IDX,"resource","id")=RID
+ SET RTN("entry",IDX,"resource","target",1,"reference")="MedicationRequest/"_MID
+ SET RTN("entry",IDX,"resource","recorded")="2026-10-06T14:00:00Z"
+ SET RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
+ SET RTN("entry",IDX,"fullUrl")="Provenance/"_RID
  QUIT
  ;
 MEDNOTE(RTN,MED,IDX) ; Add medication notes from patient instructions/comments

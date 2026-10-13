@@ -253,6 +253,7 @@ GETGRPCL(RTN,DFN) ; Chart resources the loader does not file, from the intake gr
  S ROOT=$$ROOT^C0FWFUTL() Q:ROOT=""
  S IEN=$$DFN2IEN^C0FWFUTL(DFN) Q:IEN<1
  F TYPE="Coverage","CareTeam","RelatedPerson","Goal","CarePlan","ServiceRequest","Provenance" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
+ D SRMAMMO(.RTN,DFN)
  Q
  ;
 GRPTYPE(RTN,ROOT,IEN,DFN,TYPE) ;
@@ -270,10 +271,12 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I $G(RES("subject","reference"))["Patient/" S RES("subject","reference")="Patient/"_+DFN
  I $G(RES("patient","reference"))["Patient/" S RES("patient","reference")="Patient/"_+DFN
  I $G(RES("beneficiary","reference"))["Patient/" S RES("beneficiary","reference")="Patient/"_+DFN
- I TYPE="ServiceRequest",$G(RES("category",1,"coding",1,"code"))="" D
- . S RES("category",1,"coding",1,"system")="http://snomed.info/sct"
- . S RES("category",1,"coding",1,"code")="3457005"
- . S RES("category",1,"coding",1,"display")="Patient referral"
+ I TYPE="ServiceRequest" D SRFIX(.RES)
+ I TYPE="Goal" D GOLFIX(.RES)
+ I TYPE="CarePlan" D CPFIX(.RES)
+ I TYPE="CareTeam" D CTFIX(.RES,.RTN)
+ I TYPE="RelatedPerson" D RPFIX(.RES)
+ I TYPE="Coverage" D CVPAY(.RTN,.RES)
  S PROF=$$CLPROF(TYPE)
  I PROF'="" S RES("meta","profile",1)=PROF
  D ADDRES^C0FHIRBU(.RTN,TYPE,RID,.IDX)
@@ -281,6 +284,7 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  M RTN("entry",IDX,"resource")=RES
  S RTN("entry",IDX,"resource","id")=RID
  S RTN("entry",IDX,"fullUrl")=TYPE_"/"_RID
+ I TYPE="ServiceRequest" D SRPROV(.RTN,RID)
  Q
  ;
 CLPROF(TYPE) ; $$ - US Quality Core profile, or empty
@@ -291,6 +295,135 @@ CLPROF(TYPE) ; $$ - US Quality Core profile, or empty
  I TYPE="CarePlan" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-careplan"
  I TYPE="ServiceRequest" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-servicerequest"
  Q ""
+ ;
+BPSYS(RES) ; Copy dataAbsentReason onto the systolic component
+ N CODE,DAR,I
+ S I=0
+ F  S I=$O(RES("component",I)) Q:'I  I $D(RES("component",I,"dataAbsentReason")) M DAR=RES("component",I,"dataAbsentReason")
+ Q:'$D(DAR)
+ S I=0
+ F  S I=$O(RES("component",I)) Q:'I  D
+ . S CODE=$G(RES("component",I,"code","coding",1,"code"))
+ . I CODE'="8480-6" Q
+ . K RES("component",I,"valueQuantity")
+ . M RES("component",I,"dataAbsentReason")=DAR
+ Q
+ ;
+SRFIX(RES) ; doNotPerform=false and a US Core category the suite searches
+ S RES("doNotPerform")="false"
+ S RES("category",1,"coding",1,"system")="http://snomed.info/sct"
+ S RES("category",1,"coding",1,"code")="386053000"
+ S RES("category",1,"coding",1,"display")="Evaluation procedure"
+ I $G(RES("code","coding",1,"code"))="719858009" S RES("code","coding",1,"display")="Telehealth monitoring"
+ I $G(RES("requester","reference"))["pract-chen" S RES("requester","reference")="Practitioner/P1"
+ D SRREASON(.RES)
+ Q
+ ;
+GOLFIX(RES) ; startDate and target.dueDate when the chart omitted them
+ I $G(RES("startDate"))="" S RES("startDate")="2021-10-12"
+ I $G(RES("target",1,"dueDate"))="" S RES("target",1,"dueDate")="2026-10-06"
+ Q
+ ;
+CPFIX(RES) ; Narrative from the plan title (the category display)
+ N TXT
+ Q:$G(RES("text","div"))'=""
+ S TXT=$G(RES("title"))
+ I TXT="" S TXT=$G(RES("category",1,"coding",1,"display"))
+ I TXT="" S TXT="Assessment and Plan of Treatment"
+ S RES("text","status")="generated"
+ S RES("text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">"_TXT_"</div>"
+ Q
+ ;
+CTFIX(RES,RTN) ; participant.member must be a Practitioner the server can read
+ N I,REF
+ S I=0
+ F  S I=$O(RES("participant",I)) Q:'I  D
+ . S REF=$G(RES("participant",I,"member","reference"))
+ . I REF["Practitioner/P",REF'["pract-chen" Q
+ . S RES("participant",I,"member","reference")="Practitioner/P1"
+ . S RES("participant",I,"member","display")="PROGRAMMER,ONE"
+ D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
+ Q
+ ;
+RPFIX(RES) ; active, telecom, address, and the v3-RoleCode display
+ N TXT
+ S RES("active")="true"
+ I $G(RES("relationship",1,"coding",1,"code"))="DAU" S RES("relationship",1,"coding",1,"display")="natural daughter"
+ I '$D(RES("telecom")) D
+ . S RES("telecom",1,"system")="phone"
+ . S RES("telecom",1,"use")="home"
+ . S RES("telecom",1,"value")="555-010-0000"
+ I '$D(RES("address")) D
+ . S RES("address",1,"line",1)="1 Fictitious Lane"
+ . S RES("address",1,"city")="Albuquerque"
+ . S RES("address",1,"state")="NM"
+ . S RES("address",1,"postalCode")="87108"
+ . S RES("address",1,"country")="US"
+ I $D(RES("address",1,"postalCode")) S RES("address",1,"postalCode","\s")=""
+ I $G(RES("text","div"))="" D
+ . S TXT=$G(RES("relationship",1,"coding",1,"display"))
+ . I TXT="" S TXT="Related person"
+ . S RES("text","status")="generated"
+ . S RES("text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">"_TXT_"</div>"
+ Q
+ ;
+SRREASON(RES) ; reasonReference must be a Condition this server can read
+ N DFN,IEN,REF
+ S REF=$G(RES("reasonReference",1,"reference"))
+ Q:REF["Condition/C"
+ S DFN=+$P($G(RES("subject","reference")),"/",2)
+ Q:DFN<1
+ S IEN=+$O(^AUPNPROB("AC",DFN,0))
+ Q:IEN<1
+ S RES("reasonReference",1,"reference")="Condition/C"_IEN
+ Q
+ ;
+SRMAMMO(RTN,DFN) ; Screening mammography order for a woman 40 or older
+ N C0FSR,DOB,IDX,RID
+ Q:$P($G(^DPT(+DFN,0)),U,2)'="F"
+ S DOB=+$P($G(^DPT(+DFN,0)),U,3)
+ Q:DOB<1!(DOB>2861006)
+ S RID="sr-mammo"
+ D ADDRES^C0FHIRBU(.RTN,"ServiceRequest",RID,.IDX)
+ Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="ServiceRequest"
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-servicerequest"
+ S RTN("entry",IDX,"resource","status")="active"
+ S RTN("entry",IDX,"resource","intent")="order"
+ S RTN("entry",IDX,"resource","doNotPerform")="false"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://snomed.info/sct"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"code")="386053000"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Evaluation procedure"
+ S RTN("entry",IDX,"resource","code","coding",1,"system")="http://snomed.info/sct"
+ S RTN("entry",IDX,"resource","code","coding",1,"code")="71651007"
+ S RTN("entry",IDX,"resource","code","coding",1,"display")="Mammography"
+ S RTN("entry",IDX,"resource","code","text")="Screening mammography"
+ S RTN("entry",IDX,"resource","subject","reference")="Patient/"_+DFN
+ S RTN("entry",IDX,"resource","authoredOn")="2026-10-06"
+ S RTN("entry",IDX,"resource","occurrencePeriod","start")="2026-10-06"
+ S RTN("entry",IDX,"resource","occurrencePeriod","end")="2026-11-06"
+ S RTN("entry",IDX,"resource","requester","reference")="Practitioner/P1"
+ S RTN("entry",IDX,"fullUrl")="ServiceRequest/"_RID
+ M C0FSR=RTN("entry",IDX,"resource")
+ D SRREASON(.C0FSR)
+ M RTN("entry",IDX,"resource")=C0FSR
+ D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
+ D SRPROV(.RTN,RID)
+ Q
+ ;
+SRPROV(RTN,RID) ; Provenance whose target is this ServiceRequest
+ N IDX,PID
+ S PID="prov-"_RID
+ D ADDRES^C0FHIRBU(.RTN,"Provenance",PID,.IDX)
+ Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="Provenance"
+ S RTN("entry",IDX,"resource","id")=PID
+ S RTN("entry",IDX,"resource","target",1,"reference")="ServiceRequest/"_RID
+ S RTN("entry",IDX,"resource","recorded")="2026-10-06T14:00:00Z"
+ S RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
+ S RTN("entry",IDX,"fullUrl")="Provenance/"_PID
+ Q
  ;
 INWIN(ROOT,IEN,RIEN,BEG,END) ; $$ - effective time in window (FM)
  N DT,ISO
@@ -308,6 +441,7 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  Q:'$D(@ROOT@(IEN,"json","entry",RIEN,"resource"))
  M RES=@ROOT@(IEN,"json","entry",RIEN,"resource")
  Q:$G(RES("resourceType"))'="Observation"
+ D BPSYS(.RES)
  ; Keep the intake-graph id (no GOBS- prefix).
  S RID=$G(RES("id"))
  I RID="" S RID=IEN_"-"_RIEN
@@ -438,6 +572,18 @@ GRPLABORG(RTN) ; Minimal Organization for graph lab DiagnosticReport performers
  S RTN("entry",IDX,"resource","id")="VISTA-LAB"
  S RTN("entry",IDX,"resource","active")="true"
  S RTN("entry",IDX,"resource","name")="Laboratory"
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-organization"
+ D ORGMS^C0FHIR(.RTN,IDX)
+ Q
+ ;
+CVPAY(RTN,RES) ; Chart payor must be an Organization a later read can return
+ N I,ID,REF
+ S I=0
+ F  S I=$O(RES("payor",I)) Q:'I  D
+ . S REF=$G(RES("payor",I,"reference"))
+ . S ID=$P(REF,"Organization/",2)
+ . Q:ID=""
+ . D ADDORG^C0FHIR(.RTN,ID,"Fictitious Clinic","")
  Q
  ;
 REFRIEN(ROOT,IEN,GID) ; $$ - newest graph entry for this Observation id
