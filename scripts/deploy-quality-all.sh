@@ -142,7 +142,8 @@ M
       if [[ "$t" != "iris2" ]]; then
         echo "NOTE: $t now means iris2 (https://iris2.vistaplex.org)"
       fi
-      "$ROOT/scripts/iris-native/sync-codex.sh" "${IRIS2_SSH:-root@iris2.vistaplex.org}" \
+      # bash: git may store the script mode 644, and a direct exec then fails.
+      bash "$ROOT/scripts/iris-native/sync-codex.sh" "${IRIS2_SSH:-root@iris2.vistaplex.org}" \
         || echo "WARN: iris2 codex sync failed (non-blocking lane)" >&2
       ;;
     *)
