@@ -400,6 +400,8 @@ ENCCOD(CODE,NAME,TYPE) ; Add encounter coding from OS5/CPT and recovered SNOMED
  E  SET TYPE("coding",2,"system")="urn:va:syn:os5"
  SET TYPE("coding",2,"code")=CODE
  SET TYPE("coding",2,"code","\s")=""
+ ; V CPT text for 99202 is the SNOMED encounter name. CPT display must match.
+ IF CODE="99202" SET NAME="New patient office or other outpatient visit, 15-29 minutes"
  IF NAME'="" SET TYPE("coding",2,"display")=NAME
  IF NAME="" SET NAME=SDISP
  IF NAME'="" SET TYPE("text")=NAME
