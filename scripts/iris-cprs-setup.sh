@@ -19,6 +19,7 @@
 #      multiple sign-on allowed.
 #
 # Usage (from the host, as root):  bash iris-cprs-setup.sh
+# Native Rocky IRIS (no Docker): scripts/iris-native/cprs.sh
 set -euo pipefail
 
 NAME="iris"

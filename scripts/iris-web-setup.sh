@@ -14,6 +14,7 @@
 # skipped when 9080 is already listening.
 #
 # Usage: scripts/iris-web-setup.sh [ssh-host]   (default root@irisfhir.vistaplex.org)
+# Native Rocky IRIS (no Docker): scripts/iris-native/web.sh
 set -euo pipefail
 HOST="${1:-root@irisfhir.vistaplex.org}"
 NAME="${IRIS_CONTAINER:-iris}"

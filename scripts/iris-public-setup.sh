@@ -13,6 +13,7 @@
 #
 # Prereq: DNS A record irisfhir.vistaplex.org -> this droplet; 80/443 reachable.
 # Usage:  scripts/iris-public-setup.sh [ssh-host]   (default root@irisfhir.vistaplex.org)
+# Native Rocky IRIS (no Docker): scripts/iris-native/public.sh
 set -euo pipefail
 HOST="${1:-root@irisfhir.vistaplex.org}"
 HOSTNAME_ONLY="${HOST#*@}"

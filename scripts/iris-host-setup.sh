@@ -12,6 +12,10 @@
 # and routine sources under /opt/iris/import/{codex,web}/*.m
 #
 # Usage (from the host, as root):  bash iris-host-setup.sh
+#
+# Native IRIS Health on Rocky Linux (no Docker) is a different install:
+#   scripts/iris-native/setup.sh
+# This file remains the community-container bring-up for irisfhir.
 set -euo pipefail
 
 IMG="containers.intersystems.com/intersystems/iris-community:latest-em"
