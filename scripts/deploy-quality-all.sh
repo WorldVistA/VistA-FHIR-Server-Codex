@@ -3,9 +3,11 @@
 #
 # Active servers (default):
 #   fhirdev  vehu10  rpms-candidate  rpmsfhir  wvehr
-# plus irisfhir, the NON-BLOCKING sixth lane (VistA-on-IRIS): it is deployed
-# and smoked like the others but can never gate the five GT.M servers — a
+# plus iris2, the NON-BLOCKING sixth lane (native IRIS Health at
+# https://iris2.vistaplex.org). It replaced irisfhir. It is deployed and
+# smoked like the others but can never gate the five GT.M servers — a
 # failure there reports WARN in the summary and does not affect the exit code.
+# "irisfhir" and "iris" remain aliases for iris2.
 #
 # wvehr = the WorldVistA EHR at fhir.vistaplex.org (container wvehr, user wv).
 # It replaced the old fhirprod container 2026-09-13 and is a PERMANENT
@@ -27,7 +29,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 C0X_ROOT="${C0X_ROOT:-$ROOT/../fhir-triple-store}"
 SMOKE="$ROOT/scripts/smoke-quality-host.sh"
-TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir wvehr irisfhir}"
+TARGETS="${QUALITY_DEPLOY_TARGETS:-fhirdev vehu10 rpms-candidate rpmsfhir wvehr iris2}"
 SKIP_DEPLOY="${QUALITY_SKIP_DEPLOY:-0}"
 REINDEX="${QUALITY_REINDEX:-0}"
 
@@ -134,10 +136,14 @@ M
       run_seedcrit_remote root@rpmsfhir.vistaplex.org rpms-fhir rpms /home/rpms/r /home/rpms/lib/gtm/mumps /home/rpms/etc/env || true
       maybe_reindex https://rpmsfhir.vistaplex.org
       ;;
-    irisfhir|iris)
-      # Non-blocking sixth lane: refresh routes + ensure listeners, never fail.
-      "$ROOT/scripts/iris-web-setup.sh" \
-        || echo "WARN: irisfhir web setup failed (non-blocking lane)" >&2
+    iris2|irisfhir|iris)
+      # Non-blocking sixth lane. Native Rocky IRIS; do not call the Docker
+      # iris-web-setup.sh. Codex refresh only — SYN/C0RG/KIDS stay as installed.
+      if [[ "$t" != "iris2" ]]; then
+        echo "NOTE: $t now means iris2 (https://iris2.vistaplex.org)"
+      fi
+      "$ROOT/scripts/iris-native/sync-codex.sh" "${IRIS2_SSH:-root@iris2.vistaplex.org}" \
+        || echo "WARN: iris2 codex sync failed (non-blocking lane)" >&2
       ;;
     *)
       echo "unknown target: $t" >&2
@@ -148,13 +154,13 @@ M
 
 smoke_one() {
   local t="$1" base dfn
-  # irisfhir is the non-blocking sixth lane: right-sized smoke, WARN on failure,
+  # iris2 is the non-blocking sixth lane: right-sized smoke, WARN on failure,
   # and it must never gate the five GT.M servers (exit code untouched).
-  if [[ "$t" == "irisfhir" || "$t" == "iris" ]]; then
-    if "$ROOT/scripts/iris-lane-smoke.sh"; then
-      RESULTS+=("OK  irisfhir (non-blocking lane)")
+  if [[ "$t" == "iris2" || "$t" == "irisfhir" || "$t" == "iris" ]]; then
+    if "$ROOT/scripts/iris-lane-smoke.sh" "${IRIS2_HOST:-iris2.vistaplex.org}"; then
+      RESULTS+=("OK  iris2 (non-blocking lane)")
     else
-      RESULTS+=("WARN irisfhir (non-blocking lane, does not gate)")
+      RESULTS+=("WARN iris2 (non-blocking lane, does not gate)")
     fi
     return 0
   fi

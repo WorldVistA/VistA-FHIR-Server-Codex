@@ -43,7 +43,7 @@ Repo-specific overrides:
 - **Exact phrases: "deploy-quality-all", "deploy quality to all active", or "fix this and deploy-quality-all"** mean:
   1. Apply the requested fix first (if any).
   2. Add/update a machine-check in `scripts/smoke-quality-host.sh` when the bug is a contract (labels, IPP vs NUMER, missing preset, dashboard brief).
-  3. Run `./scripts/deploy-quality-all.sh` (needs Docker/SSH/`all` permissions). Default targets (mirror the script's `TARGETS=` line): **fhirdev**, **vehu10**, **rpms-candidate**, **rpmsfhir**, **wvehr**, **irisfhir** (irisfhir is non-blocking: WARN only).
+  3. Run `./scripts/deploy-quality-all.sh` (needs Docker/SSH/`all` permissions). Default targets (mirror the script's `TARGETS=` line): **fhirdev**, **vehu10**, **rpms-candidate**, **rpmsfhir**, **wvehr**, **iris2** (iris2 is non-blocking: WARN only). `irisfhir` and `iris` are aliases of iris2.
   4. Report the script’s per-host SUMMARY (OK/FAIL). Do **not** stop after the first host; do **not** treat a single-host sync as done for this phrase.
   5. Optional: `QUALITY_REINDEX=1` if population scans need code-triple enrich; `QUALITY_DEPLOY_TARGETS="…"` to narrow the set.
   6. **cds1** is not in the default set (Java Stage2 / quality-eval only when that code changed).

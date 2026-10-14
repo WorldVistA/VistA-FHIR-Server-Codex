@@ -47,4 +47,4 @@ build.
 ## What this does not do
 
 `setup.sh` does not edit `scripts/deploy-quality-all.sh`. The fleet lane
-stays `irisfhir` until a human changes `TARGETS`.
+is `iris2` (https://iris2.vistaplex.org). `irisfhir` remains an alias.

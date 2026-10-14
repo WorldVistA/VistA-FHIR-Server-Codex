@@ -12,8 +12,8 @@
 #   smoke.sh       HTTP + session checks            (iris-lane-smoke.sh + C0X)
 #
 # The license key is copied to the host and is not stored in git. The
-# SuperUser password is generated on the host. This script does not change
-# deploy-quality-all.sh; irisfhir stays the fleet lane until a human switches it.
+# SuperUser password is generated on the host. The fleet lane is iris2
+# (`deploy-quality-all.sh` target `iris2`). This script does not edit TARGETS.
 #
 # Usage:
 #   scripts/iris-native/setup.sh root@newhost \
@@ -72,4 +72,4 @@ echo "== 7/8 c0x =="
 echo "== 8/8 smoke =="
 "$DIR/smoke.sh" "$HOST"
 echo "iris-native setup complete: https://${HOST#*@}/"
-echo "Fleet target is unchanged. irisfhir stays in deploy-quality-all.sh until you switch it."
+echo "Fleet lane is iris2 in deploy-quality-all.sh. This script does not edit TARGETS."

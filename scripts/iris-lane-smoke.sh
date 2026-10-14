@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # iris-lane-smoke.sh — sixth-lane (non-blocking) smoke for VistA-on-IRIS.
 #
-# Right-sized for the pristine irisfhir box (no patients, no C0X triple store):
+# Right-sized for iris2 (https://iris2.vistaplex.org), the native IRIS lane
+# that replaced irisfhir:
 #   HTTP  — portal, fhir/metadata (fleet contract: HTTP 200), quality
 #           dashboards page with CMS measure links, reporting page
 #   TCP   — RPC broker port accepting (CPRS lane)
@@ -12,7 +13,7 @@
 #
 # Usage: scripts/iris-lane-smoke.sh [host] [ssh-user]
 set -uo pipefail
-HOSTNAME_ONLY="${1:-irisfhir.vistaplex.org}"
+HOSTNAME_ONLY="${1:-iris2.vistaplex.org}"
 SSHHOST="${2:-root}@$HOSTNAME_ONLY"
 # Public base is Caddy/TLS (Phase 1, 2026-09-10); direct :9080 is checked
 # separately below so a Caddy failure is distinguishable from a listener one.

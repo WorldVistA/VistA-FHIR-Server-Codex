@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
-# iris-smoke.sh — non-blocking health check for VistA-on-IRIS (irisfhir).
+# iris-smoke.sh — non-blocking health check for VistA-on-IRIS.
 # Proves: IRIS instance up, FOIA namespace present, FileMan runs on the VistA
 # data dictionary, and the C0FWOS portability shim executes on IRIS.
-# Usage:  scripts/iris-smoke.sh [ssh-host]   (default: root@irisfhir.vistaplex.org)
+# Native Rocky (iris2) uses iris-session.sh. The old Docker lane uses
+# `docker exec iris` when that helper is absent.
+# Usage:  scripts/iris-smoke.sh [ssh-host]   (default: root@iris2.vistaplex.org)
 set -uo pipefail
-HOST="${1:-root@irisfhir.vistaplex.org}"
+HOST="${1:-root@iris2.vistaplex.org}"
 PASS=0; FAIL=0
 row(){ if [[ "$1" == PASS ]]; then echo "  [PASS] $2"; PASS=$((PASS+1)); else echo "  [FAIL] $2"; FAIL=$((FAIL+1)); fi; }
 
 echo "== iris-smoke: $HOST =="
-OUT="$(ssh -o BatchMode=yes -o ConnectTimeout=20 "$HOST" 'docker exec -i iris iris session IRIS -U FOIA' <<'EOF' 2>&1
+if ssh -o BatchMode=yes -o ConnectTimeout=20 "$HOST" 'test -x /usr/local/sbin/iris-session.sh'; then
+  REMOTE='/usr/local/sbin/iris-session.sh FOIA'
+else
+  REMOTE='docker exec -i iris iris session IRIS -U FOIA'
+fi
+OUT="$(ssh -o BatchMode=yes -o ConnectTimeout=20 "$HOST" "$REMOTE" <<'EOF' 2>&1
 ZN "FOIA"
 W "NS=",$NAMESPACE,!
 W "DD=",$G(^DD(0,0)),!
