@@ -222,7 +222,8 @@ MSVIT(ROOT,IEN,RIEN) ; $$ - BMI, oxygen flow rate, or a data-absent vital compon
  N CODE,HIT,I
  S I=0 F  S I=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",I)) Q:'I  D
  . S CODE=$G(@ROOT@(IEN,"json","entry",RIEN,"resource","code","coding",I,"code"))
- . I CODE="39156-5" S HIT=1
+ . I CODE="39156-5"!(CODE="59576-9")!(CODE="77606-2")!(CODE="8289-1") S HIT=1
+ . I CODE="9279-1"!(CODE="9843-4")!(CODE="11341-5")!(CODE="82810-3")!(CODE="86645-9") S HIT=1
  I $G(HIT) Q 1
  S I=0 F  S I=$O(@ROOT@(IEN,"json","entry",RIEN,"resource","component",I)) Q:'I  D
  . I $D(@ROOT@(IEN,"json","entry",RIEN,"resource","component",I,"dataAbsentReason")) S HIT=1
@@ -235,6 +236,7 @@ VITOBS(RES) ; $$ - copied Observation is a vital profile, not a lab
  S I=0 F  S I=$O(RES("code","coding",I)) Q:'I  D
  . S CODE=$G(RES("code","coding",I,"code"))
  . I CODE="39156-5"!(CODE="85354-9")!(CODE="59408-5")!(CODE="2708-6") S HIT=1
+ . I CODE="59576-9"!(CODE="77606-2")!(CODE="8289-1")!(CODE="9279-1")!(CODE="9843-4") S HIT=1
  Q +$G(HIT)
  ;
 VITPROF(RES) ; $$ - US Core profile URL for a graph vital
@@ -242,6 +244,10 @@ VITPROF(RES) ; $$ - US Core profile URL for a graph vital
  S I=0 F  S I=$O(RES("code","coding",I)) Q:'I  D
  . S CODE=$G(RES("code","coding",I,"code"))
  . I CODE="39156-5" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-bmi"
+ . I CODE="59576-9" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/pediatric-bmi-for-age"
+ . I CODE="77606-2" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/pediatric-weight-for-height"
+ . I CODE="8289-1" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/head-occipital-frontal-circumference-percentile"
+ . I CODE="9279-1" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-respiratory-rate"
  . I CODE="85354-9" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-blood-pressure"
  . I CODE="59408-5"!(CODE="2708-6") S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-pulse-oximetry"
  Q $G(PROF)
@@ -252,7 +258,7 @@ GETGRPCL(RTN,DFN) ; Chart resources the loader does not file, from the intake gr
  S DFN=+$G(DFN) Q:DFN<1
  S ROOT=$$ROOT^C0FWFUTL() Q:ROOT=""
  S IEN=$$DFN2IEN^C0FWFUTL(DFN) Q:IEN<1
- F TYPE="Coverage","CareTeam","RelatedPerson","Goal","CarePlan","ServiceRequest","Provenance" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
+ F TYPE="Coverage","CareTeam","RelatedPerson","Goal","CarePlan","ServiceRequest","Provenance","MedicationDispense","MedicationAdministration","Immunization","Procedure","AdverseEvent","DeviceRequest","Task","FamilyMemberHistory","DiagnosticReport","MedicationRequest","Observation","PractitionerRole" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
  D SRMAMMO(.RTN,DFN)
  Q
  ;
@@ -267,17 +273,36 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  Q:'$D(@ROOT@(IEN,"json","entry",RIEN,"resource"))
  M RES=@ROOT@(IEN,"json","entry",RIEN,"resource")
  Q:$G(RES("resourceType"))'=TYPE
+ I TYPE="Immunization",$G(RES("status"))'="not-done" Q
+ I TYPE="Procedure",$G(RES("status"))'="not-done" Q
  S RID=$G(RES("id")) Q:RID=""
+ I $$GAPONLY(TYPE,RID) Q
  I $G(RES("subject","reference"))["Patient/" S RES("subject","reference")="Patient/"_+DFN
  I $G(RES("patient","reference"))["Patient/" S RES("patient","reference")="Patient/"_+DFN
  I $G(RES("beneficiary","reference"))["Patient/" S RES("beneficiary","reference")="Patient/"_+DFN
+ I $G(RES("for","reference"))["Patient/" S RES("for","reference")="Patient/"_+DFN
  I TYPE="ServiceRequest" D SRFIX(.RES)
+ I TYPE="MedicationRequest" D DNPFIX(.RES)
+ I TYPE="DeviceRequest" D DEVBOOL(.RES)
+ I TYPE="MedicationDispense",$G(RES("status"))="declined" D MEDDEC(.RES)
+ I TYPE="MedicationDispense",$G(RES("status"))'="declined" D MEDDSP(.RTN,.RES)
+ I TYPE="MedicationAdministration",$G(RES("status"))="not-done" D MEDNOT(.RES)
+ I TYPE="MedicationAdministration",$G(RES("status"))'="not-done" D MEDADM(.RES)
+ I TYPE="Immunization" D IMMFIX(.RES)
  I TYPE="Goal" D GOLFIX(.RES)
  I TYPE="CarePlan" D CPFIX(.RES)
  I TYPE="CareTeam" D CTFIX(.RES,.RTN)
  I TYPE="RelatedPerson" D RPFIX(.RES)
  I TYPE="Coverage" D CVPAY(.RTN,.RES)
+ I TYPE="PractitionerRole" D ROLFIX(.RES)
  S PROF=$$CLPROF(TYPE)
+ I TYPE="ServiceRequest",$G(RES("doNotPerform"))="true" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-servicenotrequested"
+ I TYPE="DeviceRequest",$$ISTRUE($G(RES("modifierExtension",1,"valueBoolean"))) S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-devicenotrequested"
+ I TYPE="MedicationDispense",$G(RES("status"))="declined" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationdispensedeclined"
+ I TYPE="MedicationAdministration",$G(RES("status"))="not-done" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationadministrationnotdone"
+ I TYPE="Task",$G(RES("status"))="rejected" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-taskrejected"
+ I TYPE="Observation" D OBSFIX(.RES) S PROF=$$OBSPROF(.RES)
+ I TYPE="Task" D TASKFIX(.RES)
  I PROF'="" S RES("meta","profile",1)=PROF
  D ADDRES^C0FHIRBU(.RTN,TYPE,RID,.IDX)
  Q:IDX=""
@@ -285,6 +310,10 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  S RTN("entry",IDX,"resource","id")=RID
  S RTN("entry",IDX,"fullUrl")=TYPE_"/"_RID
  I TYPE="ServiceRequest" D SRPROV(.RTN,RID)
+ I TYPE="MedicationDispense"!(TYPE="MedicationAdministration")!(TYPE="Immunization")!(TYPE="Procedure")!(TYPE="AdverseEvent")!(TYPE="DeviceRequest")!(TYPE="Task")!(TYPE="FamilyMemberHistory")!(TYPE="DiagnosticReport")!(TYPE="MedicationRequest")!(TYPE="Observation") D PROVONE(.RTN,TYPE,RID)
+ I TYPE="Immunization"!(TYPE="Procedure")!(TYPE="MedicationDispense")!(TYPE="MedicationAdministration")!(TYPE="AdverseEvent")!(TYPE="DeviceRequest")!(TYPE="Task")!(TYPE="DiagnosticReport")!(TYPE="MedicationRequest")!(TYPE="PractitionerRole") D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
+ I TYPE="AdverseEvent" D ADDMED(.RTN,"med-zz-disp")
+ I TYPE="DiagnosticReport" D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
  Q
  ;
 CLPROF(TYPE) ; $$ - US Quality Core profile, or empty
@@ -294,6 +323,17 @@ CLPROF(TYPE) ; $$ - US Quality Core profile, or empty
  I TYPE="Goal" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-goal"
  I TYPE="CarePlan" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-careplan"
  I TYPE="ServiceRequest" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-servicerequest"
+ I TYPE="MedicationDispense" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationdispense"
+ I TYPE="MedicationAdministration" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationadministration"
+ I TYPE="Immunization" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-immunizationnotdone"
+ I TYPE="Procedure" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-procedurenotdone"
+ I TYPE="AdverseEvent" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-adverseevent"
+ I TYPE="DeviceRequest" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-devicerequest"
+ I TYPE="Task" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-task"
+ I TYPE="FamilyMemberHistory" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-familymemberhistory"
+ I TYPE="DiagnosticReport" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-diagnosticreport-note"
+ I TYPE="MedicationRequest" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationnotrequested"
+ I TYPE="PractitionerRole" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-practitionerrole"
  Q ""
  ;
 BPSYS(RES) ; Copy dataAbsentReason onto the systolic component
@@ -309,8 +349,9 @@ BPSYS(RES) ; Copy dataAbsentReason onto the systolic component
  . M RES("component",I,"dataAbsentReason")=DAR
  Q
  ;
-SRFIX(RES) ; doNotPerform=false and a US Core category the suite searches
- S RES("doNotPerform")="false"
+SRFIX(RES) ; doNotPerform and a US Core category the suite searches
+ I $$ISTRUE($G(RES("doNotPerform"))) S RES("doNotPerform")="true"
+ E  S RES("doNotPerform")="false"
  S RES("category",1,"coding",1,"system")="http://snomed.info/sct"
  S RES("category",1,"coding",1,"code")="386053000"
  S RES("category",1,"coding",1,"display")="Evaluation procedure"
@@ -318,6 +359,191 @@ SRFIX(RES) ; doNotPerform=false and a US Core category the suite searches
  I $G(RES("requester","reference"))["pract-chen" S RES("requester","reference")="Practitioner/P1"
  D SRREASON(.RES)
  Q
+ ;
+IMMFIX(RES) ; Not-done vaccine is a value-set extension, not a CVX code the administered set rejects
+ K RES("vaccineCode","coding")
+ S RES("vaccineCode","text")="Not Done Value Set: Influenza vaccine"
+ S RES("vaccineCode","extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-notDoneValueSet"
+ S RES("vaccineCode","extension",1,"valueCanonical")="http://cts.nlm.nih.gov/fhir/ValueSet/2.16.840.1.113883.3.526.3.1254"
+ K RES("statusReason")
+ S RES("statusReason","coding",1,"system")="http://snomed.info/sct"
+ S RES("statusReason","coding",1,"code")="410534003"
+ S RES("statusReason","coding",1,"display")="Not indicated (qualifier value)"
+ Q
+ ;
+GAPONLY(TYPE,RID) ; $$ - 1 when an old chart row must not be copied into the read
+ I TYPE="Observation"!(TYPE="MedicationRequest")!(TYPE="DiagnosticReport")!(TYPE="AdverseEvent")!(TYPE="DeviceRequest")!(TYPE="Task")!(TYPE="FamilyMemberHistory") Q $E(RID,1,4)'="inf-"
+ Q 0
+ ;
+DEVBOOL(RES) ; DeviceRequest doNotPerform is a modifier extension, not a field
+ K RES("doNotPerform")
+ I '$D(RES("modifierExtension",1,"valueBoolean")) Q
+ I $$ISTRUE($G(RES("modifierExtension",1,"valueBoolean"))) S RES("modifierExtension",1,"valueBoolean")="true"
+ E  S RES("modifierExtension",1,"valueBoolean")="false"
+ I $G(RES("modifierExtension",1,"valueBoolean"))'="true" Q
+ S RES("extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-doNotPerformReason"
+ S RES("extension",1,"valueCodeableConcept","coding",1,"system")="http://snomed.info/sct"
+ S RES("extension",1,"valueCodeableConcept","coding",1,"code")="410534003"
+ S RES("extension",1,"valueCodeableConcept","coding",1,"display")="Not indicated (qualifier value)"
+ Q
+ ;
+DNPFIX(RES) ; Normalize doNotPerform so the search token is true or false
+ I $$ISTRUE($G(RES("doNotPerform"))) S RES("doNotPerform")="true"
+ E  I $G(RES("doNotPerform"))'="" S RES("doNotPerform")="false"
+ I $G(RES("reasonCode",1,"text"))="" D
+ . S RES("reasonCode",1,"text")="Not indicated (qualifier value)"
+ . S RES("reasonCode",1,"coding",1,"system")="http://snomed.info/sct"
+ . S RES("reasonCode",1,"coding",1,"code")="410534003"
+ . S RES("reasonCode",1,"coding",1,"display")="Not indicated (qualifier value)"
+ I '$D(RES("modifierExtension",1,"valueBoolean")) Q
+ I $$ISTRUE($G(RES("modifierExtension",1,"valueBoolean"))) S RES("modifierExtension",1,"valueBoolean")="true"
+ E  S RES("modifierExtension",1,"valueBoolean")="false"
+ Q
+ ;
+OBSFIX(RES) ; Use example LOINC codes the validator knows
+ N RID
+ S RID=$G(RES("id"))
+ I RID="inf-exam" D  Q
+ . S RES("code","text")="Heart rate rhythm"
+ . S RES("code","coding",1,"system")="http://loinc.org"
+ . S RES("code","coding",1,"code")="8884-9"
+ . S RES("code","coding",1,"display")="Heart rate rhythm"
+ . S RES("valueString")="Regular (R)"
+ . K RES("valueQuantity")
+ I RID="inf-survey" D  Q
+ . S RES("code","text")="Blood pressure alteration [CCC]"
+ . S RES("code","coding",1,"system")="http://loinc.org"
+ . S RES("code","coding",1,"code")="28139-4"
+ . S RES("code","coding",1,"display")="Blood pressure alteration [CCC]"
+ . S RES("category",2,"text")="Functional Status"
+ . S RES("category",2,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ . S RES("category",2,"coding",1,"code")="social-history"
+ . S RES("category",2,"coding",1,"display")="Social History"
+ . S RES("category",2,"coding",2,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-category"
+ . S RES("category",2,"coding",2,"code")="functional-status"
+ . S RES("category",2,"coding",2,"display")="Functional Status"
+ I RID="inf-cancelled" D
+ . S RES("issued")="2026-03-10T14:00:00Z"
+ . S RES("extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-notDoneReason"
+ . S RES("extension",1,"valueCodeableConcept","coding",1,"system")="http://snomed.info/sct"
+ . S RES("extension",1,"valueCodeableConcept","coding",1,"code")="410534003"
+ . S RES("extension",1,"valueCodeableConcept","coding",1,"display")="Not indicated (qualifier value)"
+ I RID="inf-activity"!(RID="inf-cancelled") D
+ . S RES("code","text")="Mobility device or aid is regularly used"
+ . S RES("code","coding",1,"system")="http://loinc.org"
+ . S RES("code","coding",1,"code")="99354-3"
+ . S RES("code","coding",1,"display")="Mobility device or aid is regularly used"
+ . S RES("category",2,"coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-category"
+ . S RES("category",2,"coding",1,"code")="functional-status"
+ . S RES("category",2,"coding",1,"display")="Functional Status"
+ Q
+ ;
+OBSPROF(RES) ; $$ - profile for a graph-only observation
+ N CODE
+ I $G(RES("status"))="cancelled" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observationcancelled"
+ S CODE=$G(RES("category",1,"coding",1,"code"))
+ I CODE="exam" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-clinical-result"
+ I CODE="survey" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-screening-assessment"
+ I CODE="activity" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-simple-observation"
+ Q ""
+ ;
+MEDDEC(RES) ; Declined dispense keeps its not-done medication text
+ S RES("performer",1,"actor","reference")="Practitioner/P1"
+ S RES("substitution","wasSubstituted")="false"
+ Q
+ ;
+MEDNOT(RES) ; Not-done administration keeps its not-done medication text
+ N C0FSR
+ S RES("performer",1,"actor","reference")="Practitioner/P1"
+ I $D(RES("statusReason","coding")),'$D(RES("statusReason",1)) D
+ . M C0FSR=RES("statusReason")
+ . K RES("statusReason")
+ . M RES("statusReason",1)=C0FSR
+ I '$D(RES("extension",1)) D
+ . S RES("extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-recorded"
+ . S RES("extension",1,"valueDateTime")="2026-10-06"
+ Q
+ ;
+TASKFIX(RES) ; Identifier, and a resolvable focus on the rejected task
+ S RES("identifier",1,"system")="https://fhir.vistaplex.org/task"
+ S RES("identifier",1,"value")=$G(RES("id"))
+ I $G(RES("status"))'="rejected" Q
+ S RES("focus","reference")="DiagnosticReport/inf-note"
+ S RES("statusReason","text")="Not indicated (qualifier value)"
+ S RES("statusReason","coding",1,"system")="http://snomed.info/sct"
+ S RES("statusReason","coding",1,"code")="410534003"
+ S RES("statusReason","coding",1,"display")="Not indicated (qualifier value)"
+ Q
+ ;
+ROLFIX(RES) ; PractitionerRole points at the practitioner the suite can read
+ I $G(RES("practitioner","reference"))["pract-chen" S RES("practitioner","reference")="Practitioner/P1"
+ Q
+ ;
+ISTRUE(X) ; $$ - JSON true stored as 1 or "true"
+ I X=1!(X="1")!(X="true")!(X="TRUE") Q 1
+ Q 0
+ ;
+MEDDSP(RTN,RES) ; Dispense must-support: medication reference, performer, prescription
+ N C0FI,C0FID
+ S RES("performer",1,"actor","reference")="Practitioner/P1"
+ S RES("substitution","wasSubstituted")="false"
+ K RES("medicationCodeableConcept")
+ S RES("medicationReference","reference")="Medication/med-zz-disp"
+ S C0FI=0,C0FID=""
+ F  S C0FI=$O(RTN("entry",C0FI)) Q:'C0FI  D  Q:C0FID'=""
+ . I $G(RTN("entry",C0FI,"resource","resourceType"))'="MedicationRequest" Q
+ . S C0FID=$G(RTN("entry",C0FI,"resource","id"))
+ I C0FID'="" S RES("authorizingPrescription",1,"reference")="MedicationRequest/"_C0FID
+ D ADDMED(.RTN,"med-zz-disp")
+ Q
+ ;
+MEDADM(RES) ; Administration medication is a Reference the suite can read
+ K RES("medicationCodeableConcept")
+ S RES("medicationReference","reference")="Medication/med-zz-disp"
+ S RES("performer",1,"actor","reference")="Practitioner/P1"
+ Q
+ ;
+ADDMED(RTN,MID) ; Companion Medication for dispense and administration references
+ N IDX
+ D ADDRES^C0FHIRBU(.RTN,"Medication",MID,.IDX)
+ Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="Medication"
+ S RTN("entry",IDX,"resource","id")=MID
+ S RTN("entry",IDX,"resource","code","coding",1,"system")="http://www.nlm.nih.gov/research/umls/rxnorm"
+ S RTN("entry",IDX,"resource","code","coding",1,"code")="636676"
+ S RTN("entry",IDX,"resource","code","coding",1,"display")="varenicline 1 MG Oral Tablet"
+ S RTN("entry",IDX,"resource","code","text")="varenicline 1 MG Oral Tablet"
+ S RTN("entry",IDX,"fullUrl")="Medication/"_MID
+ Q
+ ;
+PROVONE(RTN,TYPE,RID) ; Provenance whose target is this graph resource
+ N IDX,PID
+ S PID="prov-"_RID
+ D ADDRES^C0FHIRBU(.RTN,"Provenance",PID,.IDX)
+ Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="Provenance"
+ S RTN("entry",IDX,"resource","id")=PID
+ S RTN("entry",IDX,"resource","target",1,"reference")=TYPE_"/"_RID
+ S RTN("entry",IDX,"resource","recorded")="2026-10-06T14:00:00Z"
+ S RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
+ S RTN("entry",IDX,"fullUrl")="Provenance/"_PID
+ Q
+ ;
+SOCOBS(RES) ; $$ - occupation or pregnancy observation
+ N CODE,HIT,I
+ S I=0 F  S I=$O(RES("code","coding",I)) Q:'I  D
+ . S CODE=$G(RES("code","coding",I,"code"))
+ . I CODE="11341-5"!(CODE="82810-3")!(CODE="86645-9") S HIT=1
+ Q +$G(HIT)
+ ;
+SOCPROF(RES) ; $$ - US Core profile for a social-history observation
+ N CODE,I,PROF
+ S I=0 F  S I=$O(RES("code","coding",I)) Q:'I  D
+ . S CODE=$G(RES("code","coding",I,"code"))
+ . I CODE="11341-5" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-occupation"
+ . I CODE="82810-3" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-pregnancystatus"
+ . I CODE="86645-9" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-pregnancyintent"
+ Q $G(PROF)
  ;
 GOLFIX(RES) ; startDate and target.dueDate when the chart omitted them
  I $G(RES("startDate"))="" S RES("startDate")="2021-10-12"
@@ -442,8 +668,9 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  M RES=@ROOT@(IEN,"json","entry",RIEN,"resource")
  Q:$G(RES("resourceType"))'="Observation"
  D BPSYS(.RES)
- ; Keep the intake-graph id (no GOBS- prefix).
+ ; Keep the intake-graph id (no GOBS- prefix). Inferno extras are emitted by EMITCL.
  S RID=$G(RES("id"))
+ I $E(RID,1,4)="inf-" Q
  I RID="" S RID=IEN_"-"_RIEN
  I $E(RID,1,5)="GOBS-" S RID=$E(RID,6,$L(RID))
  ; Match ADDRES^C0FHIRBU key (SAFE id) so duplicates do not burn MAX.
@@ -466,6 +693,11 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  . S RES("category",1,"coding",1,"code")="vital-signs"
  . S RES("category",1,"coding",1,"display")="Vital Signs"
  . S RES("category",1,"text")="Vital Signs"
+ E  I $$SOCOBS(.RES) D
+ . S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ . S RES("category",1,"coding",1,"code")="social-history"
+ . S RES("category",1,"coding",1,"display")="Social History"
+ . S RES("category",1,"text")="Social History"
  E  D
  . S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
  . S RES("category",1,"coding",1,"code")="laboratory"
@@ -484,6 +716,8 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  . S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-smokingstatus"
  E  I $$VITOBS(.RES) D
  . I $$VITPROF(.RES)'="" S RTN("entry",IDX,"resource","meta","profile",1)=$$VITPROF(.RES)
+ E  I $$SOCOBS(.RES) D
+ . I $$SOCPROF(.RES)'="" S RTN("entry",IDX,"resource","meta","profile",1)=$$SOCPROF(.RES)
  E  D
  . S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
  . S RTN("entry",IDX,"resource","meta","profile",2)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-observation-lab"
@@ -503,6 +737,13 @@ LOINCNM(C0FCD) ; $$ - validator display, or empty
  I C0FCD="98979-8" Q "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI 2021)/1.73 sq M"
  I C0FCD="77353-1" Q "Noninvasive colorectal cancer DNA and occult blood screening [Interpretation] in Stool Narrative"
  I C0FCD="39156-5" Q "Body mass index (BMI) [Ratio]"
+ I C0FCD="59576-9" Q "Body mass index (BMI) [Percentile] Per age and sex"
+ I C0FCD="77606-2" Q "Weight-for-length Per age and sex"
+ I C0FCD="8289-1" Q "Head Occipital-frontal circumference Percentile"
+ I C0FCD="9279-1" Q "Respiratory rate"
+ I C0FCD="11341-5" Q "History of Occupation"
+ I C0FCD="82810-3" Q "Pregnancy status"
+ I C0FCD="86645-9" Q "Pregnancy intention in the next year - Reported"
  Q ""
  ;
 WANTDR(ROOT,IEN,RIEN) ; $$ - lab or vital-sign panel DiagnosticReport (not AI Consult)

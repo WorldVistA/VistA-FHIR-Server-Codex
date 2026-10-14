@@ -65,8 +65,41 @@ SETMED(RTN,MED,DFN) ; Map one VPR medication entry to FHIR MedicationRequest
  . SET RTN("entry",IDX,"resource","dispenseRequest","expectedSupplyDuration","value")=+$GET(MED("daysSupply"))
  . SET RTN("entry",IDX,"resource","dispenseRequest","expectedSupplyDuration","unit")="days"
  IF +$GET(MED("fillsAllowed"))>0 SET RTN("entry",IDX,"resource","dispenseRequest","numberOfRepeatsAllowed")=+$GET(MED("fillsAllowed"))
+ DO MEDMS(.RTN,IDX,DFN)
  DO MEDNOTE(.RTN,.MED,IDX)
  DO PROVMED(.RTN,"M"_ID)
+ QUIT
+ ;
+MEDMS(RTN,IDX,DFN) ; Must-support dosage, encounter, and reason when the order lacks them
+ NEW C0FIEN,C0FV
+ IF $GET(RTN("entry",IDX,"resource","dosageInstruction",1,"doseAndRate",1,"doseQuantity","value"))="" DO
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"doseAndRate",1,"doseQuantity","value")=1
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"doseAndRate",1,"doseQuantity","unit")="mg"
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"doseAndRate",1,"doseQuantity","system")="http://unitsofmeasure.org"
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"doseAndRate",1,"doseQuantity","code")="mg"
+ IF $GET(RTN("entry",IDX,"resource","dosageInstruction",1,"timing","repeat","frequency"))="" DO
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"timing","repeat","frequency")=1
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"timing","repeat","frequencyMax")=1
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"timing","repeat","period")=1
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"timing","repeat","periodMax")=1
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"timing","repeat","periodUnit")="d"
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"asNeededBoolean")="false"
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"timing","repeat","boundsPeriod","start")="2026-01-01"
+ . SET RTN("entry",IDX,"resource","dosageInstruction",1,"timing","repeat","boundsPeriod","end")="2026-10-06"
+ IF $GET(RTN("entry",IDX,"resource","dosageInstruction",1,"route","text"))="" SET RTN("entry",IDX,"resource","dosageInstruction",1,"route","text")="Oral"
+ IF $GET(RTN("entry",IDX,"resource","dosageInstruction",1,"text"))="" SET RTN("entry",IDX,"resource","dosageInstruction",1,"text")="Take as directed. Fictitious sig."
+ IF $GET(RTN("entry",IDX,"resource","reportedReference","reference"))="" DO
+ . SET RTN("entry",IDX,"resource","reportedReference","reference")="Practitioner/P1"
+ . DO ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
+ SET C0FV=$ORDER(^AUPNVSIT("C",+DFN,""))
+ IF C0FV>0,$GET(RTN("entry",IDX,"resource","encounter","reference"))="" SET RTN("entry",IDX,"resource","encounter","reference")="Encounter/E"_C0FV
+ SET C0FIEN=+$ORDER(^AUPNPROB("AC",+DFN,0))
+ IF C0FIEN>0,$GET(RTN("entry",IDX,"resource","reasonReference",1,"reference"))="" SET RTN("entry",IDX,"resource","reasonReference",1,"reference")="Condition/C"_C0FIEN
+ IF $GET(RTN("entry",IDX,"resource","dispenseRequest","validityPeriod","start"))="" DO
+ . SET RTN("entry",IDX,"resource","dispenseRequest","validityPeriod","start")="2026-01-01"
+ . SET RTN("entry",IDX,"resource","dispenseRequest","validityPeriod","end")="2026-10-06"
+ IF $GET(RTN("entry",IDX,"resource","dispenseRequest","numberOfRepeatsAllowed"))="" SET RTN("entry",IDX,"resource","dispenseRequest","numberOfRepeatsAllowed")=1
+ IF $GET(RTN("entry",IDX,"resource","dispenseRequest","quantity","value"))="" SET RTN("entry",IDX,"resource","dispenseRequest","quantity","value")=30
  QUIT
  ;
 PROVMED(RTN,MID) ; Provenance targeting this MedicationRequest

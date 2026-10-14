@@ -103,6 +103,7 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D REF(CROOT,SUB,"patient",$G(@RES@("subject","reference")))
  D REF(CROOT,SUB,"patient",$G(@RES@("beneficiary","reference")))
  D REF(CROOT,SUB,"subject",$G(@RES@("subject","reference")))
+ I TYPE="Task" D REF(CROOT,SUB,"patient",$G(@RES@("for","reference")))
  I TYPE="Provenance" D PROV(CROOT,SUB,RES)
  D REF(CROOT,SUB,"encounter",$G(@RES@("encounter","reference")))
  D REF(CROOT,SUB,"encounter",$G(@RES@("context","reference")))
@@ -238,6 +239,10 @@ IDENT(CROOT,SUB,RES) ; identifier token values
 DONOT(RES) ; $$ - doNotPerform token, inferred for USQC not-requested fixtures
  N I,ID,PROF,X
  SET X=$G(@RES@("doNotPerform")) IF X'="" QUIT X
+ SET I=0
+ FOR  SET I=$O(@RES@("modifierExtension",I)) Q:+I<1  D  Q:X'=""
+ . IF $G(@RES@("modifierExtension",I,"url"))["doNotPerform" SET X=$G(@RES@("modifierExtension",I,"valueBoolean"))
+ IF X'="" QUIT X
  SET ID=$$UP($G(@RES@("id")))
  IF ID["NOTREQUESTED"!(ID["NOTDONE")!(ID["DECLINED") QUIT "true"
  SET I=0
@@ -551,9 +556,26 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  . M MATCH("entry",IDX)=@CROOT@("bundle","entry",ENTRY)
  S MATCH("total")=IDX
  D REVINC(.FILTER,CROOT,.MATCH,.CAND)
+ D INCMED(.FILTER,CROOT,.MATCH)
  K OUT
  M OUT=MATCH
  D FINAL^C0FHIRBU(.OUT)
+ Q
+ ;
+INCMED(FILTER,CROOT,MATCH) ; _include the Medication a dispense or administration references
+ N DONE,ENTRY,I,INC,REF,SEEN,SUB
+ S INC=$G(FILTER("_include")) Q:INC=""
+ I INC'["MedicationDispense:medication",INC'["MedicationAdministration:medication" Q
+ S I="" F  S I=$O(MATCH("entry",I)) Q:I=""  D
+ . S REF=$G(MATCH("entry",I,"resource","medicationReference","reference"))
+ . Q:$P(REF,"/",1)'="Medication"
+ . S SUB=$P(REF,"/",2) Q:SUB=""  Q:$D(SEEN(SUB))
+ . S DONE=0,ENTRY=""
+ . F  S ENTRY=$O(@CROOT@("bundle","entry",ENTRY)) Q:ENTRY=""  Q:DONE  D
+ . . I $G(@CROOT@("bundle","entry",ENTRY,"resource","resourceType"))'="Medication" Q
+ . . I $G(@CROOT@("bundle","entry",ENTRY,"resource","id"))'=SUB Q
+ . . S SEEN(SUB)="",DONE=1
+ . . M MATCH("entry",$O(MATCH("entry",""),-1)+1)=@CROOT@("bundle","entry",ENTRY)
  Q
  ;
 REVINC(FILTER,CROOT,MATCH,CAND) ; Include Provenance resources matching _revinclude=Provenance:target
