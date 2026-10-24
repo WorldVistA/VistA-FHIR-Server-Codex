@@ -1875,22 +1875,14 @@ GETBNDL(REQ,OUT) ; Return one Bundle response structure for a request
  QUIT
  ;
 GETBNDLJ(REQ,OUT,ERR) ; Return one Bundle response encoded as JSON
- ; OUT returns JSON output nodes from ENCODE^XLFJSON
- ; ERR returns encoder errors, if any
- ; Encode in this frame with real locals. Avoid TOJSON(IN,OUT) here: a
- ; second FINAL inside that formallist path duplicated the JSON tail on
+ ; OUT returns JSON output nodes from the one encoder ENC^C0FHIRBU picked.
+ ; ENC calls C0RGFENC when that routine is linked, else C0RGJSNE, else
+ ; Kernel XLFJSON. One call only: a second encode duplicated the tail of
  ; large bundles (cds1 "Invalid JSON from /fhir?dfn=").
- NEW BUNDLE,C0FBIN,C0FBOUT,C0FBERR
+ ; Do not call TOJSON^C0FHIRBU from here.
+ NEW BUNDLE
  DO GETBNDLA(.REQ,.BUNDLE)
- KILL C0FBIN,C0FBOUT,C0FBERR
- MERGE C0FBIN=BUNDLE
- DO ENCODE^C0RGFENC("C0FBIN","C0FBOUT","C0FBERR")
- IF $DATA(C0FBERR),$TEXT(+0^C0RGJSNE)'="" DO
- . KILL C0FBOUT,C0FBERR
- . DO ENCODE^C0RGJSNE("C0FBIN","C0FBOUT","C0FBERR")
- KILL OUT,ERR
- MERGE OUT=C0FBOUT
- IF $DATA(C0FBERR) MERGE ERR=C0FBERR
+ DO ENC^C0FHIRBU(.BUNDLE,.OUT,.ERR)
  DO FORCESTR^C0FHIRBU(.OUT)
  QUIT
  ;
