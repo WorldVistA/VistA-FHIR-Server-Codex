@@ -72,7 +72,7 @@ rules are in its `AGENTS.md`, bridged to Claude Code by a one-line
 | Short name | Local directory | Role |
 |---|---|---|
 | `RPMS` | `rpms-fhir` | IHS RPMS lane: local `rpms-fhir` / `rpms-rebuild-candidate` containers and public `rpmsfhir.vistaplex.org`; publish + smoke scripts. |
-| `WVEHR` | `WVEHR-on-FHIR` | WorldVistA EHR 3.0 port notes; `wvehr` is production at `fhir.vistaplex.org` since 2026-09-13. |
+| `WVEHR` | `WVEHR-on-FHIR` | WorldVistA EHR 3.0 port notes; `wvehr` is a fleet host at `fhir.vistaplex.org` since 2026-09-13. |
 | (Codex) | `VistA-FHIR-Server-Codex/scripts/iris-portability-scan.py` | VistA-on-IRIS (`irisfhir`) is a non-blocking fleet lane; portability is scanned nightly. |
 
 ## Common multi-repo problem patterns
@@ -137,8 +137,8 @@ Required for any change that touches M routines or FHIR output:
 
 Fleet deploys go through `scripts/deploy-quality-all.sh` (targets on its
 `TARGETS=` line: fhirdev, vehu10, rpms-candidate, rpmsfhir, wvehr,
-non-blocking irisfhir). `wvehr` is production — reviewed daytime deploys
-only. The nightly lane re-runs the round trip, harness, artifact check,
+non-blocking irisfhir). `wvehr` is on that same list. The nightly lane
+re-runs the round trip, harness, artifact check,
 fleet smoke (no deploy), daily quality rotation, IRIS scan, and agent-doc
 convergence; reports in `Vista-on-FHIR/docs/nightly/`.
 

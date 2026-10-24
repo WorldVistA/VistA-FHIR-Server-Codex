@@ -12,7 +12,8 @@
 #   G. teardown (kept when --keep or when a stage fails)
 #
 # Evidence: docs/ci-reports/ROUNDTRIP_<UTC>.md (+ exit code for cron).
-# Usage: scripts/ci-roundtrip-local.sh [--keep] [--port 19080]
+# Usage: scripts/ci-roundtrip-local.sh [--keep] [--port 19082]
+# Default port is 19082 so a showfhir (or other) tunnel can keep 19080.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,7 +21,7 @@ CPRS_HARNESS="${CPRS_HARNESS:-$ROOT/../CPRS-on-FHIR/harness/CFH-WRITE-001/harnes
 C0RGENC_INSTALL="${C0RGENC_INSTALL:-$ROOT/../rehmp/plugin/c0rgenc/install-vehu10.sh}"
 SYN_SRC="${SYN_SRC:-$ROOT/../VistA-FHIR-Data-Loader/src}"
 IMAGE="${CI_FHIR_IMAGE:-glilly/fhir-dev-server:latest}"
-PORT="${CI_FHIR_PORT:-19080}"
+PORT="${CI_FHIR_PORT:-19082}"
 KEEP=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -63,7 +64,7 @@ finish() {
   echo "report: $REPORT"
   if [[ $KEEP -eq 0 && $FAILED -eq 0 ]]; then
     docker rm -f "$NAME" >/dev/null 2>&1 || true
-  else
+  elif docker ps -a --format '{{.Names}}' | grep -qx "$NAME"; then
     echo "container kept for inspection: $NAME (port $PORT)"
   fi
   rm -rf "$WORK" 2>/dev/null || true
@@ -78,9 +79,20 @@ echo "== ci-roundtrip: $NAME on $BASE =="
 OLD="$(docker ps -a --format '{{.Names}} {{.Ports}}' | awk -v p="127.0.0.1:$PORT->" '$1 ~ /^ci-roundtrip-/ && index($0, p) {print $1}' | tr '\n' ' ')"
 if [[ -n "$OLD" ]]; then docker rm -f $OLD >/dev/null 2>&1; row "A0 cleanup" INFO "removed previous container(s) on port $PORT: $OLD"; fi
 
+# Anything still bound here is not this lane. Refuse, so a tunnel on the same
+# port cannot answer the later curls and look like this container.
+if timeout 1 bash -c "echo >/dev/tcp/127.0.0.1/$PORT" 2>/dev/null; then
+  row "A container up" FAIL "127.0.0.1:$PORT already in use"; finish
+fi
+
 # A. fresh container
 if docker run -d --name "$NAME" -p "127.0.0.1:$PORT:9080" "$IMAGE" >/dev/null 2>&1; then
-  row "A container up" PASS "$IMAGE"
+  pub="$(docker port "$NAME" 9080 2>/dev/null || true)"
+  if [[ "$pub" == *":$PORT" ]]; then
+    row "A container up" PASS "$IMAGE (published $pub)"
+  else
+    row "A container up" FAIL "docker run returned but 9080 is published as '${pub:-nothing}'"; KEEP=1; finish
+  fi
 else
   row "A container up" FAIL "docker run failed"; finish
 fi

@@ -14,7 +14,8 @@
 #            older source than the image's .o makes YDB keep the stale object.
 #   link     ZLINK all copied routines, EN^C0RGSE, REG^C0XWS, EN^SYNWEBRG;
 #            stale-object sweep
-#   plugin   build the c0rgenc C plugin, export GTMXC_c0rgenc in ~/etc/env
+#   plugin   build the c0rgenc C plugin, export GTMXC_c0rgenc in ~/etc/env,
+#            and set C0RG ENCODER so the L3 smoke sees the requested path
 #   config   LOADOS5 + EN^SYNOS5PT, GRAPHLABS=1, C0RG ENCODER=<--encoder>
 #   www      vendor/tjson/web, the C0X UI and the CPRS demo dist (if built)
 #   boot     check the image init restarts %webreq on container start
@@ -106,7 +107,12 @@ if want plugin; then
   docker exec "$C" chown -R "$MUSER:$MUSER" "/home/$MUSER/lib/c0rgenc"
   rm -f /tmp/vehu-install-plugin.$$
   printf '%s\n' 'W "PING=",$&c0rgenc.ping,!' H | mrun | grep -q 'PING=1' || fail plugin "\$&c0rgenc.ping failed"
-  ok plugin "\$&c0rgenc.ping=1"
+  # L3 smokes PATH= before the config step. The parameter has to be set here
+  # or WANTPLUG stays on the image default (JSNE) and the plugin smoke fails.
+  printf '%s\n' "D SET^C0RGPAR(\"ENCODER\",\"$ENCODER\")" \
+    'W "ENCODER=",$$GETPAR^C0RGPAR("ENCODER"),!' H | mrun | grep -q "ENCODER=$ENCODER" \
+    || fail plugin "ENCODER not $ENCODER"
+  ok plugin "\$&c0rgenc.ping=1 ENCODER=$ENCODER"
 fi
 
 if want config; then

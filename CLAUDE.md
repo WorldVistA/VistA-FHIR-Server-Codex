@@ -5,4 +5,4 @@ Workspace map: `../CLAUDE.md` (canonical copy:
 
 Repo rule: run `scripts/ci-roundtrip-local.sh` before claiming server changes
 work; `scripts/check-artifacts.sh` before touching vendored artifacts.
-Never deploy to fhirprod unattended.
+`wvehr` (alias `fhirprod`) is a fleet host like the others.

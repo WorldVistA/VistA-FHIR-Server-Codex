@@ -173,6 +173,20 @@ smoke_one() {
     rpmsfhir|rpms-fhir) base=https://rpmsfhir.vistaplex.org; dfn=8 ;;
     *) echo "unknown smoke target: $t" >&2; return 1 ;;
   esac
+  # A stopped local sandbox is not a fleet failure. Skip it in one second
+  # so the curl timeouts do not eat the rest of the smoke. Remote hosts
+  # still run. Daytime deploys (SKIP_DEPLOY!=1) still fail a closed port.
+  if [[ "$SKIP_DEPLOY" == "1" ]]; then
+    local lport=""
+    case "$t" in
+      vehu10) lport=9085 ;;
+      rpms-candidate|rpms-rebuild-candidate|rpms) lport=9088 ;;
+    esac
+    if [[ -n "$lport" ]] && ! timeout 1 bash -c "echo >/dev/tcp/127.0.0.1/$lport" 2>/dev/null; then
+      RESULTS+=("SKIP $t (127.0.0.1:$lport not listening)")
+      return 0
+    fi
+  fi
   if "$SMOKE" "$t" "$base" "$dfn"; then
     RESULTS+=("OK  $t")
     return 0
