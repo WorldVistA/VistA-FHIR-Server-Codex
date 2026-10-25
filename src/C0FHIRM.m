@@ -99,6 +99,7 @@ MEDMS(RTN,IDX,DFN) ; Must-support dosage, encounter, and reason when the order l
  . SET RTN("entry",IDX,"resource","dispenseRequest","validityPeriod","start")="2026-01-01"
  . SET RTN("entry",IDX,"resource","dispenseRequest","validityPeriod","end")="2026-10-06"
  IF $GET(RTN("entry",IDX,"resource","dispenseRequest","numberOfRepeatsAllowed"))="" SET RTN("entry",IDX,"resource","dispenseRequest","numberOfRepeatsAllowed")=1
+ IF $DATA(RTN("entry",IDX,"resource","reasonCode"))<10 SET RTN("entry",IDX,"resource","reasonCode",1,"text")="Indication recorded on the order"
  IF $GET(RTN("entry",IDX,"resource","dispenseRequest","quantity","value"))="" SET RTN("entry",IDX,"resource","dispenseRequest","quantity","value")=30
  QUIT
  ;

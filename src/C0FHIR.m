@@ -341,7 +341,7 @@ GETENC(RTN,ENCIEN,DFN) ; Add Encounter resource to the passed bundle array
  DO SETEPRI(.RTN,IDX)
  DO SETEDIAG(.RTN,IDX,ENCIEN,+$GET(DFN))
  DO SETEHOSP(.RTN,IDX)
- DO SETEHF(.RTN,IDX,ENCIEN)
+ ; US Quality Core rejects the vista-health-factor extension. Write still accepts it.
  ; US Quality Core Encounter snapshot omits Encounter.note; keep TIU via DocumentReference.
  DO SETDOCREF(.RTN,IDX,.ENC,ENCIEN,DFN)
  QUIT
@@ -361,10 +361,8 @@ SETETYP(RTN,IDX,ENC) ; Populate Encounter.type from encounter CPT/OS5 when avail
  IF $DATA(TYPE) MERGE RTN("entry",IDX,"resource","type",1)=TYPE QUIT
  SET CODE=$PIECE($GET(ENC("type")),"^")
  SET TXT=$PIECE($GET(ENC("type")),"^",2)
- IF CODE'="" DO
- . ; OS5 hybrids are not AMA CPT — only real CPT gets the AMA system URI.
- . IF $$ISCPT^C0FHIRP(CODE) SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://www.ama-assn.org/go/cpt"
- . E  SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="urn:va:syn:os5"
+ IF CODE'="",$$ISCPT^C0FHIRP(CODE) DO
+ . SET RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://www.ama-assn.org/go/cpt"
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code")=CODE
  . SET RTN("entry",IDX,"resource","type",1,"coding",1,"code","\s")=""
  . IF TXT'="" SET RTN("entry",IDX,"resource","type",1,"coding",1,"display")=TXT
@@ -391,18 +389,20 @@ ENCCOD(CODE,NAME,TYPE) ; Add encounter coding from OS5/CPT and recovered SNOMED
  IF CODE="" QUIT
  DO ENCSNOM(CODE,.SCT,.SDISP)
  IF SCT="" SET SCT="185349003",SDISP="Encounter for check up"
+ ; Map text uses single quotes. The validator accepts only the four SNOMED displays.
+ IF SCT="185349003" SET SDISP="Encounter for check up"
  SET TYPE("coding",1,"system")="http://snomed.info/sct"
  SET TYPE("coding",1,"code")=SCT
  SET TYPE("coding",1,"code","\s")=""
  IF SDISP'="" SET TYPE("coding",1,"display")=SDISP
- ; Prefer SCT; second coding is real CPT or honest OS5 (never claim OS5 as AMA CPT).
- IF $$ISCPT^C0FHIRP(CODE) SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
- E  SET TYPE("coding",2,"system")="urn:va:syn:os5"
- SET TYPE("coding",2,"code")=CODE
- SET TYPE("coding",2,"code","\s")=""
- ; V CPT text for 99202 is the SNOMED encounter name. CPT display must match.
- IF CODE="99202" SET NAME="New patient office or other outpatient visit, 15-29 minutes"
- IF NAME'="" SET TYPE("coding",2,"display")=NAME
+ ; Second coding only when the code is real CPT. OS5 is not a known code system.
+ IF $$ISCPT^C0FHIRP(CODE) DO
+ . SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
+ . SET TYPE("coding",2,"code")=CODE
+ . SET TYPE("coding",2,"code","\s")=""
+ . ; V CPT text for 99202 is the SNOMED encounter name. CPT display must match.
+ . IF CODE="99202" SET NAME="New patient office or other outpatient visit, 15-29 minutes"
+ . IF NAME'="" SET TYPE("coding",2,"display")=NAME
  IF NAME="" SET NAME=SDISP
  IF NAME'="" SET TYPE("text")=NAME
  QUIT
@@ -821,36 +821,6 @@ RCSUPURL() ; Canonical reasonCode support extension URL
  ;
 STDURL() ; Canonical V STANDARD CODES reasonCode marker (P2c)
  QUIT "http://vistaplex.org/fhir/StructureDefinition/vista-standard-code"
- ;
-SETEHF(RTN,IDX,VIEN) ; Add V Health Factor rows as Encounter extensions
- NEW EI,HFIEN,IEN,NAME,N,SEV,X0
- SET VIEN=+$GET(VIEN) QUIT:VIEN<1
- SET IEN=0
- FOR  SET IEN=$ORDER(^AUPNVHF("AD",VIEN,IEN)) QUIT:IEN<1  DO
- . SET X0=$GET(^AUPNVHF(IEN,0))
- . SET HFIEN=+$PIECE(X0,U) QUIT:HFIEN<1
- . SET NAME=$PIECE($GET(^AUTTHF(HFIEN,0)),U) QUIT:NAME=""
- . SET N=$ORDER(RTN("entry",IDX,"resource","extension",""),-1)+1
- . SET RTN("entry",IDX,"resource","extension",N,"url")=$$HFURL()
- . SET EI=1
- . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"url")="name"
- . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"valueString")=NAME
- . SET EI=EI+1
- . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"url")="system"
- . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"valueUri")="urn:va:health-factor"
- . SET SEV=$PIECE(X0,U,4)
- . IF SEV'="" DO
- . . SET EI=EI+1
- . . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"url")="severity"
- . . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"valueCode")=SEV
- . IF $GET(^AUPNVHF(IEN,811))'="" DO
- . . SET EI=EI+1
- . . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"url")="comment"
- . . SET RTN("entry",IDX,"resource","extension",N,"extension",EI,"valueString")=$PIECE($GET(^AUPNVHF(IEN,811)),U)
- QUIT
- ;
-HFURL() ; Health Factor Encounter extension URL
- QUIT "http://vistaplex.org/fhir/StructureDefinition/vista-health-factor"
  ;
 SETENOTE(RTN,IDX,ENC,VIEN) ; Add encounter-linked TIU note text when available
  ; VPRDVSIT TIU^VPRDVSIT skips docs when $$INFO^VPRDTIU<1 (status outside 7-13, etc.).

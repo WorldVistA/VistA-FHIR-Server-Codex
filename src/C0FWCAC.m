@@ -133,11 +133,22 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D DATE(CROOT,SUB,"abatement-date",$G(@RES@("abatementDateTime")))
  D DATE(CROOT,SUB,"authored",$G(@RES@("authoredOn")))
  D DATE(CROOT,SUB,"authoredon",$G(@RES@("authoredOn")))
+ I TYPE="Procedure" D DATE(CROOT,SUB,"date",$G(@RES@("performedDateTime")))
+ I TYPE="Procedure" D DATE(CROOT,SUB,"date",$G(@RES@("performedPeriod","start")))
+ I TYPE="DeviceRequest" D CODEABLE(CROOT,SUB,"code",$NA(@RES@("codeCodeableConcept")))
+ I TYPE="PractitionerRole" D PRACROLE(CROOT,SUB,RES)
  I TYPE="Encounter" D ENCIDX(CROOT,SUB,RES)
  I TYPE="DocumentReference" D DOCIDX(CROOT,SUB,RES)
  I TYPE="Organization" D ORGIDX(CROOT,SUB,RES)
  I TYPE="Location" D LOCIDX(CROOT,SUB,RES)
  I TYPE="Practitioner" D PRACIDX(CROOT,SUB,RES)
+ Q
+ ;
+PRACROLE(CROOT,SUB,RES) ; PractitionerRole.practitioner, with or without the type prefix
+ N REF
+ S REF=$G(@RES@("practitioner","reference"))
+ D REF(CROOT,SUB,"practitioner",REF)
+ I REF["Practitioner/" D SET(CROOT,SUB,"practitioner",$P(REF,"Practitioner/",2))
  Q
  ;
 ENCIDX(CROOT,SUB,RES) ; Encounter class + location search facts
@@ -479,7 +490,7 @@ NEWEST(ROOT,IEN,RES) ; $$ - cache id with latest createdAt that indexes RES (or 
  Q BEST
  ;
 ALLOWGLOB(RES,FILTER) ; $$ - resource/query may search without a patient id
- I RES="Patient"!(RES="Practitioner")!(RES="Organization")!(RES="Location") Q 1
+ I RES="Patient"!(RES="Practitioner")!(RES="Organization")!(RES="Location")!(RES="PractitionerRole") Q 1
  I $G(FILTER("_id"))'=""!($G(FILTER("id"))'="") Q 1
  I $G(FILTER("identifier"))'="" Q 1
  Q 0

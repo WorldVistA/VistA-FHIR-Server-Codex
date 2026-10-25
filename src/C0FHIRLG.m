@@ -258,7 +258,8 @@ GETGRPCL(RTN,DFN) ; Chart resources the loader does not file, from the intake gr
  S DFN=+$G(DFN) Q:DFN<1
  S ROOT=$$ROOT^C0FWFUTL() Q:ROOT=""
  S IEN=$$DFN2IEN^C0FWFUTL(DFN) Q:IEN<1
- F TYPE="Coverage","CareTeam","RelatedPerson","Goal","CarePlan","ServiceRequest","Provenance","MedicationDispense","MedicationAdministration","Immunization","Procedure","AdverseEvent","DeviceRequest","Task","FamilyMemberHistory","DiagnosticReport","MedicationRequest","Observation","PractitionerRole" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
+ F TYPE="Coverage","CareTeam","RelatedPerson","Goal","CarePlan","ServiceRequest","Provenance","MedicationDispense","MedicationAdministration","Immunization","Procedure" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
+ F TYPE="AdverseEvent","DeviceRequest","Task","FamilyMemberHistory","DiagnosticReport","MedicationRequest","Observation","PractitionerRole","Media" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
  D SRMAMMO(.RTN,DFN)
  Q
  ;
@@ -274,7 +275,8 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  M RES=@ROOT@(IEN,"json","entry",RIEN,"resource")
  Q:$G(RES("resourceType"))'=TYPE
  I TYPE="Immunization",$G(RES("status"))'="not-done" Q
- I TYPE="Procedure",$G(RES("status"))'="not-done" Q
+ ; Filed CPT rows stay on the VistA read. inf-proc-done is the completed example.
+ I TYPE="Procedure",$G(RES("status"))'="not-done",$E($G(RES("id")),1,4)'="inf-" Q
  S RID=$G(RES("id")) Q:RID=""
  I $$GAPONLY(TYPE,RID) Q
  I $G(RES("subject","reference"))["Patient/" S RES("subject","reference")="Patient/"_+DFN
@@ -284,7 +286,7 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I TYPE="ServiceRequest" D SRFIX(.RES)
  I TYPE="MedicationRequest" D DNPFIX(.RES)
  I TYPE="DeviceRequest" D DEVBOOL(.RES)
- I TYPE="MedicationDispense",$G(RES("status"))="declined" D MEDDEC(.RES)
+ I TYPE="MedicationDispense",$G(RES("status"))="declined" D MEDDEC(.RTN,.RES)
  I TYPE="MedicationDispense",$G(RES("status"))'="declined" D MEDDSP(.RTN,.RES)
  I TYPE="MedicationAdministration",$G(RES("status"))="not-done" D MEDNOT(.RES)
  I TYPE="MedicationAdministration",$G(RES("status"))'="not-done" D MEDADM(.RES)
@@ -295,7 +297,10 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I TYPE="RelatedPerson" D RPFIX(.RES)
  I TYPE="Coverage" D CVPAY(.RTN,.RES)
  I TYPE="PractitionerRole" D ROLFIX(.RES)
+ I TYPE="Procedure" D PROCFIX(.RES)
+ I TYPE="DiagnosticReport" D NOTEFIX(.RES,DFN)
  S PROF=$$CLPROF(TYPE)
+ I TYPE="Procedure",$G(RES("status"))'="not-done" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-procedure"
  I TYPE="ServiceRequest",$G(RES("doNotPerform"))="true" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-servicenotrequested"
  I TYPE="DeviceRequest",$$ISTRUE($G(RES("modifierExtension",1,"valueBoolean"))) S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-devicenotrequested"
  I TYPE="MedicationDispense",$G(RES("status"))="declined" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationdispensedeclined"
@@ -313,7 +318,7 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I TYPE="MedicationDispense"!(TYPE="MedicationAdministration")!(TYPE="Immunization")!(TYPE="Procedure")!(TYPE="AdverseEvent")!(TYPE="DeviceRequest")!(TYPE="Task")!(TYPE="FamilyMemberHistory")!(TYPE="DiagnosticReport")!(TYPE="MedicationRequest")!(TYPE="Observation") D PROVONE(.RTN,TYPE,RID)
  I TYPE="Immunization"!(TYPE="Procedure")!(TYPE="MedicationDispense")!(TYPE="MedicationAdministration")!(TYPE="AdverseEvent")!(TYPE="DeviceRequest")!(TYPE="Task")!(TYPE="DiagnosticReport")!(TYPE="MedicationRequest")!(TYPE="PractitionerRole") D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
  I TYPE="AdverseEvent" D ADDMED(.RTN,"med-zz-disp")
- I TYPE="DiagnosticReport" D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
+ I TYPE="DiagnosticReport"!(TYPE="MedicationDispense")!(TYPE="PractitionerRole") D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
  Q
  ;
 CLPROF(TYPE) ; $$ - US Quality Core profile, or empty
@@ -390,11 +395,14 @@ DEVBOOL(RES) ; DeviceRequest doNotPerform is a modifier extension, not a field
 DNPFIX(RES) ; Normalize doNotPerform so the search token is true or false
  I $$ISTRUE($G(RES("doNotPerform"))) S RES("doNotPerform")="true"
  E  I $G(RES("doNotPerform"))'="" S RES("doNotPerform")="false"
+ I $G(RES("requester","reference"))["pract-chen" S RES("requester","reference")="Practitioner/P1"
+ I $G(RES("reportedReference","reference"))="" S RES("reportedReference","reference")="Practitioner/P1"
  I $G(RES("reasonCode",1,"text"))="" D
  . S RES("reasonCode",1,"text")="Not indicated (qualifier value)"
  . S RES("reasonCode",1,"coding",1,"system")="http://snomed.info/sct"
  . S RES("reasonCode",1,"coding",1,"code")="410534003"
  . S RES("reasonCode",1,"coding",1,"display")="Not indicated (qualifier value)"
+ I $G(RES("doNotPerform"))="true" D MEDNMS(.RES)
  I '$D(RES("modifierExtension",1,"valueBoolean")) Q
  I $$ISTRUE($G(RES("modifierExtension",1,"valueBoolean"))) S RES("modifierExtension",1,"valueBoolean")="true"
  E  S RES("modifierExtension",1,"valueBoolean")="false"
@@ -447,9 +455,88 @@ OBSPROF(RES) ; $$ - profile for a graph-only observation
  I CODE="activity" Q "http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-simple-observation"
  Q ""
  ;
-MEDDEC(RES) ; Declined dispense keeps its not-done medication text
+MEDDEC(RTN,RES) ; Declined dispense keeps its not-done medication text
+ D DISPFILL(.RES)
  S RES("performer",1,"actor","reference")="Practitioner/P1"
+ S RES("performer",2,"actor","reference")="Organization/org-clinic"
  S RES("substitution","wasSubstituted")="false"
+ D AUTHRX(.RTN,.RES)
+ Q
+ ;
+DISPFILL(RES) ; type and dosage timing the dispense profiles mark must-support
+ I $G(RES("type","coding",1,"code"))="" D
+ . S RES("type","text")="First Fill"
+ . S RES("type","coding",1,"system")="http://terminology.hl7.org/CodeSystem/v3-ActCode"
+ . S RES("type","coding",1,"code")="FF"
+ . S RES("type","coding",1,"display")="First Fill"
+ I $G(RES("dosageInstruction",1,"text"))="" S RES("dosageInstruction",1,"text")="Fictitious dispense."
+ I $G(RES("dosageInstruction",1,"timing","repeat","periodUnit"))="" D
+ . S RES("dosageInstruction",1,"timing","repeat","frequency")=1
+ . S RES("dosageInstruction",1,"timing","repeat","period")=1
+ . S RES("dosageInstruction",1,"timing","repeat","periodUnit")="d"
+ I $G(RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","value"))="" D
+ . S RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","value")=1
+ . S RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","unit")="mg"
+ . S RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","system")="http://unitsofmeasure.org"
+ . S RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","code")="mg"
+ I $G(RES("quantity","value"))="" S RES("quantity","value")=1
+ I $G(RES("whenHandedOver"))="" S RES("whenHandedOver")="2026-10-06T14:00:00Z"
+ Q
+ ;
+AUTHRX(RTN,RES) ; Point at a requested MedicationRequest, not the not-requested example
+ N C0FI,C0FID,C0FDNP
+ Q:$G(RES("authorizingPrescription",1,"reference"))'=""
+ S C0FI=0,C0FID=""
+ F  S C0FI=$O(RTN("entry",C0FI)) Q:'C0FI  D  Q:C0FID'=""
+ . I $G(RTN("entry",C0FI,"resource","resourceType"))'="MedicationRequest" Q
+ . S C0FDNP=$G(RTN("entry",C0FI,"resource","doNotPerform"))
+ . I C0FDNP="true"!(C0FDNP=1) Q
+ . S C0FID=$G(RTN("entry",C0FI,"resource","id"))
+ I C0FID'="" S RES("authorizingPrescription",1,"reference")="MedicationRequest/"_C0FID
+ Q
+ ;
+MEDNMS(RES) ; Must-support fields on the not-requested medication
+ N DFN,IEN,V
+ I $G(RES("category",1,"coding",1,"code"))="" D
+ . S RES("category",1,"text")="Community"
+ . S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/medicationrequest-category"
+ . S RES("category",1,"coding",1,"code")="community"
+ . S RES("category",1,"coding",1,"display")="Community"
+ I $G(RES("dosageInstruction",1,"text"))="" S RES("dosageInstruction",1,"text")="Not dispensed. Fictitious."
+ I $G(RES("dosageInstruction",1,"timing","repeat","periodUnit"))="" D
+ . S RES("dosageInstruction",1,"timing","repeat","frequency")=1
+ . S RES("dosageInstruction",1,"timing","repeat","period")=1
+ . S RES("dosageInstruction",1,"timing","repeat","periodUnit")="d"
+ I $G(RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","value"))="" D
+ . S RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","value")=1
+ . S RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","unit")="mg"
+ . S RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","system")="http://unitsofmeasure.org"
+ . S RES("dosageInstruction",1,"doseAndRate",1,"doseQuantity","code")="mg"
+ I $G(RES("dispenseRequest","numberOfRepeatsAllowed"))="" S RES("dispenseRequest","numberOfRepeatsAllowed")=0
+ I $G(RES("dispenseRequest","quantity","value"))="" S RES("dispenseRequest","quantity","value")=0
+ S DFN=+$P($G(RES("subject","reference")),"/",2)
+ Q:DFN<1
+ I $G(RES("encounter","reference"))="" S V=+$O(^AUPNVSIT("C",DFN,0)) I V>0 S RES("encounter","reference")="Encounter/E"_V
+ I $G(RES("reasonReference",1,"reference"))="" S IEN=+$O(^AUPNPROB("AC",DFN,0)) I IEN>0 S RES("reasonReference",1,"reference")="Condition/C"_IEN
+ Q
+ ;
+PROCFIX(RES) ; reasonReference is a Condition this server can read
+ N DFN,IEN
+ S DFN=+$P($G(RES("subject","reference")),"/",2)
+ Q:DFN<1
+ Q:$G(RES("reasonReference",1,"reference"))["Condition/C"
+ S IEN=+$O(^AUPNPROB("AC",DFN,0))
+ Q:IEN<1
+ S RES("reasonReference",1,"reference")="Condition/C"_IEN
+ Q
+ ;
+NOTEFIX(RES,DFN) ; Encounter on the note example is a visit this server can read
+ N V
+ Q:$G(RES("id"))'="inf-note"
+ Q:$G(RES("encounter","reference"))["Encounter/E"
+ S V=+$O(^AUPNVSIT("C",+DFN,0))
+ Q:V<1
+ S RES("encounter","reference")="Encounter/E"_V
  Q
  ;
 MEDNOT(RES) ; Not-done administration keeps its not-done medication text
@@ -467,8 +554,13 @@ MEDNOT(RES) ; Not-done administration keeps its not-done medication text
 TASKFIX(RES) ; Identifier, and a resolvable focus on the rejected task
  S RES("identifier",1,"system")="https://fhir.vistaplex.org/task"
  S RES("identifier",1,"value")=$G(RES("id"))
- I $G(RES("status"))'="rejected" Q
+ S RES("basedOn",1,"reference")="DiagnosticReport/inf-note"
  S RES("focus","reference")="DiagnosticReport/inf-note"
+ S RES("reasonCode",1,"text")="Not indicated (qualifier value)"
+ S RES("reasonCode",1,"coding",1,"system")="http://snomed.info/sct"
+ S RES("reasonCode",1,"coding",1,"code")="410534003"
+ S RES("reasonCode",1,"coding",1,"display")="Not indicated (qualifier value)"
+ I $G(RES("status"))'="rejected" Q
  S RES("statusReason","text")="Not indicated (qualifier value)"
  S RES("statusReason","coding",1,"system")="http://snomed.info/sct"
  S RES("statusReason","coding",1,"code")="410534003"
@@ -477,6 +569,16 @@ TASKFIX(RES) ; Identifier, and a resolvable focus on the rejected task
  ;
 ROLFIX(RES) ; PractitionerRole points at the practitioner the suite can read
  I $G(RES("practitioner","reference"))["pract-chen" S RES("practitioner","reference")="Practitioner/P1"
+ I $G(RES("active"))="" S RES("active")="true"
+ I $G(RES("period","start"))="" S RES("period","start")="2021-01-01"
+ I $G(RES("identifier",1,"value"))="" D
+ . S RES("identifier",1,"use")="official"
+ . S RES("identifier",1,"system")="https://fhir.vistaplex.org/practitioner-role"
+ . S RES("identifier",1,"value")=$G(RES("id"))
+ I $G(RES("organization","reference"))="" S RES("organization","reference")="Organization/org-clinic"
+ I $G(RES("telecom",1,"value"))="" D
+ . S RES("telecom",1,"system")="phone"
+ . S RES("telecom",1,"value")="555-010-0000"
  Q
  ;
 ISTRUE(X) ; $$ - JSON true stored as 1 or "true"
@@ -485,7 +587,9 @@ ISTRUE(X) ; $$ - JSON true stored as 1 or "true"
  ;
 MEDDSP(RTN,RES) ; Dispense must-support: medication reference, performer, prescription
  N C0FI,C0FID
+ D DISPFILL(.RES)
  S RES("performer",1,"actor","reference")="Practitioner/P1"
+ S RES("performer",2,"actor","reference")="Organization/org-clinic"
  S RES("substitution","wasSubstituted")="false"
  K RES("medicationCodeableConcept")
  S RES("medicationReference","reference")="Medication/med-zz-disp"
