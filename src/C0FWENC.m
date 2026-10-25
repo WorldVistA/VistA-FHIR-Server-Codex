@@ -4,7 +4,7 @@ C0FWENC ; VEHU/Codex - C0FW encounter writeback adapter ;May 09, 2026
  Q
  ;
 LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
- N DFN,ENCDATA,FMDT,GIEN,GRIEN,ID,KNOWNVISIT,LOC,PKG,RET,SENTDATA,SOURCE,STOP,USER,VISIT,ZZERR,ZZERDESC
+ N C0FAPPT,C0FDOAP,DFN,ENCDATA,FMDT,GIEN,GRIEN,ID,KNOWNVISIT,LOC,PKG,RET,SENTDATA,SOURCE,STOP,USER,VISIT,ZZERR,ZZERDESC
  I $G(ROOT)="" D ERR(ROOT,IEN,RIEN,"Missing graph root",.RETURN) Q
  S DFN=$$DFN(ROOT,IEN,RIEN)
  I DFN<1 D ERR(ROOT,IEN,RIEN,"No DFN linked to graph row",.RETURN) Q
@@ -33,6 +33,13 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  I +$G(DUZ(2))<1 S DUZ(2)=500
  D IO^C0FWCTX
  I $$RPMS() D RPMSLOAD(ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,+$G(KNOWNVISIT),.RETURN) Q
+ ; Checkout runs after DATA2PCE. Do not add a diagnosis here.
+ ; A past date is historical, and visit tracking then files no outpatient
+ ; encounter, so the cover sheet has no row. An appointment that will be
+ ; checked out is filed ambulatory. The diagnosis already queued stays.
+ S C0FDOAP=0
+ I +$G(KNOWNVISIT)<1,$$APPTREADY(ROOT,IEN,RIEN,DFN,FMDT,LOC,.C0FAPPT) S C0FDOAP=1
+ I $G(C0FDOAP) D APPTCAT(.ENCDATA)
  I +$G(KNOWNVISIT)>0 S VISIT=KNOWNVISIT
  E  K VISIT
  K SENTDATA M SENTDATA=ENCDATA
@@ -55,6 +62,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  D POSTFILE(ROOT,IEN,RIEN,+VISIT)
  D HFROLL(ROOT,IEN,RIEN,.RETURN)
  I +$G(RET)=-5 S @ROOT@(IEN,"load","Encounter",RIEN,"warning")=$$WARNMSG(.ZZERR,.ZZERDESC)
+ I $G(C0FDOAP) D APPTFILE(ROOT,IEN,RIEN,.C0FAPPT)
  Q
  ;
 BUILD(ENCDATA,ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,VISIT) ; Build unified encounter DATA2PCE payload
@@ -458,6 +466,93 @@ ACTIVEPC(USER) ; $$ - true if user has active person class for PCE
  ;
 SERCAT(FMDT) ; $$ - PCE service category
  Q $S((+$G(FMDT)\1)<$$DT^XLFDT:"E",1:"A")
+ ;
+APPTREADY(ROOT,IEN,RIEN,DFN,FMDT,LOC,C0FAPPT) ; $$ - 1 when a new visit should be checked out
+ N C0FCLIN,C0FHL7,C0FICN
+ K C0FAPPT
+ I $T(APPTADD^SYNDHP62)=""!($T(APPTCKIN^SYNDHP62)="")!($T(APTCKOUT^SYNDHP62)="") D  Q 0
+ . D LOG(ROOT,IEN,RIEN,"Appointment skipped; SYNDHP62 appointment entry points are missing")
+ S C0FICN=$$ICN^C0FWLAB(DFN,IEN)
+ I C0FICN="" D LOG(ROOT,IEN,RIEN,"Appointment skipped; patient has no ICN in ^DPT(""AFICN"")") Q 0
+ S C0FCLIN=$P($G(^SC(+$G(LOC),0)),"^",1)
+ I C0FCLIN="" D LOG(ROOT,IEN,RIEN,"Appointment skipped; hospital location has no name") Q 0
+ I $$GET1^DIQ(44,+$G(LOC)_",",8)="" D LOG(ROOT,IEN,RIEN,"Appointment skipped; clinic "_C0FCLIN_" has no stop code") Q 0
+ I $P(+$G(FMDT),".",2)="" D LOG(ROOT,IEN,RIEN,"Appointment skipped; encounter datetime has no time") Q 0
+ S C0FHL7=$$FMTHL7^XLFDT(FMDT)
+ I C0FHL7="" D LOG(ROOT,IEN,RIEN,"Appointment skipped; FileMan datetime did not convert to HL7") Q 0
+ S C0FAPPT("ICN")=C0FICN,C0FAPPT("CLIN")=C0FCLIN,C0FAPPT("HL7")=C0FHL7
+ Q 1
+ ;
+APPTCAT(ENCDATA) ; Ambulatory category so visit tracking creates the outpatient encounter
+ N C0FI
+ S ENCDATA("ENCOUNTER",1,"SERVICE CATEGORY")="A"
+ S C0FI=""
+ F  S C0FI=$O(ENCDATA("DX/PL",C0FI)) Q:C0FI=""  D
+ . S ENCDATA("DX/PL",C0FI,"SERVICE CATEGORY")="A"
+ Q
+ ;
+APPTFILE(ROOT,IEN,RIEN,C0FAPPT) ; Add, check in, and check out one appointment
+ N C0FCLIN,C0FHL7,C0FICN,C0FLEN,C0FRET,USER
+ N $ET,$ES
+ S C0FICN=$G(C0FAPPT("ICN")),C0FCLIN=$G(C0FAPPT("CLIN")),C0FHL7=$G(C0FAPPT("HL7")),C0FLEN=""
+ S @ROOT@(IEN,"load","Encounter",RIEN,"appointment","clinic")=C0FCLIN
+ S @ROOT@(IEN,"load","Encounter",RIEN,"appointment","hl7")=C0FHL7
+ D LOG(ROOT,IEN,RIEN,"Calling APPTADD^SYNDHP62 clinic="_C0FCLIN_" hl7="_C0FHL7)
+ ; SYNDHP62 can die in HLO on a fresh VEHU (^HLC("FILE777","OUT")).
+ ; Name the routine: a bare G APPTERR runs in SYNDHP62 and the label is missing.
+ ; The visit is already filed. Record the appointment error and return.
+ S $ET="D APPTERR^C0FWENC(ROOT,IEN,RIEN) S $EC="""" Q"
+ ; DATA2PCE can leave %DT="STXR". DD^%DT then emits seconds, and the
+ ; appointment field rejects that external form.
+ K %DT
+ D APPTADD^SYNDHP62(.C0FRET,C0FICN,C0FCLIN,C0FHL7,C0FLEN)
+ D APPTLOG(ROOT,IEN,RIEN,"add",$G(C0FRET("APPT")))
+ I $G(C0FRET("APPT"))'=1 Q
+ D LOG(ROOT,IEN,RIEN,"Calling APPTCKIN^SYNDHP62")
+ K %DT
+ D APPTCKIN^SYNDHP62(.C0FRET,C0FICN,C0FCLIN,C0FHL7,"")
+ D APPTLOG(ROOT,IEN,RIEN,"checkin",$G(C0FRET("CKIN")))
+ I $G(C0FRET("CKIN"))'=1 Q
+ D LOG(ROOT,IEN,RIEN,"Calling APTCKOUT^SYNDHP62")
+ K %DT
+ D APTCKOUT^SYNDHP62(.C0FRET,C0FICN,C0FCLIN,C0FHL7,"")
+ D APPTLOG(ROOT,IEN,RIEN,"checkout",$G(C0FRET("CKOUT")))
+ I $G(C0FRET("CKOUT"))=1 D APPTCO(ROOT,IEN,RIEN,C0FICN,C0FHL7)
+ Q
+ ;
+APPTERR(ROOT,IEN,RIEN) ; SYNDHP62 died. The visit stays filed.
+ S $ET="",$EC=""
+ N C0FMSG
+ S C0FMSG=""
+ X $S($P($SY,",")=47:"S C0FMSG=$ZSTATUS",1:"S C0FMSG=$ZE")
+ S @ROOT@(IEN,"load","Encounter",RIEN,"appointment","status")="error"
+ D LOG(ROOT,IEN,RIEN,"Appointment error: "_$E($G(C0FMSG),1,180))
+ Q
+ ;
+APPTCO(ROOT,IEN,RIEN,C0FICN,C0FHL7) ; Check out sibling ACTION REQUIRED encounters
+ N C0FACT,C0FCO,C0FDFN,C0FDT,C0FFDA,C0FIEN,C0FMSG,C0FN,C0FNOW
+ S C0FDFN=$O(^DPT("AFICN",$G(C0FICN),"")) Q:C0FDFN<1
+ S C0FDT=$$HL7TFM^XLFDT($G(C0FHL7)) Q:C0FDT<1
+ S C0FACT=$O(^SD(409.63,"B","ACTION REQUIRED",0)) Q:C0FACT<1
+ S C0FCO=$O(^SD(409.63,"B","CHECKED OUT",0)) Q:C0FCO<1
+ S C0FNOW=$$FMADD^XLFDT(C0FDT,0,0,30),C0FN=0,C0FIEN=""
+ F  S C0FIEN=$O(^SCE("ADFN",C0FDFN,C0FDT,C0FIEN)) Q:C0FIEN=""  D
+ . Q:$P($G(^SCE(C0FIEN,0)),"^",6)'=""
+ . Q:$P($G(^SCE(C0FIEN,0)),"^",12)'=C0FACT
+ . K C0FFDA,C0FMSG
+ . S C0FFDA(409.68,C0FIEN_",",.07)=C0FNOW
+ . S C0FFDA(409.68,C0FIEN_",",.12)=C0FCO
+ . D FILE^DIE("K","C0FFDA","C0FMSG")
+ . I '$D(C0FMSG) S C0FN=C0FN+1
+ D LOG(ROOT,IEN,RIEN,"Appointment encounters moved off ACTION REQUIRED: "_C0FN)
+ Q
+ ;
+APPTLOG(ROOT,IEN,RIEN,C0FSTEP,C0FVAL) ; Record one appointment step
+ S @ROOT@(IEN,"load","Encounter",RIEN,"appointment",C0FSTEP)=$G(C0FVAL)
+ D LOG(ROOT,IEN,RIEN,"Appointment "_C0FSTEP_"="_$G(C0FVAL))
+ I C0FSTEP="checkout",$G(C0FVAL)=1 S @ROOT@(IEN,"load","Encounter",RIEN,"appointment","status")="checked-out" Q
+ I $G(C0FVAL)'=1 S @ROOT@(IEN,"load","Encounter",RIEN,"appointment","status")="error"
+ Q
  ;
 KNOWN(ROOT,IEN,RIEN,ID) ; $$ - known visit ien from graph or Encounter id
  N ERIEN,VISIT

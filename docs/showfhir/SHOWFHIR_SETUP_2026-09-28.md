@@ -28,7 +28,7 @@ CPRS entry: `https://showfhir.vistaplex.org/demos/cprs/?dfn=<DFN>&autoload=dfn&r
 ## Population order (match Show)
 
 1. 180 bundles from `HL7-FHIR-quality-testing/2026/patients/raw/synthea-1000-…/fhir`
-2. `WVEHR-on-FHIR/bundles/JOHN-SALT.json`
+2. `WVEHR-on-FHIR/bundles/JOHN-SALT-LOAD.json` (not the 2009 scan `JOHN-SALT.json`)
 3. `overnight-load1-manifest.tsv` enriched common cohort
 
 ## Script

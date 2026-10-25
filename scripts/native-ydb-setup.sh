@@ -31,7 +31,9 @@ LOADER_ROOT="${LOADER_ROOT:-$ROOT/../VistA-FHIR-Data-Loader}"
 C0T_SRC="${C0T_ROUTINES_DIR:-$ROOT/../C0T-terminology-gateway/routines}"
 C0X_ROOT="${C0X_ROOT:-$ROOT/../fhir-triple-store}"
 QT_ROOT="${QT_ROOT:-$ROOT/../HL7-FHIR-quality-testing}"
-JOHN="${JOHN_SALT_BUNDLE:-$ROOT/../WVEHR-on-FHIR/bundles/JOHN-SALT.json}"
+# Filing chart. The 2009 scan (JOHN-SALT.json) fails ambulatory filing.
+# WVEHR-on-FHIR/docs/TEST_PATIENT_FHIR_BUNDLE_GUIDE.md
+JOHN="${JOHN_SALT_BUNDLE:-$ROOT/../WVEHR-on-FHIR/bundles/JOHN-SALT-LOAD.json}"
 
 HOST="${NATIVE_SSH:-root@native.vistaplex.org}"
 DOMAIN="${NATIVE_DOMAIN:-native.vistaplex.org}"

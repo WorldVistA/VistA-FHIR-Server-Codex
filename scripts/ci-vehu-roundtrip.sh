@@ -28,7 +28,9 @@ WS="$(cd "$ROOT/.." && pwd)"
 IMAGE="${CI_VEHU_IMAGE:-worldvista/vehu:latest}"
 PORT="${CI_VEHU_PORT:-19091}"
 CPRS_HARNESS="${CPRS_HARNESS:-$WS/CPRS-on-FHIR/harness/CFH-WRITE-001/harness.py}"
-JOHN="${JOHN_SALT_BUNDLE:-$WS/WVEHR-on-FHIR/bundles/JOHN-SALT.json}"
+# Filing chart. The 2009 scan (JOHN-SALT.json) fails ambulatory filing.
+# WVEHR-on-FHIR/docs/TEST_PATIENT_FHIR_BUNDLE_GUIDE.md
+JOHN="${JOHN_SALT_BUNDLE:-$WS/WVEHR-on-FHIR/bundles/JOHN-SALT-LOAD.json}"
 FIXED_SEED="${CI_VEHU_FIXED_SEED:-4244}"
 LEVEL=10
 KEEP=0

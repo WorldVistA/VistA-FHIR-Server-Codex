@@ -22,7 +22,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REHMP_ROOT="${REHMP_ROOT:-$ROOT/../rehmp}"
 LOADER_ROOT="${LOADER_ROOT:-$ROOT/../VistA-FHIR-Data-Loader}"
 QT_ROOT="${QT_ROOT:-$ROOT/../HL7-FHIR-quality-testing}"
-JOHN="${JOHN_SALT_BUNDLE:-$ROOT/../WVEHR-on-FHIR/bundles/JOHN-SALT.json}"
+# Filing chart. The 2009 scan (JOHN-SALT.json) fails ambulatory filing.
+# WVEHR-on-FHIR/docs/TEST_PATIENT_FHIR_BUNDLE_GUIDE.md
+JOHN="${JOHN_SALT_BUNDLE:-$ROOT/../WVEHR-on-FHIR/bundles/JOHN-SALT-LOAD.json}"
 
 HOST="${SHOWFHIR_SSH:-root@showfhir.vistaplex.org}"
 NAME="${SHOWFHIR_NAME:-Show}"
