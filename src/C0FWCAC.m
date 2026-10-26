@@ -118,6 +118,8 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  I $G(@RES@("intent"))'="" D SET(CROOT,SUB,"intent",$G(@RES@("intent")))
  D BOOL(CROOT,SUB,"do-not-perform",$$DONOT(RES))
  D DATE(CROOT,SUB,"date",$G(@RES@("effectiveDateTime")))
+ D DATE(CROOT,SUB,"effective-time",$G(@RES@("effectiveDateTime")))
+ D DATE(CROOT,SUB,"effective-time",$G(@RES@("effectivePeriod","start")))
  ; Observation date is effective[x]. issued is the cache-build time, so
  ; indexing it under date returned 2021 vitals for a gt2023 search.
  I TYPE'="Observation" D DATE(CROOT,SUB,"date",$G(@RES@("issued")))
@@ -136,6 +138,9 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  I TYPE="Procedure" D DATE(CROOT,SUB,"date",$G(@RES@("performedDateTime")))
  I TYPE="Procedure" D DATE(CROOT,SUB,"date",$G(@RES@("performedPeriod","start")))
  I TYPE="DeviceRequest" D CODEABLE(CROOT,SUB,"code",$NA(@RES@("codeCodeableConcept")))
+ ; Medication*.medication[x] and DeviceRequest.code[x] are not resource.code.
+ D CODEABLE(CROOT,SUB,"code",$NA(@RES@("medicationCodeableConcept")))
+ D CODEABLE(CROOT,SUB,"code",$NA(@RES@("codeCodeableConcept")))
  I TYPE="PractitionerRole" D PRACROLE(CROOT,SUB,RES)
  I TYPE="Encounter" D ENCIDX(CROOT,SUB,RES)
  I TYPE="DocumentReference" D DOCIDX(CROOT,SUB,RES)
@@ -531,6 +536,7 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  D APPLY(.CAND,CROOT,"target",$G(FILTER("target")),"REF")
  D APPLY(.CAND,CROOT,"encounter",$G(FILTER("encounter")),"REF")
  D APPLY(.CAND,CROOT,"code",$G(FILTER("code")),"TOKEN")
+ D APPLY(.CAND,CROOT,"effective-time",$G(FILTER("effective-time")),"DATE")
  D APPLY(.CAND,CROOT,"status",$G(FILTER("status")),"TOKEN")
  D APPLY(.CAND,CROOT,"intent",$G(FILTER("intent")),"TOKEN")
  D APPLY(.CAND,CROOT,"do-not-perform",$G(FILTER("do-not-perform")),"TOKEN")
@@ -763,6 +769,8 @@ RESTYPE(X) ; $$ - normalize supported resource type
  I X="TASK" Q "Task"
  I X="PRACTITIONERROLE" Q "PractitionerRole"
  I X="SPECIMEN" Q "Specimen"
+ I X="MEDIA" Q "Media"
+ I X="ENDPOINT" Q "Endpoint"
  Q ""
  ;
 OO(MSG,OUT) ; OperationOutcome

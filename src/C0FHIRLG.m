@@ -290,6 +290,7 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I TYPE="MedicationDispense",$G(RES("status"))'="declined" D MEDDSP(.RTN,.RES)
  I TYPE="MedicationAdministration",$G(RES("status"))="not-done" D MEDNOT(.RES)
  I TYPE="MedicationAdministration",$G(RES("status"))'="not-done" D MEDADM(.RES)
+ I TYPE="AdverseEvent" D ADVFIX(.RES)
  I TYPE="Immunization" D IMMFIX(.RES)
  I TYPE="Goal" D GOLFIX(.RES)
  I TYPE="CarePlan" D CPFIX(.RES)
@@ -319,6 +320,8 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I TYPE="Immunization"!(TYPE="Procedure")!(TYPE="MedicationDispense")!(TYPE="MedicationAdministration")!(TYPE="AdverseEvent")!(TYPE="DeviceRequest")!(TYPE="Task")!(TYPE="DiagnosticReport")!(TYPE="MedicationRequest")!(TYPE="PractitionerRole") D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
  I TYPE="AdverseEvent" D ADDMED(.RTN,"med-zz-disp")
  I TYPE="DiagnosticReport"!(TYPE="MedicationDispense")!(TYPE="PractitionerRole") D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
+ I TYPE="PractitionerRole" D ROLEXTRA(.RTN)
+ I RID="admin-varen" D CODEADM(.RTN,DFN)
  Q
  ;
 CLPROF(TYPE) ; $$ - US Quality Core profile, or empty
@@ -430,7 +433,13 @@ OBSFIX(RES) ; Use example LOINC codes the validator knows
  . S RES("category",2,"coding",2,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-category"
  . S RES("category",2,"coding",2,"code")="functional-status"
  . S RES("category",2,"coding",2,"display")="Functional Status"
- I RID="inf-cancelled" D
+ I RID="inf-exam-qty" D  Q
+ . ; 32486-4 is not in Inferno's LOINC 2.83 package. 8884-9 is, and it is not a vital.
+ . S RES("code","text")="Heart rate rhythm"
+ . S RES("code","coding",1,"system")="http://loinc.org"
+ . S RES("code","coding",1,"code")="8884-9"
+ . S RES("code","coding",1,"display")="Heart rate rhythm"
+ I RID="inf-cancelled"!(RID="inf-cancelled-value") D
  . S RES("issued")="2026-03-10T14:00:00Z"
  . S RES("extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-notDoneReason"
  . S RES("extension",1,"valueCodeableConcept","coding",1,"system")="http://snomed.info/sct"
@@ -539,7 +548,7 @@ NOTEFIX(RES,DFN) ; Encounter on the note example is a visit this server can read
  S RES("encounter","reference")="Encounter/E"_V
  Q
  ;
-MEDNOT(RES) ; Not-done administration keeps its not-done medication text
+MEDNOT(RES) ; Not-done administration: a coding, and not the value-set extension
  N C0FSR
  S RES("performer",1,"actor","reference")="Practitioner/P1"
  I $D(RES("statusReason","coding")),'$D(RES("statusReason",1)) D
@@ -549,6 +558,12 @@ MEDNOT(RES) ; Not-done administration keeps its not-done medication text
  I '$D(RES("extension",1)) D
  . S RES("extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-recorded"
  . S RES("extension",1,"valueDateTime")="2026-10-06"
+ ; mna-1 is an exclusive or. A coding and the extension together fail.
+ K RES("medicationCodeableConcept","extension")
+ S RES("medicationCodeableConcept","text")="varenicline 1 MG Oral Tablet"
+ S RES("medicationCodeableConcept","coding",1,"system")="http://www.nlm.nih.gov/research/umls/rxnorm"
+ S RES("medicationCodeableConcept","coding",1,"code")="636676"
+ S RES("medicationCodeableConcept","coding",1,"display")="varenicline 1 MG Oral Tablet"
  Q
  ;
 TASKFIX(RES) ; Identifier, and a resolvable focus on the rejected task
@@ -556,10 +571,12 @@ TASKFIX(RES) ; Identifier, and a resolvable focus on the rejected task
  S RES("identifier",1,"value")=$G(RES("id"))
  S RES("basedOn",1,"reference")="DiagnosticReport/inf-note"
  S RES("focus","reference")="DiagnosticReport/inf-note"
- S RES("reasonCode",1,"text")="Not indicated (qualifier value)"
- S RES("reasonCode",1,"coding",1,"system")="http://snomed.info/sct"
- S RES("reasonCode",1,"coding",1,"code")="410534003"
- S RES("reasonCode",1,"coding",1,"display")="Not indicated (qualifier value)"
+ ; reasonCode is 0..1. An array fails validation.
+ K RES("reasonCode")
+ S RES("reasonCode","text")="Not indicated (qualifier value)"
+ S RES("reasonCode","coding",1,"system")="http://snomed.info/sct"
+ S RES("reasonCode","coding",1,"code")="410534003"
+ S RES("reasonCode","coding",1,"display")="Not indicated (qualifier value)"
  I $G(RES("status"))'="rejected" Q
  S RES("statusReason","text")="Not indicated (qualifier value)"
  S RES("statusReason","coding",1,"system")="http://snomed.info/sct"
@@ -579,6 +596,9 @@ ROLFIX(RES) ; PractitionerRole points at the practitioner the suite can read
  I $G(RES("telecom",1,"value"))="" D
  . S RES("telecom",1,"system")="phone"
  . S RES("telecom",1,"value")="555-010-0000"
+ I $G(RES("location",1,"reference"))="" S RES("location",1,"reference")="Location/loc-clinic"
+ I $G(RES("endpoint",1,"reference"))="" S RES("endpoint",1,"reference")="Endpoint/end-clinic"
+ I $G(RES("notAvailable",1,"description"))="" S RES("notAvailable",1,"description")="Fictitious clinic is closed on Sundays."
  Q
  ;
 ISTRUE(X) ; $$ - JSON true stored as 1 or "true"
@@ -605,6 +625,82 @@ MEDADM(RES) ; Administration medication is a Reference the suite can read
  K RES("medicationCodeableConcept")
  S RES("medicationReference","reference")="Medication/med-zz-disp"
  S RES("performer",1,"actor","reference")="Practitioner/P1"
+ Q
+ ;
+CODEADM(RTN,DFN) ; Second completed administration that carries only a code
+ N IDX,RID
+ S RID="inf-admin-code"
+ D ADDRES^C0FHIRBU(.RTN,"MedicationAdministration",RID,.IDX)
+ Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="MedicationAdministration"
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"resource","status")="completed"
+ S RTN("entry",IDX,"resource","medicationCodeableConcept","text")="varenicline 1 MG Oral Tablet"
+ S RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"system")="http://www.nlm.nih.gov/research/umls/rxnorm"
+ S RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"code")="636676"
+ S RTN("entry",IDX,"resource","medicationCodeableConcept","coding",1,"display")="varenicline 1 MG Oral Tablet"
+ S RTN("entry",IDX,"resource","subject","reference")="Patient/"_+DFN
+ S RTN("entry",IDX,"resource","effectiveDateTime")="2026-03-10T14:00:00Z"
+ S RTN("entry",IDX,"resource","performer",1,"actor","reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","dosage","text")="1 mg oral. Fictitious."
+ S RTN("entry",IDX,"resource","dosage","route","text")="Oral route"
+ S RTN("entry",IDX,"resource","dosage","route","coding",1,"system")="http://snomed.info/sct"
+ S RTN("entry",IDX,"resource","dosage","route","coding",1,"code")="26643006"
+ S RTN("entry",IDX,"resource","dosage","route","coding",1,"display")="Oral route"
+ S RTN("entry",IDX,"resource","dosage","dose","value")=1
+ S RTN("entry",IDX,"resource","dosage","dose","unit")="mg"
+ S RTN("entry",IDX,"resource","dosage","dose","system")="http://unitsofmeasure.org"
+ S RTN("entry",IDX,"resource","dosage","dose","code")="mg"
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationadministration"
+ S RTN("entry",IDX,"fullUrl")="MedicationAdministration/"_RID
+ D PROVONE(.RTN,"MedicationAdministration",RID)
+ D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
+ Q
+ ;
+ADVFIX(RES) ; Category code the terminology package 3.0.0 accepts
+ Q:$G(RES("id"))'="inf-adverse"
+ S RES("category",1,"text")="Medication mishap"
+ S RES("category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/adverse-event-category"
+ S RES("category",1,"coding",1,"code")="medication-mishap"
+ S RES("category",1,"coding",1,"display")="Medication mishap"
+ Q
+ ;
+ROLEXTRA(RTN) ; Fat Location and Endpoint for PractitionerRole must-support
+ N IDX
+ D ADDRES^C0FHIRBU(.RTN,"Location","loc-clinic",.IDX)
+ Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="Location"
+ S RTN("entry",IDX,"resource","id")="loc-clinic"
+ S RTN("entry",IDX,"resource","status")="active"
+ S RTN("entry",IDX,"resource","name")="Fictitious primary care clinic"
+ S RTN("entry",IDX,"resource","type",1,"text")="Outpatient facility"
+ S RTN("entry",IDX,"resource","type",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/v3-RoleCode"
+ S RTN("entry",IDX,"resource","type",1,"coding",1,"code")="OF"
+ S RTN("entry",IDX,"resource","type",1,"coding",1,"display")="Outpatient facility"
+ S RTN("entry",IDX,"resource","telecom",1,"system")="phone"
+ S RTN("entry",IDX,"resource","telecom",1,"value")="555-010-0000"
+ S RTN("entry",IDX,"resource","address","line",1)="1 Fictitious Street"
+ S RTN("entry",IDX,"resource","address","city")="Anytown"
+ S RTN("entry",IDX,"resource","address","state")="DC"
+ ; A bare ZIP is stored as a number and fails Address.postalCode, which is a string.
+ S RTN("entry",IDX,"resource","address","postalCode")="20001-0001"
+ S RTN("entry",IDX,"resource","managingOrganization","reference")="Organization/org-clinic"
+ S RTN("entry",IDX,"resource","position","latitude")=38.9
+ S RTN("entry",IDX,"resource","position","longitude")=-77.03
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-location"
+ S RTN("entry",IDX,"fullUrl")="Location/loc-clinic"
+ D ADDRES^C0FHIRBU(.RTN,"Endpoint","end-clinic",.IDX)
+ Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="Endpoint"
+ S RTN("entry",IDX,"resource","id")="end-clinic"
+ S RTN("entry",IDX,"resource","status")="active"
+ S RTN("entry",IDX,"resource","name")="Fictitious FHIR endpoint"
+ S RTN("entry",IDX,"resource","connectionType","system")="http://terminology.hl7.org/CodeSystem/endpoint-connection-type"
+ S RTN("entry",IDX,"resource","connectionType","code")="hl7-fhir-rest"
+ S RTN("entry",IDX,"resource","connectionType","display")="HL7 FHIR"
+ S RTN("entry",IDX,"resource","payloadType",1,"text")="Any"
+ S RTN("entry",IDX,"resource","address")="https://showfhir.vistaplex.org/fhir"
+ S RTN("entry",IDX,"fullUrl")="Endpoint/end-clinic"
  Q
  ;
 ADDMED(RTN,MID) ; Companion Medication for dispense and administration references
@@ -829,17 +925,27 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  Q
  ;
 LOINCD(RES) ; Official LOINC display. A short name fails US Core validation.
- N C0FCD,C0FI,C0FNM
+ N C0FI,C0FJ
  S C0FI=0
- F  S C0FI=$O(RES("code","coding",C0FI)) Q:'C0FI  D
- . S C0FCD=$G(RES("code","coding",C0FI,"code"))
- . S C0FNM=$$LOINCNM(C0FCD) Q:C0FNM=""
- . S RES("code","coding",C0FI,"display")=C0FNM
+ F  S C0FI=$O(RES("code","coding",C0FI)) Q:'C0FI  D LOINC1($NA(RES("code","coding",C0FI)))
+ S C0FI=0
+ F  S C0FI=$O(RES("component",C0FI)) Q:'C0FI  D
+ . S C0FJ=0
+ . F  S C0FJ=$O(RES("component",C0FI,"code","coding",C0FJ)) Q:'C0FJ  D LOINC1($NA(RES("component",C0FI,"code","coding",C0FJ)))
+ Q
+ ;
+LOINC1(NODE) ; Set one coding's display when LOINCNM knows it
+ N C0FCD,C0FNM
+ S C0FCD=$G(@NODE@("code"))
+ S C0FNM=$$LOINCNM(C0FCD) Q:C0FNM=""
+ S @NODE@("display")=C0FNM
  Q
  ;
 LOINCNM(C0FCD) ; $$ - validator display, or empty
  I C0FCD="98979-8" Q "Glomerular filtration rate [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI 2021)/1.73 sq M"
  I C0FCD="77353-1" Q "Noninvasive colorectal cancer DNA and occult blood screening [Interpretation] in Stool Narrative"
+ I C0FCD="44249-1" Q "PHQ-9 quick depression assessment panel [Reported.PHQ]"
+ I C0FCD="44261-6" Q "Patient Health Questionnaire 9 item (PHQ-9) total score [Reported]"
  I C0FCD="39156-5" Q "Body mass index (BMI) [Ratio]"
  I C0FCD="59576-9" Q "Body mass index (BMI) [Percentile] Per age and sex"
  I C0FCD="77606-2" Q "Weight-for-length Per age and sex"

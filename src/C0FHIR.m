@@ -478,6 +478,11 @@ SETEPRV(RTN,IDX,ENC,DFN,ENDDT) ; Add encounter participants from VistA provider 
  . . SET RTN("entry",IDX,"resource","participant",N,"type",1,"coding",1,"code")=$PIECE(ROLE,U)
  . . SET RTN("entry",IDX,"resource","participant",N,"type",1,"coding",1,"display")=$PIECE(ROLE,U,2)
  . . SET RTN("entry",IDX,"resource","participant",N,"type",1,"text")=$PIECE(ROLE,U,2)
+ IF '$DATA(RTN("index","role-ref")) DO
+ . SET RTN("index","role-ref")=1
+ . SET N=N+1
+ . SET RTN("entry",IDX,"resource","participant",N,"individual","reference")="PractitionerRole/role-chen"
+ . SET RTN("entry",IDX,"resource","participant",N,"individual","display")="CHEN,ZZMEI"
  QUIT
  ;
 PROL(CODE,PRIMARY) ; Map VistA visit provider role to participation type
