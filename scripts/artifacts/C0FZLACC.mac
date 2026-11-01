@@ -85,6 +85,35 @@ TALLY(BIEN) ; summarize lab load statuses for bundle
  S ST="" F  S ST=$O(CNT(ST)) Q:ST=""  W "bundle ",BIEN," ",ST,": ",CNT(ST),!
  S MSG="" F  S MSG=$O(EMSG(MSG)) Q:MSG=""  W "  ERR ",EMSG(MSG),"x ",MSG,!
  Q
+REENC(BIEN) ; re-run encounter add-on filing and appointment check-out for one bundle
+ ; For visits filed before the iris2 2026-11-01 fixes (provider person class
+ ; dated 2020, clinic SL/credit stop missing, SYNDHP62 seconds check):
+ ; DATA2PCE re-files V PROVIDER / V CPT / V POV into the known visit, then
+ ; the appointment is added, checked in, and checked out (APPTFILE^C0FWENC),
+ ; or only checked out when an earlier pass already added and checked it in.
+ N ROOT,RI,RET,DFN,FMDT,LOC,A,ST,CNT D ENVINIT^C0FHIR D DUZ^C0FWCTX(),IO^C0FWCTX()
+ S ROOT=$$ROOT^C0FWGRT("fhir-intake")
+ S RI=0 F  S RI=$O(@ROOT@(BIEN,"load","Encounter",RI)) Q:'RI  D
+ . Q:+$G(@ROOT@(BIEN,"load","Encounter",RI,"visitIen"))<1
+ . Q:$G(@ROOT@(BIEN,"load","Encounter",RI,"appointment","status"))="checked-out"
+ . K RET D LOAD^C0FWENC(ROOT,BIEN,RI,.RET)
+ . S DFN=$$DFN^C0FWENC(ROOT,BIEN,RI),FMDT=$$FMDT^C0FWENC(ROOT,BIEN,RI),LOC=$$LOC^C0FWENC(ROOT,BIEN,RI)
+ . Q:DFN<1  Q:FMDT<1  Q:LOC<1
+ . K A Q:'$$APPTREADY^C0FWENC(ROOT,BIEN,RI,DFN,FMDT,LOC,.A)
+ . I $G(@ROOT@(BIEN,"load","Encounter",RI,"appointment","add"))'=1 D APPTFILE^C0FWENC(ROOT,BIEN,RI,.A) Q
+ . I $G(@ROOT@(BIEN,"load","Encounter",RI,"appointment","checkin"))'=1 Q
+ . D CKOUT(ROOT,BIEN,RI,.A)
+ S RI=0 F  S RI=$O(@ROOT@(BIEN,"load","Encounter",RI)) Q:'RI  S ST=$G(@ROOT@(BIEN,"load","Encounter",RI,"appointment","status")) S:ST="" ST="none" S CNT(ST)=$G(CNT(ST))+1
+ S ST="" F  S ST=$O(CNT(ST)) Q:ST=""  W "bundle ",BIEN," appt [",ST,"]: ",CNT(ST),!
+ Q
+CKOUT(ROOT,IEN,RIEN,C0FAPPT) ; check out an appointment an earlier pass added and checked in
+ N C0FRET,$ET,$ES
+ S $ET="D APPTERR^C0FWENC(ROOT,IEN,RIEN) S $EC="""" Q"
+ K %DT
+ D APTCKOUT^SYNDHP62(.C0FRET,C0FAPPT("ICN"),C0FAPPT("CLIN"),C0FAPPT("HL7"),"")
+ D APPTLOG^C0FWENC(ROOT,IEN,RIEN,"checkout",$G(C0FRET("CKOUT")))
+ I $G(C0FRET("CKOUT"))=1 D APPTCO^C0FWENC(ROOT,IEN,RIEN,C0FAPPT("ICN"),C0FAPPT("HL7"))
+ Q
 DATA ; ien^name^accessionArea (from vehu10 inst 500)
  ;;1^WBC^10
  ;;2^RBC^10

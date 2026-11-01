@@ -30,7 +30,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Encounter as a PCE/PCC visit
  . D HFROLL(ROOT,IEN,RIEN,.RETURN)
  S DUZ=USER
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
- I +$G(DUZ(2))<1 S DUZ(2)=500
+ I +$G(DUZ(2))<1 S DUZ(2)=$$DIV^C0FWCTX()
  D IO^C0FWCTX
  I $$RPMS() D RPMSLOAD(ROOT,IEN,RIEN,DFN,FMDT,LOC,USER,+$G(KNOWNVISIT),.RETURN) Q
  ; Checkout runs after DATA2PCE. Do not add a diagnosis here.

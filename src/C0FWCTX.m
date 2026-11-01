@@ -8,9 +8,20 @@ DUZ() ; Establish minimal Kernel user context for C0FW update paths
  I +$G(DUZ)<1 S DUZ=1
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
  I +$G(DUZ(2))<1 S DUZ(2)=+$G(^TMP("C0FW",$J,"DUZ",2))
- I +$G(DUZ(2))<1 S DUZ(2)=500
+ I +$G(DUZ(2))<1 S DUZ(2)=$$DIV()
  I +$G(DT)<1 S DT=$$DT^XLFDT
  Q DUZ
+ ;
+DIV() ; $$ - institution for web-job filing (lab accession areas key on DUZ(2))
+ ; Kernel semantics first: the filing user's division. 500 is the VEHU demo
+ ; site; FOIA also has an institution 500, but its Lab config (C0FZLACC)
+ ; hangs on institution 1, the division of USER,ONE. A fixed 500 there left
+ ; every lab order "NOT ACCESSIONED" with no ^LR data (iris2, 2026-11-01).
+ N DIV S DIV=+$P($G(^VA(200,+$G(DUZ),2,1,0)),"^")
+ I DIV>0 Q DIV
+ I $D(^DIC(4,500,0)) Q 500
+ S DIV=+$O(^DIC(4,0))
+ Q $S(DIV>0:DIV,1:500)
  ;
 IO() ; Establish minimal IO variables used by filing APIs in web jobs
  ; Web jobs have no Kernel home device: ^%ZISC sets IO(0)=$P (the client

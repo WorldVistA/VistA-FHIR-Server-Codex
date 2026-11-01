@@ -41,7 +41,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR CarePlan as SYN CP V Health Factors
  I CNT<1 D SKIP(ROOT,IEN,RIEN,VISIT,+HFCAP,"CarePlan health factors already present on visit",.RETURN) Q
  S DUZ=USER
  I $G(DUZ("AG"))="" S DUZ("AG")="V"
- I +$G(DUZ(2))<1 S DUZ(2)=500
+ I +$G(DUZ(2))<1 S DUZ(2)=$$DIV^C0FWCTX()
  D IO^C0FWCTX
  I $$RPMS^C0FWENC() D  Q
  . D RPMSHF^C0FWENC(.ERR,DFN,VISIT,FMDT,LOC,USER,.ENCDATA,ROOT,IEN,RIEN)

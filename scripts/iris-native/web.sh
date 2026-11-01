@@ -161,7 +161,15 @@ W "pharmacy site: ",$$PSOSITE^SYNINIT(),!
 D ALBUL^SYNINIT
 D EN^SYNGBLLD
 W "sct2os5 map: ",$S($D(^SYN("2002.030","sct2os5","direct")):"built",1:"MISSING"),!
-I '$$ACTIVEPC^C0FWENC(1) N FDA,ERR S FDA(200.05,"+1,1,",.01)=$O(^USC(8932.1,0)),FDA(200.05,"+1,1,",2)=3200101 D UPDATE^DIE("","FDA","","ERR")
+I '$$ACTIVEPC^C0FWENC(1) N FDA,ERR S FDA(200.05,"+1,1,",.01)=$O(^USC(8932.1,0)),FDA(200.05,"+1,1,",2)=1000101 D UPDATE^DIE("","FDA","","ERR")
+; PCE rejects a provider whose person class starts after the encounter date; Synthea history reaches the 1930s. Backdate every row to 1900.
+S PCI=0 F  S PCI=$O(^VA(200,1,"USC1",PCI)) Q:'PCI  I +$P($G(^VA(200,1,"USC1",PCI,0)),"^",2)>1000101 K FDA,ERR S FDA(200.05,PCI_",1,",2)=1000101 D FILE^DIE("","FDA","ERR")
+W "person class 1992: ",+$$GET^XUA4A72(1,2920101),!
+; Appointment check-out (SYNDHP62 via SDTMPHLA) needs the clinic SL node: appt length 30, display from 08:00, 30-min increments.
+S SCI=0 F  S SCI=$O(^SC(SCI)) Q:'SCI  I $P($G(^SC(SCI,0)),"^",3)="C",$P($G(^SC(SCI,"SL")),"^")="" K FDA,ERR S FDA(44,SCI_",",1912)=30,FDA(44,SCI_",",1914)=8,FDA(44,SCI_",",1917)=2 D FILE^DIE("","FDA","ERR")
+; Credit stop (FAMILY PRACTICE, AMIS 342) on GENERAL MEDICINE so visit tracking files the stop-code child as on VEHU.
+S GM=+$O(^SC("B","GENERAL MEDICINE",0)),FP=+$O(^DIC(40.7,"C",342,0)) I GM,FP,$P($G(^SC(GM,0)),"^",18)="" K FDA,ERR S FDA(44,GM_",",2503)=FP D FILE^DIE("","FDA","ERR")
+W "GENERAL MEDICINE SL=",$G(^SC(GM,"SL"))," credit stop=",$P($G(^SC(GM,0)),"^",18),!
 S ^XUSEC("PROVIDER",1)=""
 S ^XUSEC("LRVERIFY",1)="",^XUSEC("LRLAB",1)="",^XUSEC("LRSUPER",1)=""
 W "filing user (want 1): ",$$USER^C0FWENC(),!
