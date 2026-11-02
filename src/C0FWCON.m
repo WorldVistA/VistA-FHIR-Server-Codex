@@ -59,6 +59,7 @@ LOAD(ROOT,IEN,RIEN,RETURN) ; File one FHIR Condition on an existing visit
  I +$G(DUZ(2))<1 S DUZ(2)=$$DIV^C0FWCTX()
  D IO^C0FWCTX
  I $$RPMS^C0FWENC() D RPMSLOAD(ROOT,IEN,RIEN,DFN,VISIT,ICD,FMDT,USER,ADDPL,.RETURN) Q
+ D POVDT(.PROBDATA,VISIT,ICD)
  D LOG(ROOT,IEN,RIEN,"Calling DATA2PCE^PXAI to add/update condition")
  D LOGARR(ROOT,IEN,RIEN,"PROBDATA",.PROBDATA)
  S RET=$$DATA2PCE^PXAI("PROBDATA",PKG,"C0FW WRITEBACK",.VISIT,USER,"",.ZZERR,"",.ZZERDESC)
@@ -382,6 +383,36 @@ SERCAT(VISIT,FMDT) ; $$ - service category
  S CAT=$P($G(^AUPNVSIT(+$G(VISIT),0)),"^",7)
  I CAT'="" Q CAT
  Q $S((+$G(FMDT)\1)<$$DT^XLFDT:"E",1:"A")
+ ;
+POVDT(PROBDATA,VISIT,ICD) ; Date an ambulatory POV so PCE accepts the ICD code
+ ; PXAIPOVV checks ICD activity on the visit date for every category except
+ ; E, and rejects a code that was inactive that day. ICD-10 starts 2015-10-01
+ ; and some codes start later, so a Synthea history filed ambulatory fails
+ ; ("not an active ICD code"). Category E is checked on the date the visit
+ ; was created, which is why these filed before visits were filed ambulatory.
+ ; PXAIVST keeps the category already stored on the visit, and the cover
+ ; sheet needs ambulatory, so the category stays. EVENT D/T is the date PCE
+ ; uses instead. Pass today only when the code is inactive on the visit date
+ ; and active today; a code inactive today still fails.
+ N C0FWCAT,C0FWVDT
+ S C0FWCAT=$P($G(^AUPNVSIT(+$G(VISIT),0)),"^",7)
+ I C0FWCAT="E" Q
+ S C0FWVDT=+$P($G(^AUPNVSIT(+$G(VISIT),0)),"^")
+ I C0FWVDT<1 Q
+ I $$ICDON(ICD,C0FWVDT) Q
+ I '$$ICDON(ICD,$$DT^XLFDT) Q
+ S PROBDATA("DX/PL",1,"EVENT D/T")=$$DT^XLFDT
+ Q
+ ;
+ICDON(ICD,C0FWDT) ; $$ - 1 when an ICD ien is active on a FileMan date
+ ; Same check DATA2PCE uses (ISCACT^PXLEX). Absent PXLEX: do not rewrite the date.
+ N C0FWCD,C0FWCS
+ I $T(ISCACT^PXLEX)="" Q 1
+ S C0FWCD=$$CODEC^ICDEX(80,+$G(ICD))
+ I C0FWCD="" Q 0
+ S C0FWCS=+$$CSI^ICDEX(80,+$G(ICD))
+ I C0FWCS<1 Q 0
+ Q $$ISCACT^PXLEX(C0FWCS,C0FWCD,+$G(C0FWDT))
  ;
 PRIMARY(VISIT,ICD) ; $$ - primary diagnosis flag
  N DIAG,FOUND,IND

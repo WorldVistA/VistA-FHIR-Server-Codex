@@ -9,9 +9,11 @@
 #   L3 encoder   c0rgenc plugin; SMOKE^C0RGFENCT PATH=PLUGIN + oracle
 #   L4 maps      LOADOS5/SYNOS5PT/GRAPHLABS; fixed SCT->OS5 probe list
 #   L5 patient   JOHN-SALT + fixed + random Synthea: per-domain error rates,
-#                per-type readback, strict JSON, CFH-WRITE-001
+#                per-type readback, strict JSON, CFH-WRITE-001;
+#                PCE ICD date (no "not an active ICD code" on the load log)
 #   L6 cohort    first N of the synthea-1000 pool (CI_VEHU_COHORT_N, default 20);
-#                honest per-domain ok% vs scripts/vehu-l6-baseline.json
+#                honest per-domain ok% vs scripts/vehu-l6-baseline.json;
+#                PCE ICD date, same rejection as L5
 #   L7 UI        CPRS demo dist, TJSON browser, C0X UI, /fhir index; rehmp-smoke
 #   L8 C0X       reindex, populationIndexed, SPARQL IPP x6, smoke-quality-host
 #   L9 quality   ENCODER=JSNE; C0X IPP -> SETPOP -> cds1 official CQL x6;
@@ -183,6 +185,22 @@ else row "L4 maps + flags" FAIL "$(grep FAIL <<<"$out")"; KEEP=1; finish; fi
 done_level 4
 
 # ---- L5 one-patient round trips ----------------------------------------------
+# PCE dates an ambulatory visit's ICD check to the visit date (PXAIPOVV).
+# C0FWCON passes today as EVENT D/T when the code is inactive then and active
+# now. Count Condition error messages only: the Encounter log quotes the same
+# PCE text for a diagnosis the Condition path then files.
+pce_icd() { # pce_icd <stage> <dfn>...
+  local stage="$1" n=0 dfn
+  shift
+  : >"$WORK/pce-icd.zwr"
+  for dfn in "$@"; do
+    [[ -n "$dfn" ]] || continue
+    curl -sS --max-time 120 "$BASE/loadstatus?dfn=$dfn" >>"$WORK/pce-icd.zwr" || true
+  done
+  n=$(grep -E -c '"Condition",[0-9]+,"message"\).*=.*is not an active ICD code' "$WORK/pce-icd.zwr" || true)
+  if [[ "$n" -eq 0 ]]; then row "$stage PCE ICD date" PASS "0 conditions rejected as an inactive ICD code"
+  else row "$stage PCE ICD date" FAIL "$n conditions rejected as an inactive ICD code; ambulatory visit dated before the code was active"; fi
+}
 # load <label> <bundle> — POST, then gate per-domain error rates, readback, JSON
 load() {
   local label="$1" bundle="$2" code dfn
@@ -217,6 +235,7 @@ if [[ -n "${DFN_fixed:-}" ]]; then
     row "L5 CFH-WRITE-001" PASS "13 assertions green (dfn=$DFN_fixed)"
   else row "L5 CFH-WRITE-001" FAIL "$(grep FAIL "$WORK/harness.log" | head -3 | tr '\n' ';')"; fi
 fi
+pce_icd "L5" ${DFN_john:-} ${DFN_fixed:-} ${DFN_random:-}
 done_level 5
 
 # ---- L6 cohort load ---------------------------------------------------------
@@ -242,6 +261,15 @@ else
 fi
 if [[ $bad -eq 0 && $RC -eq 0 ]]; then row "L6 cohort load" PASS "$n patients in ${SECS}s; $(tr '\n' ' ' <<<"$RATES")"
 else row "L6 cohort load" FAIL "$n patients, $bad HTTP failures, ${SECS}s; $(tr '\n' ' ' <<<"$RATES")"; fi
+COHORT_DFN="$(python3 -c 'import json,pathlib,sys
+out=[]
+for f in sorted(pathlib.Path(sys.argv[1]).glob("*.json")):
+    try: d=json.loads(f.read_text())
+    except Exception: continue
+    dfn=str(d.get("dfn") or "")
+    if dfn: out.append(dfn)
+print(" ".join(out))' "$WORK/cohort")"
+pce_icd "L6" $COHORT_DFN
 done_level 6
 
 # ---- L7 UI ------------------------------------------------------------------
