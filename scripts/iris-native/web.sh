@@ -170,6 +170,9 @@ S SCI=0 F  S SCI=$O(^SC(SCI)) Q:'SCI  I $P($G(^SC(SCI,0)),"^",3)="C",$P($G(^SC(S
 ; Credit stop (FAMILY PRACTICE, AMIS 342) on GENERAL MEDICINE so visit tracking files the stop-code child as on VEHU.
 S GM=+$O(^SC("B","GENERAL MEDICINE",0)),FP=+$O(^DIC(40.7,"C",342,0)) I GM,FP,$P($G(^SC(GM,0)),"^",18)="" K FDA,ERR S FDA(44,GM_",",2503)=FP D FILE^DIE("","FDA","ERR")
 W "GENERAL MEDICINE SL=",$G(^SC(GM,"SL"))," credit stop=",$P($G(^SC(GM,0)),"^",18),!
+; TaskMan on a 50-concurrent-user key: cap total jobs so sub-managers leave room for web children (default 100 pinned the license, iris2 2026-11-02).
+K FDA,ERR S FDA(14.7,"1,",6)=25 D FILE^DIE("","FDA","ERR")
+W "TaskMan job limit: ",$P($G(^%ZIS(14.7,1,0)),"^",7),!
 S ^XUSEC("PROVIDER",1)=""
 S ^XUSEC("LRVERIFY",1)="",^XUSEC("LRLAB",1)="",^XUSEC("LRSUPER",1)=""
 W "filing user (want 1): ",$$USER^C0FWENC(),!
@@ -258,6 +261,16 @@ ports=\$(ss -lnt || true)
 if ! grep -q ':${WEBPORT} ' <<<"\$ports"; then
   /usr/local/sbin/iris-session.sh FOIA <<'M' >/dev/null 2>&1 || true
 D job^%webreq(${WEBPORT})
+H
+M
+fi
+# TaskMan runs Re-evaluate CQL (REEVT^C0FQUAL) and the loader's side-effect
+# tasks. Nothing started it after a snapshot restore (iris2 2026-11-02:
+# re-evaluate sat at "running" for a day). Gated on a marker so a rebuild
+# can load with TaskMan off, purge the loader tasks, then enable it.
+if [ -f /etc/iris-taskman.enabled ]; then
+  /usr/local/sbin/iris-session.sh FOIA <<'M' >/dev/null 2>&1 || true
+S DUZ=.5,DUZ(0)="@",U="^" D DT^DICRW I '\$\$TM^%ZTLOAD D ^ZTMB
 H
 M
 fi
