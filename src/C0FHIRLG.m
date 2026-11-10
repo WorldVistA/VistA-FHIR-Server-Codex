@@ -261,6 +261,7 @@ GETGRPCL(RTN,DFN) ; Chart resources the loader does not file, from the intake gr
  F TYPE="Coverage","CareTeam","RelatedPerson","Goal","CarePlan","ServiceRequest","Provenance","MedicationDispense","MedicationAdministration","Immunization","Procedure" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
  F TYPE="AdverseEvent","DeviceRequest","Task","FamilyMemberHistory","DiagnosticReport","MedicationRequest","Observation","PractitionerRole","Media" D GRPTYPE(.RTN,ROOT,IEN,DFN,TYPE)
  D SRMAMMO(.RTN,DFN)
+ D USCEX(.RTN,DFN)
  Q
  ;
 GRPTYPE(RTN,ROOT,IEN,DFN,TYPE) ;
@@ -300,7 +301,7 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I TYPE="Coverage" D CVPAY(.RTN,.RES)
  I TYPE="PractitionerRole" D ROLFIX(.RES)
  I TYPE="Procedure" D PROCFIX(.RES)
- I TYPE="DiagnosticReport" D NOTEFIX(.RES,DFN)
+ I TYPE="DiagnosticReport" D NOTEFIX(.RES,DFN,.RTN)
  S PROF=$$CLPROF(TYPE)
  I TYPE="Procedure",$G(RES("status"))'="not-done" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-procedure"
  I TYPE="ServiceRequest",$G(RES("doNotPerform"))="true" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-servicenotrequested"
@@ -308,7 +309,7 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I TYPE="MedicationDispense",$G(RES("status"))="declined" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationdispensedeclined"
  I TYPE="MedicationAdministration",$G(RES("status"))="not-done" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-medicationadministrationnotdone"
  I TYPE="Task",$G(RES("status"))="rejected" S PROF="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-taskrejected"
- I TYPE="Observation" D OBSFIX(.RES) S PROF=$$OBSPROF(.RES)
+ I TYPE="Observation" D OBSFIX(.RES),DAREXT(.RES) S PROF=$$OBSPROF(.RES)
  I TYPE="Task" D TASKFIX(.RES)
  I PROF'="" S RES("meta","profile",1)=PROF
  D ADDRES^C0FHIRBU(.RTN,TYPE,RID,.IDX)
@@ -357,6 +358,31 @@ BPSYS(RES) ; Copy dataAbsentReason onto the systolic component
  . K RES("component",I,"valueQuantity")
  . M RES("component",I,"dataAbsentReason")=DAR
  Q
+ ;
+DAREXT(RES) ; US Core missing-data extension beside a dataAbsentReason element
+ N CODE,I,N
+ I $D(RES("dataAbsentReason")) D
+ . S CODE=$G(RES("dataAbsentReason","coding",1,"code")) S:CODE="" CODE="unknown"
+ . Q:$$DARURL("RES")
+ . S N=$O(RES("extension",""),-1)+1
+ . S RES("extension",N,"url")="http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+ . S RES("extension",N,"valueCode")=CODE
+ S I=0
+ F  S I=$O(RES("component",I)) Q:'I  D
+ . Q:'$D(RES("component",I,"dataAbsentReason"))
+ . S CODE=$G(RES("component",I,"dataAbsentReason","coding",1,"code")) S:CODE="" CODE="unknown"
+ . Q:$$DARURL($NA(RES("component",I)))
+ . S N=$O(RES("component",I,"extension",""),-1)+1
+ . S RES("component",I,"extension",N,"url")="http://hl7.org/fhir/StructureDefinition/data-absent-reason"
+ . S RES("component",I,"extension",N,"valueCode")=CODE
+ Q
+ ;
+DARURL(NODE) ; $$ - 1 when NODE already has the data-absent-reason extension
+ N I,Y
+ S I=0,Y=0
+ F  S I=$O(@NODE@("extension",I)) Q:'I  D  Q:Y
+ . I $G(@NODE@("extension",I,"url"))["data-absent-reason" S Y=1
+ Q Y
  ;
 SRFIX(RES) ; doNotPerform and a US Core category the suite searches
  I $$ISTRUE($G(RES("doNotPerform"))) S RES("doNotPerform")="true"
@@ -540,13 +566,24 @@ PROCFIX(RES) ; reasonReference is a Condition this server can read
  S RES("reasonReference",1,"reference")="Condition/C"_IEN
  Q
  ;
-NOTEFIX(RES,DFN) ; Encounter on the note example is a visit this server can read
- N V
+NOTEFIX(RES,DFN,RTN) ; Note example: visit, practitioner performer, lab result
+ N I,ID,NXT,RID,V
  Q:$G(RES("id"))'="inf-note"
- Q:$G(RES("encounter","reference"))["Encounter/E"
- S V=+$O(^AUPNVSIT("C",+DFN,0))
- Q:V<1
- S RES("encounter","reference")="Encounter/E"_V
+ I $G(RES("encounter","reference"))'["Encounter/E" D
+ . S V=+$O(^AUPNVSIT("C",+DFN,0))
+ . I V>0 S RES("encounter","reference")="Encounter/E"_V
+ S RES("performer",2,"reference")="Practitioner/P1"
+ S RES("performer",2,"display")="PROGRAMMER,ONE"
+ S (I,RID)=""
+ F  S I=$O(RTN("entry",I)) Q:I=""  D  Q:RID'=""
+ . Q:$G(RTN("entry",I,"resource","resourceType"))'="Observation"
+ . Q:$G(RTN("entry",I,"resource","meta","profile",1))'["us-core-observation-lab"
+ . S ID=$G(RTN("entry",I,"resource","id"))
+ . I ID'="" S RID=ID
+ Q:RID=""
+ S NXT=$O(RES("result",""),-1)+1
+ I NXT<1 S NXT=1
+ S RES("result",NXT,"reference")="Observation/"_RID
  Q
  ;
 MEDNOT(RES) ; Not-done administration: a coding, and not the value-set extension
@@ -778,13 +815,19 @@ SOCPROF(RES) ; $$ - US Core profile for a social-history observation
  . I CODE="86645-9" S PROF="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-pregnancyintent"
  Q $G(PROF)
  ;
-GOLFIX(RES) ; startDate and target.dueDate when the chart omitted them
+GOLFIX(RES) ; startDate, target.dueDate, and a description token the search can copy
  I $G(RES("startDate"))="" S RES("startDate")="2021-10-12"
  I $G(RES("target",1,"dueDate"))="" S RES("target",1,"dueDate")="2026-10-06"
+ I $G(RES("description","text"))="" S RES("description","text")="Blood pressure goal"
+ I '$D(RES("description","coding")) D
+ . S RES("description","coding",1,"system")="http://snomed.info/sct"
+ . S RES("description","coding",1,"code")="38341003"
+ . S RES("description","coding",1,"display")="Hypertensive disorder, systemic arterial (disorder)"
  Q
  ;
-CPFIX(RES) ; Narrative from the plan title (the category display)
+CPFIX(RES) ; Narrative from the plan title, and a period the date search can copy
  N TXT
+ I '$D(RES("period","start")) S RES("period","start")="2021-10-12T00:00:00Z"
  Q:$G(RES("text","div"))'=""
  S TXT=$G(RES("title"))
  I TXT="" S TXT=$G(RES("category",1,"coding",1,"display"))
@@ -801,12 +844,27 @@ CTFIX(RES,RTN) ; participant.member must be a Practitioner the server can read
  . I REF["Practitioner/P",REF'["pract-chen" Q
  . S RES("participant",I,"member","reference")="Practitioner/P1"
  . S RES("participant",I,"member","display")="PROGRAMMER,ONE"
+ I $G(RES("subject","reference"))="Patient/101279",'$$HASRP(.RES) D
+ . S I=$O(RES("participant",""),-1)+1
+ . S RES("participant",I,"member","reference")="RelatedPerson/rel-daughter"
+ . S RES("participant",I,"member","display")="ELLIS,ZZNORA"
+ . S RES("participant",I,"role",1,"coding",1,"system")="http://snomed.info/sct"
+ . S RES("participant",I,"role",1,"coding",1,"code")="133932002"
+ . S RES("participant",I,"role",1,"coding",1,"display")="Caregiver"
  D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
  Q
+ ;
+HASRP(RES) ; $$ - 1 when a participant member is a RelatedPerson
+ N I,Y
+ S I=0,Y=0
+ F  S I=$O(RES("participant",I)) Q:'I  D  Q:Y
+ . I $G(RES("participant",I,"member","reference"))["RelatedPerson/" S Y=1
+ Q Y
  ;
 RPFIX(RES) ; active, telecom, address, and the v3-RoleCode display
  N TXT
  S RES("active")="true"
+ S RES("meta","profile",2)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson|6.1.0"
  I $G(RES("relationship",1,"coding",1,"code"))="DAU" S RES("relationship",1,"coding",1,"display")="natural daughter"
  I '$D(RES("telecom")) D
  . S RES("telecom",1,"system")="phone"
@@ -871,6 +929,209 @@ SRMAMMO(RTN,DFN) ; Screening mammography order for a woman 40 or older
  D SRPROV(.RTN,RID)
  Q
  ;
+USCEX(RTN,DFN) ; US Core 6.1 examples one chart does not already contain
+ Q:+$G(DFN)'=101258
+ D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
+ D EXDEV(.RTN,DFN)
+ D EXSO(.RTN,DFN)
+ D EXQR(.RTN,DFN)
+ D EXNOTE(.RTN,DFN,"11488-4","Consult Note")
+ D EXNOTE(.RTN,DFN,"18842-5","Discharge Summary")
+ D EXNOTE(.RTN,DFN,"34117-2","History and Physical Note")
+ D EXNOTE(.RTN,DFN,"28570-0","Procedure Note")
+ D EXNOTE(.RTN,DFN,"18748-4","Diagnostic imaging study")
+ D EXNOTE(.RTN,DFN,"11502-2","Laboratory report")
+ D EXNOTE(.RTN,DFN,"11526-1","Pathology study")
+ D EXDR(.RTN,DFN,"dr-card","LP29708-2","Cardiology","18748-4","Diagnostic imaging study")
+ D EXDR(.RTN,DFN,"dr-path","LP7839-6","Pathology","11526-1","Pathology study")
+ D EXSCR(.RTN,DFN,"obs-sdoh","sdoh","SDOH","88121-9","Children's HealthWatch Hunger Vital Sign [HVS]")
+ D EXSCR(.RTN,DFN,"obs-disab","disability-status","Disability Status","69856-3","Are you deaf, or do you have serious difficulty hearing")
+ D EXSCR(.RTN,DFN,"obs-cog","cognitive-status","Cognitive Status","72133-2","Montreal Cognitive Assessment [MoCA]")
+ Q
+ ;
+EXDEV(RTN,DFN) ; Implantable device with the fields the device searches copy
+ N IDX,RID
+ S RID="dev-hip"
+ D ADDRES^C0FHIRBU(.RTN,"Device",RID,.IDX) Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="Device"
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-implantable-device"
+ S RTN("entry",IDX,"resource","text","status")="generated"
+ S RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Implantable device</div>"
+ S RTN("entry",IDX,"resource","udiCarrier",1,"deviceIdentifier")="09504000059118"
+ S RTN("entry",IDX,"resource","udiCarrier",1,"deviceIdentifier","\s")=""
+ S RTN("entry",IDX,"resource","udiCarrier",1,"carrierHRF")="(01)09504000059118(17)141120(10)7654321D(21)10987654d321"
+ S RTN("entry",IDX,"resource","udiCarrier",1,"entryType")="rfid"
+ S RTN("entry",IDX,"resource","status")="active"
+ S RTN("entry",IDX,"resource","distinctIdentifier")="10987654d321"
+ S RTN("entry",IDX,"resource","manufactureDate")="2013-02-01"
+ S RTN("entry",IDX,"resource","expirationDate")="2020-02-01"
+ S RTN("entry",IDX,"resource","lotNumber")="7654321D"
+ S RTN("entry",IDX,"resource","serialNumber")="10987654d321"
+ S RTN("entry",IDX,"resource","type","coding",1,"system")="http://snomed.info/sct"
+ S RTN("entry",IDX,"resource","type","coding",1,"code")="468063009"
+ S RTN("entry",IDX,"resource","type","coding",1,"display")="Coated femoral stem prosthesis, modular"
+ S RTN("entry",IDX,"resource","patient","reference")="Patient/"_+DFN
+ S RTN("entry",IDX,"fullUrl")="Device/"_RID
+ D PROVONE(.RTN,"Device",RID)
+ Q
+ ;
+EXSO(RTN,DFN) ; Sexual orientation observation
+ N IDX,RID
+ S RID="obs-sexor"
+ D ADDRES^C0FHIRBU(.RTN,"Observation",RID,.IDX) Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="Observation"
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-sexual-orientation"
+ S RTN("entry",IDX,"resource","text","status")="generated"
+ S RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Sexual orientation</div>"
+ S RTN("entry",IDX,"resource","status")="final"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"code")="social-history"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Social History"
+ S RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
+ S RTN("entry",IDX,"resource","code","coding",1,"code")="76690-7"
+ S RTN("entry",IDX,"resource","code","coding",1,"display")="Sexual orientation"
+ S RTN("entry",IDX,"resource","subject","reference")="Patient/"_+DFN
+ S RTN("entry",IDX,"resource","effectiveDateTime")="2021-10-12T14:00:00Z"
+ S RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"system")="http://snomed.info/sct"
+ S RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"code")="42035005"
+ S RTN("entry",IDX,"resource","valueCodeableConcept","coding",1,"display")="Bisexual"
+ S RTN("entry",IDX,"fullUrl")="Observation/"_RID
+ D PROVONE(.RTN,"Observation",RID)
+ Q
+ ;
+EXQR(RTN,DFN) ; QuestionnaireResponse the questionnaire searches can copy
+ N IDX,RID
+ S RID="qr-hvs"
+ D ADDRES^C0FHIRBU(.RTN,"QuestionnaireResponse",RID,.IDX) Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="QuestionnaireResponse"
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-questionnaireresponse"
+ S RTN("entry",IDX,"resource","text","status")="generated"
+ S RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Questionnaire response</div>"
+ S RTN("entry",IDX,"resource","identifier","system")="urn:va:qr"
+ S RTN("entry",IDX,"resource","identifier","value")=RID
+ S RTN("entry",IDX,"resource","questionnaire")="http://loinc.org/88121-9"
+ S RTN("entry",IDX,"resource","_questionnaire","extension",1,"url")="http://hl7.org/fhir/StructureDefinition/display"
+ S RTN("entry",IDX,"resource","_questionnaire","extension",1,"valueString")="Hunger Vital Sign"
+ S RTN("entry",IDX,"resource","_questionnaire","extension",2,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-extension-questionnaire-uri"
+ S RTN("entry",IDX,"resource","_questionnaire","extension",2,"valueUri")="http://loinc.org/88121-9"
+ S RTN("entry",IDX,"resource","status")="completed"
+ S RTN("entry",IDX,"resource","subject","reference")="Patient/"_+DFN
+ S RTN("entry",IDX,"resource","authored")="2021-10-12T14:00:00Z"
+ S RTN("entry",IDX,"resource","author","reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","item",1,"linkId")="1"
+ S RTN("entry",IDX,"resource","item",1,"linkId","\s")=""
+ S RTN("entry",IDX,"resource","item",1,"text")="Hunger vital sign"
+ S RTN("entry",IDX,"resource","item",1,"answer",1,"valueString")="No"
+ S RTN("entry",IDX,"resource","item",1,"answer",2,"valueCoding","system")="http://snomed.info/sct"
+ S RTN("entry",IDX,"resource","item",1,"answer",2,"valueCoding","code")="42035005"
+ S RTN("entry",IDX,"resource","item",1,"answer",2,"valueCoding","code","\s")=""
+ S RTN("entry",IDX,"resource","item",1,"answer",2,"valueCoding","display")="Bisexual"
+ S RTN("entry",IDX,"resource","item",1,"answer",3,"valueDecimal")="1.5"
+ S RTN("entry",IDX,"resource","item",1,"answer",4,"item",1,"linkId")="1a"
+ S RTN("entry",IDX,"resource","item",1,"answer",4,"item",1,"linkId","\s")=""
+ S RTN("entry",IDX,"resource","item",1,"answer",4,"item",1,"text")="Follow-up"
+ S RTN("entry",IDX,"resource","item",2,"linkId")="2"
+ S RTN("entry",IDX,"resource","item",2,"linkId","\s")=""
+ S RTN("entry",IDX,"resource","item",2,"text")="Child question"
+ S RTN("entry",IDX,"resource","item",2,"item",1,"linkId")="2a"
+ S RTN("entry",IDX,"resource","item",2,"item",1,"linkId","\s")=""
+ S RTN("entry",IDX,"resource","item",2,"item",1,"text")="Nested question"
+ S RTN("entry",IDX,"fullUrl")="QuestionnaireResponse/"_RID
+ D PROVONE(.RTN,"QuestionnaireResponse",RID)
+ Q
+ ;
+EXNOTE(RTN,DFN,CODE,DISP) ; One clinical-note DocumentReference
+ N B64,IDX,RID
+ S RID="note-"_CODE
+ D ADDRES^C0FHIRBU(.RTN,"DocumentReference",RID,.IDX) Q:IDX=""
+ S B64=$$B64^C0FHIR("Fictitious clinical note")
+ S RTN("entry",IDX,"resource","resourceType")="DocumentReference"
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-documentreference|6.1.0"
+ S RTN("entry",IDX,"resource","text","status")="generated"
+ S RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">"_DISP_"</div>"
+ S RTN("entry",IDX,"resource","identifier",1,"system")="urn:va:tiu"
+ S RTN("entry",IDX,"resource","identifier",1,"value")=RID
+ S RTN("entry",IDX,"resource","status")="current"
+ S RTN("entry",IDX,"resource","type","coding",1,"system")="http://loinc.org"
+ S RTN("entry",IDX,"resource","type","coding",1,"code")=CODE
+ S RTN("entry",IDX,"resource","type","coding",1,"display")=DISP
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-documentreference-category"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"code")="clinical-note"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Clinical Note"
+ S RTN("entry",IDX,"resource","subject","reference")="Patient/"_+DFN
+ S RTN("entry",IDX,"resource","date")="2021-10-12T14:00:00Z"
+ S RTN("entry",IDX,"resource","author",1,"reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","content",1,"attachment","contentType")="text/plain"
+ S RTN("entry",IDX,"resource","content",1,"attachment","data")=B64
+ S RTN("entry",IDX,"resource","content",1,"attachment","data","\s")=""
+ S RTN("entry",IDX,"fullUrl")="DocumentReference/"_RID
+ D PROVONE(.RTN,"DocumentReference",RID)
+ Q
+ ;
+EXDR(RTN,DFN,RID,CAT,CDISP,CODE,DISP) ; Note-category DiagnosticReport
+ N B64,I,ID,IDX,LAB
+ D ADDRES^C0FHIRBU(.RTN,"DiagnosticReport",RID,.IDX) Q:IDX=""
+ S B64=$$B64^C0FHIR("Fictitious clinical note")
+ S RTN("entry",IDX,"resource","resourceType")="DiagnosticReport"
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-diagnosticreport-note"
+ S RTN("entry",IDX,"resource","text","status")="generated"
+ S RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">"_CDISP_"</div>"
+ S RTN("entry",IDX,"resource","status")="final"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://loinc.org"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"code")=CAT
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"display")=CDISP
+ S RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
+ S RTN("entry",IDX,"resource","code","coding",1,"code")=CODE
+ S RTN("entry",IDX,"resource","code","coding",1,"display")=DISP
+ S RTN("entry",IDX,"resource","subject","reference")="Patient/"_+DFN
+ S RTN("entry",IDX,"resource","effectiveDateTime")="2021-10-12T14:00:00Z"
+ S RTN("entry",IDX,"resource","issued")="2021-10-12T14:00:00Z"
+ S RTN("entry",IDX,"resource","performer",1,"reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","presentedForm",1,"contentType")="text/plain"
+ S RTN("entry",IDX,"resource","presentedForm",1,"data")=B64
+ S RTN("entry",IDX,"resource","presentedForm",1,"data","\s")=""
+ S (I,LAB)=""
+ F  S I=$O(RTN("entry",I)) Q:I=""  D  Q:LAB'=""
+ . Q:$G(RTN("entry",I,"resource","resourceType"))'="Observation"
+ . Q:$G(RTN("entry",I,"resource","meta","profile",1))'["us-core-observation-lab"
+ . S ID=$G(RTN("entry",I,"resource","id"))
+ . I ID'="" S LAB=ID
+ I LAB'="" S RTN("entry",IDX,"resource","result",1,"reference")="Observation/"_LAB
+ S RTN("entry",IDX,"fullUrl")="DiagnosticReport/"_RID
+ D PROVONE(.RTN,"DiagnosticReport",RID)
+ Q
+ ;
+EXSCR(RTN,DFN,RID,CAT,CDISP,CODE,DISP) ; Screening-assessment observation
+ N IDX
+ D ADDRES^C0FHIRBU(.RTN,"Observation",RID,.IDX) Q:IDX=""
+ S RTN("entry",IDX,"resource","resourceType")="Observation"
+ S RTN("entry",IDX,"resource","id")=RID
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-screening-assessment"
+ S RTN("entry",IDX,"resource","text","status")="generated"
+ S RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">"_CDISP_"</div>"
+ S RTN("entry",IDX,"resource","status")="final"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"code")="survey"
+ S RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Survey"
+ S RTN("entry",IDX,"resource","category",2,"coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-category"
+ S RTN("entry",IDX,"resource","category",2,"coding",1,"code")=CAT
+ S RTN("entry",IDX,"resource","category",2,"coding",1,"display")=CDISP
+ S RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
+ S RTN("entry",IDX,"resource","code","coding",1,"code")=CODE
+ S RTN("entry",IDX,"resource","code","coding",1,"display")=DISP
+ S RTN("entry",IDX,"resource","subject","reference")="Patient/"_+DFN
+ S RTN("entry",IDX,"resource","effectiveDateTime")="2021-10-12T14:00:00Z"
+ S RTN("entry",IDX,"resource","performer",1,"reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","valueString")="No"
+ S RTN("entry",IDX,"fullUrl")="Observation/"_RID
+ D PROVONE(.RTN,"Observation",RID)
+ Q
+ ;
 SRPROV(RTN,RID) ; Provenance whose target is this ServiceRequest
  N IDX,PID
  S PID="prov-"_RID
@@ -902,6 +1163,7 @@ EMIT(RTN,ROOT,IEN,RIEN,DFN,CNT) ; Copy/normalize one graph Observation into bund
  M RES=@ROOT@(IEN,"json","entry",RIEN,"resource")
  Q:$G(RES("resourceType"))'="Observation"
  D BPSYS(.RES)
+ D DAREXT(.RES)
  ; Keep the intake-graph id (no GOBS- prefix). Inferno extras are emitted by EMITCL.
  S RID=$G(RES("id"))
  I $E(RID,1,4)="inf-" Q
@@ -1040,6 +1302,7 @@ EMITDR(RTN,ROOT,IEN,RIEN,DFN) ; Copy/normalize one graph panel DiagnosticReport
  . S RTN("entry",IDX,"resource","performer",1,"reference")="Organization/VISTA-LAB"
  . S RTN("entry",IDX,"resource","performer",1,"display")="Laboratory"
  . D GRPLABORG(.RTN)
+ D LABPRAC(.RTN,IDX)
  Q
  ;
 VITCAT(RES) ; $$ - 1 when a copied DiagnosticReport is a vital-sign panel
@@ -1048,6 +1311,19 @@ VITCAT(RES) ; $$ - 1 when a copied DiagnosticReport is a vital-sign panel
  . S J=0 F  S J=$O(RES("category",I,"coding",J)) Q:'J  D
  . . I $$UP($G(RES("category",I,"coding",J,"code")))="VITAL-SIGNS" S CODE=1
  Q +$G(CODE)
+ ;
+LABPRAC(RTN,IDX) ; Lab report performer must include a US Core Practitioner
+ N HAS,PI
+ S PI=0,HAS=0
+ F  S PI=$O(RTN("entry",IDX,"resource","performer",PI)) Q:'PI  D
+ . I $G(RTN("entry",IDX,"resource","performer",PI,"reference"))["Practitioner/" S HAS=1
+ Q:HAS
+ S PI=$O(RTN("entry",IDX,"resource","performer",""),-1)+1
+ I PI<1 S PI=1
+ S RTN("entry",IDX,"resource","performer",PI,"reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","performer",PI,"display")="PROGRAMMER,ONE"
+ D ADDPRAC^C0FHIR(.RTN,1,"PROGRAMMER,ONE")
+ Q
  ;
 GRPLABORG(RTN) ; Minimal Organization for graph lab DiagnosticReport performers
  N IDX

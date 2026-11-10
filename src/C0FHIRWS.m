@@ -7,8 +7,10 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  ; RTN:    Output array (passed by reference)
  ; FILTER: Input/Output array (passed by reference)
  ;
- N DFN,IEN,NAME,PATH,VIEW
+ N C0FTYPE,DFN,IEN,NAME,PATH,VIEW
  K RTN
+ ; FILTER is HTTPARGS. Saving type keeps ?type=11506-3 from becoming the mime default.
+ S C0FTYPE=$G(FILTER("type"))
  S FILTER("type")="application/json" ; default mime type
  S PATH=$G(HTTPREQ("path"))
  I $P(PATH,"/",2)="fhir",$P(PATH,"/",3)="metadata" D  Q
@@ -18,6 +20,7 @@ WEB(RTN,FILTER) ; Entry point for web service calls
  . D TOJSON^C0FHIRBU(.CAP,.RTN,.JERR)
  . S HTTPRSP("mime")="application/fhir+json"
  I $P(PATH,"/",2)="fhir",$P(PATH,"/",3)'="" D  Q
+ . I C0FTYPE'="" S FILTER("type")=C0FTYPE
  . S FILTER("resource")=$P(PATH,"/",3)
  . I $P(PATH,"/",4)'="",$P(PATH,"/",4)'="_search" DO  QUIT
  . . S FILTER("id")=$P(PATH,"/",4)

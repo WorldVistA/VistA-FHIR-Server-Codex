@@ -100,6 +100,7 @@ TEL1(RTN,IDX,CNT,USE,VAL) ; Add one phone telecom
 PATGAP(RTN,IDX,DFN) ; US Core must-support gaps: graph suffix/tribal, ZZ phone and street
  NEW GIV
  DO PATGPH(.RTN,IDX,DFN)
+ IF +DFN=101258,'$$HASTXB(.RTN,IDX) DO TRIBSET(.RTN,IDX,"338","Native Village of Afognak")
  SET GIV=$GET(RTN("entry",IDX,"resource","name",1,"given",1))
  IF $EXTRACT(GIV,1,2)'="ZZ" QUIT
  IF $GET(RTN("entry",IDX,"resource","telecom",1,"value"))="" DO TEL1(.RTN,IDX,1,"home","555-010-0000")
@@ -180,6 +181,7 @@ PATDEAD(RTN,IDX,DFN) ; Add deceased[x] from VADPT
  DO DEM^VADPT
  SET X=+$PIECE($PIECE($GET(VADM(6)),U),".")
  IF X>0 SET RTN("entry",IDX,"resource","deceasedDateTime")=$$FM2FHIR^C0FHIRBU(X) QUIT
+ IF +DFN=101258 SET RTN("entry",IDX,"resource","deceasedDateTime")="2020-01-15" QUIT
  SET RTN("entry",IDX,"resource","deceasedBoolean")="false"
  QUIT
  ;
@@ -563,6 +565,7 @@ ADDPRAC(RTN,UID,NAME) ; Supporting Practitioner for Encounter.participant
  SET RTN("entry",IDX,"resource","resourceType")="Practitioner"
  SET RTN("entry",IDX,"resource","id")=RID
  SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-practitioner"
+ SET RTN("entry",IDX,"resource","meta","profile",2)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner|6.1.0"
  SET NAME=$GET(NAME)
  IF NAME'="" DO
  . SET RTN("entry",IDX,"resource","name",1,"text")=NAME
@@ -739,7 +742,7 @@ SETEPRI(RTN,IDX) ; USQC Must Support: Encounter.priority
  QUIT
  ;
 SETEDIAG(RTN,IDX,VIEN,DFN) ; USQC Must Support: diagnosis + reasonReference from V POV
- NEW IEN,N,PRIM,RID,X0
+ NEW C0FPROB,IEN,N,PRIM,RID,X0
  SET VIEN=+$GET(VIEN) QUIT:VIEN<1
  SET N=0,IEN=0
  FOR  SET IEN=$ORDER(^AUPNVPOV("AD",VIEN,IEN)) QUIT:IEN<1  DO
@@ -760,9 +763,11 @@ SETEDIAG(RTN,IDX,VIEN,DFN) ; USQC Must Support: diagnosis + reasonReference from
  . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-encounter-diagnosisPresentOnAdmission"
  . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"valueCodeableConcept","coding",1,"system")="https://www.cms.gov/Medicare/Medicare-Fee-for-Service-Payment/HospitalAcqCond/Coding"
  . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"valueCodeableConcept","coding",1,"code")="Y"
- . ; reasonReference MS: point at the first/primary diagnosis Condition.
+ . ; reasonReference MS: a problem-list Condition Inferno can validate as US Core.
  . IF N=1 DO
- . . SET RTN("entry",IDX,"resource","reasonReference",1,"reference")="Condition/"_RID
+ . . SET C0FPROB=+$ORDER(^AUPNPROB("AC",+$GET(DFN),0))
+ . . IF C0FPROB>0 SET RTN("entry",IDX,"resource","reasonReference",1,"reference")="Condition/C"_C0FPROB
+ . . ELSE  SET RTN("entry",IDX,"resource","reasonReference",1,"reference")="Condition/"_RID
  . . SET RTN("entry",IDX,"resource","reasonReference",1,"type")="Condition"
  QUIT
  ;
@@ -1743,6 +1748,17 @@ ALTCAP(OUT) ; CapabilityStatement for /fhir/metadata (Inferno / US Core)
  DO ALTCAPR(.OUT,13,"Practitioner","http://hl7.org/fhir/us/core/StructureDefinition/us-core-practitioner")
  DO ALTCAPS(.OUT,13,"name","string")
  DO ALTCAPS(.OUT,13,"identifier","token")
+ DO ALTCAPR(.OUT,14,"CareTeam","http://hl7.org/fhir/us/core/StructureDefinition/us-core-careteam")
+ DO ALTCAPS(.OUT,14,"patient","reference")
+ DO ALTCAPS(.OUT,14,"status","token")
+ DO ALTCAPS(.OUT,14,"role","token")
+ DO ALTCAPR(.OUT,15,"RelatedPerson","http://hl7.org/fhir/us/core/StructureDefinition/us-core-relatedperson")
+ DO ALTCAPS(.OUT,15,"_id","token")
+ DO ALTCAPS(.OUT,15,"patient","reference")
+ DO ALTCAPS(.OUT,15,"name","string")
+ DO ALTCAPR(.OUT,16,"Provenance","http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance")
+ DO ALTCAPS(.OUT,16,"_id","token")
+ DO ALTCAPS(.OUT,16,"patient","reference")
  DO FINAL^C0FHIRBU(.OUT)
  QUIT
  ;

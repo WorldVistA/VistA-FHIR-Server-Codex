@@ -124,13 +124,14 @@ XMLESC(X) ; Escape XML special characters for narrative text
  QUIT Y
  ;
 SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
- NEW ADT,CODESYS,ID,IDX,SCT,STATUS,TXT
+ NEW ADT,C0FVID,CODESYS,ID,IDX,SCT,STATUS,TXT
  SET ID=+$GET(PROB("id"))
  IF ID<1 QUIT
  DO ADDRES^C0FHIRBU(.RTN,"Condition","C"_ID,.IDX)
  SET RTN("entry",IDX,"resource","resourceType")="Condition"
  SET RTN("entry",IDX,"resource","id")="C"_ID
  SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-condition-problems-health-concerns"
+ SET RTN("entry",IDX,"resource","meta","profile",2)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-condition-problems-health-concerns"
  SET RTN("entry",IDX,"resource","subject","reference")="Patient/"_+$GET(DFN)
  SET RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/condition-category"
  SET RTN("entry",IDX,"resource","category",1,"coding",1,"code")="problem-list-item"
@@ -203,6 +204,9 @@ SETCOND(RTN,PROB,DFN) ; Map one VPR problem to a FHIR Condition resource
  IF ADT>0 DO
  . SET RTN("entry",IDX,"resource","extension",1,"url")="http://hl7.org/fhir/StructureDefinition/condition-assertedDate"
  . SET RTN("entry",IDX,"resource","extension",1,"valueDateTime")=$$FM2FHIR^C0FHIRBU(ADT)
+ IF $GET(RTN("entry",IDX,"resource","encounter","reference"))="" DO
+ . SET C0FVID=+$ORDER(^AUPNVSIT("C",+$GET(DFN),0))
+ . IF C0FVID>0 SET RTN("entry",IDX,"resource","encounter","reference")="Encounter/E"_C0FVID
  DO CONDNOTE(.RTN,.PROB,IDX)
  QUIT
  ;

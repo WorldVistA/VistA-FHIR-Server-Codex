@@ -135,7 +135,12 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  D DATE(CROOT,SUB,"abatement-date",$G(@RES@("abatementDateTime")))
  D DATE(CROOT,SUB,"authored",$G(@RES@("authoredOn")))
  D DATE(CROOT,SUB,"authoredon",$G(@RES@("authoredOn")))
+ I TYPE="QuestionnaireResponse" D
+ . D SET(CROOT,SUB,"questionnaire",$G(@RES@("questionnaire")))
+ . D DATE(CROOT,SUB,"authored",$G(@RES@("authored")))
  I TYPE="Procedure" D DATE(CROOT,SUB,"date",$G(@RES@("performedDateTime")))
+ I TYPE="Immunization" D DATE(CROOT,SUB,"date",$G(@RES@("occurrenceDateTime")))
+ I TYPE="Goal" D CODEABLE(CROOT,SUB,"description",$NA(@RES@("description")))
  I TYPE="Procedure" D DATE(CROOT,SUB,"date",$G(@RES@("performedPeriod","start")))
  I TYPE="DeviceRequest" D CODEABLE(CROOT,SUB,"code",$NA(@RES@("codeCodeableConcept")))
  ; Medication*.medication[x] and DeviceRequest.code[x] are not resource.code.
@@ -237,6 +242,7 @@ PAT(CROOT,SUB,RES) ; Patient search parameters
  N I,NAME
  D SET(CROOT,SUB,"gender",$G(@RES@("gender")))
  D DATE(CROOT,SUB,"birthdate",$G(@RES@("birthDate")))
+ D DATE(CROOT,SUB,"death-date",$G(@RES@("deceasedDateTime")))
  S I=0 F  S I=$O(@RES@("name",I)) Q:+I<1  D
  . S NAME=$NA(@RES@("name",I))
  . D STR(CROOT,SUB,"name",$G(@NAME@("text")))
@@ -558,6 +564,8 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  I $$USETYPE($G(FILTER("type")),RES) D APPLY(.CAND,CROOT,"type-code",$G(FILTER("type")),"TOKEN")
  D APPLY(.CAND,CROOT,"gender",$G(FILTER("gender")),"TOKEN")
  D APPLY(.CAND,CROOT,"birthdate",$G(FILTER("birthdate")),"DATE")
+ D APPLY(.CAND,CROOT,"death-date",$G(FILTER("death-date")),"DATE")
+ D APPLY(.CAND,CROOT,"description",$G(FILTER("description")),"TOKEN")
  D APPLY(.CAND,CROOT,"date",$G(FILTER("date")),"DATE")
  D APPLY(.CAND,CROOT,"recorded-date",$G(FILTER("recorded-date")),"DATE")
  D APPLY(.CAND,CROOT,"asserted-date",$G(FILTER("asserted-date")),"DATE")
@@ -743,8 +751,8 @@ USETYPE(VAL,RES) ; $$ - true when FILTER type is a clinical type token
  S V=$G(VAL) I V="" Q 0
  I V=$G(RES) Q 0
  I $$RESTYPE(V)'="" Q 0
- I V["/" Q 0  ; MIME or URI without code; system|code still allowed via below
- I V["|" Q 1  ; system|code
+ I V["|" Q 1  ; system|code, including http://loinc.org|11506-3
+ I V["/" Q 0  ; MIME type leaked into HTTPARGS("type")
  I V?1.N.E Q 1  ; numeric code (optionally with suffix)
  Q 0
  ;
