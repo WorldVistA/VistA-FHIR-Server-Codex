@@ -136,7 +136,8 @@ ISENCD(CODE) ; True when OS5/CPT code maps to an encounter-only Synthea code
  SET CODE=$PIECE($GET(CODE),"^")
  IF CODE="" QUIT 0
  ; Office visit CPT filed from an encounter. Not a US Core procedure code.
- IF CODE="99202" QUIT 1
+ ; 99205 is the sct2cpt image of SNOMED 308335008 (Patient encounter procedure).
+ IF CODE="99202"!(CODE="99205") QUIT 1
  SET (HIT,SCT)=0
  FOR  SET SCT=$ORDER(^SYN("2002.030","sct2os5","inverse",CODE,SCT)) Q:SCT=""  DO  Q:HIT
  . IF '$$ISENCS(SCT) QUIT
