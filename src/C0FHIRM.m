@@ -112,7 +112,9 @@ PROVMED(RTN,MID) ; Provenance targeting this MedicationRequest
  SET RTN("entry",IDX,"resource","target",1,"reference")="MedicationRequest/"_MID
  SET RTN("entry",IDX,"resource","recorded")="2026-10-06T14:00:00Z"
  SET RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
+ SET RTN("entry",IDX,"resource","agent",1,"onBehalfOf","reference")="Organization/org-clinic"
  SET RTN("entry",IDX,"fullUrl")="Provenance/"_RID
+ DO ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
  QUIT
  ;
 MEDNOTE(RTN,MED,IDX) ; Add medication notes from patient instructions/comments

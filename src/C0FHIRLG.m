@@ -296,6 +296,7 @@ EMITCL(RTN,ROOT,IEN,RIEN,DFN,TYPE) ; Copy one non-lab graph resource into the bu
  I TYPE="CarePlan" D CPFIX(.RES)
  I TYPE="CareTeam" D CTFIX(.RES,.RTN)
  I TYPE="RelatedPerson" D RPFIX(.RES)
+ I TYPE="Provenance" D PROVFIX(.RES,.RTN)
  I TYPE="Coverage" D CVPAY(.RTN,.RES)
  I TYPE="PractitionerRole" D ROLFIX(.RES)
  I TYPE="Procedure" D PROCFIX(.RES)
@@ -726,7 +727,20 @@ PROVONE(RTN,TYPE,RID) ; Provenance whose target is this graph resource
  S RTN("entry",IDX,"resource","target",1,"reference")=TYPE_"/"_RID
  S RTN("entry",IDX,"resource","recorded")="2026-10-06T14:00:00Z"
  S RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","agent",1,"onBehalfOf","reference")="Organization/org-clinic"
  S RTN("entry",IDX,"fullUrl")="Provenance/"_PID
+ D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
+ Q
+ ;
+PROVFIX(RES,RTN) ; Practitioner or Device agent needs onBehalfOf
+ N I,REF
+ S I=0
+ F  S I=$O(RES("agent",I)) Q:'I  D
+ . S REF=$G(RES("agent",I,"who","reference"))
+ . I REF'["Practitioner/",REF'["Device/" Q
+ . Q:$G(RES("agent",I,"onBehalfOf","reference"))'=""
+ . S RES("agent",I,"onBehalfOf","reference")="Organization/org-clinic"
+ D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
  Q
  ;
 SOCOBS(RES) ; $$ - occupation or pregnancy observation
@@ -848,7 +862,9 @@ SRPROV(RTN,RID) ; Provenance whose target is this ServiceRequest
  S RTN("entry",IDX,"resource","target",1,"reference")="ServiceRequest/"_RID
  S RTN("entry",IDX,"resource","recorded")="2026-10-06T14:00:00Z"
  S RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","agent",1,"onBehalfOf","reference")="Organization/org-clinic"
  S RTN("entry",IDX,"fullUrl")="Provenance/"_PID
+ D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
  Q
  ;
 INWIN(ROOT,IEN,RIEN,BEG,END) ; $$ - effective time in window (FM)
