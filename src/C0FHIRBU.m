@@ -277,6 +277,7 @@ ADDPROV(OUT) ; Add one generated US Core Provenance covering bundle resources
  SET OUT("entry",PROVIDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Generated Narrative: usqualitycore-provenance</div>"
  SET OUT("entry",PROVIDX,"resource","recorded")=$$PROVDT()
  SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"system")="http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+ SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"version")="2.0.0"
  SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"code")="author"
  SET OUT("entry",PROVIDX,"resource","agent",1,"type","coding",1,"display")="Author"
  SET OUT("entry",PROVIDX,"resource","agent",1,"who","reference")="Practitioner/usqualitycore-practitioner"

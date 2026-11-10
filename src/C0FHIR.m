@@ -21,6 +21,7 @@ GETPAT(RTN,DFN) ; Add Patient resource to the passed bundle array
  SET RTN("entry",IDX,"resource","resourceType")="Patient"
  SET RTN("entry",IDX,"resource","id")=DFN
  SET RTN("entry",IDX,"resource","meta","profile",1)="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-patient"
+ SET RTN("entry",IDX,"resource","meta","profile",2)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient|6.1.0"
  SET RTN("entry",IDX,"resource","active")="true"
  IF NAME'="" DO
  . SET RTN("entry",IDX,"resource","name",1,"use")="official"
@@ -127,8 +128,8 @@ PATGPH(RTN,IDX,DFN) ; Copy Patient.suffix and tribalAffiliation from the intake 
  . DO PATOLD(.RTN,IDX,ROOT,IEN,RIEN)
  QUIT
  ;
-PATOLD(RTN,IDX,ROOT,IEN,RIEN) ; use=old name and address, and interpreter-needed
- NEW BASE,NI,NN,URL,USE
+PATOLD(RTN,IDX,ROOT,IEN,RIEN) ; use=old name and address
+ NEW BASE,NI,NN,USE
  SET BASE=$NAME(@ROOT@(IEN,"json","entry",RIEN,"resource"))
  SET NI=0
  FOR  SET NI=$ORDER(@BASE@("name",NI)) Q:NI<1  DO
@@ -144,13 +145,6 @@ PATOLD(RTN,IDX,ROOT,IEN,RIEN) ; use=old name and address, and interpreter-needed
  . IF $$HASOLD(.RTN,IDX,"address") QUIT
  . SET NN=$ORDER(RTN("entry",IDX,"resource","address",""),-1)+1
  . MERGE RTN("entry",IDX,"resource","address",NN)=@BASE@("address",NI)
- SET NI=0
- FOR  SET NI=$ORDER(@BASE@("extension",NI)) Q:NI<1  DO
- . SET URL=$GET(@BASE@("extension",NI,"url"))
- . IF URL'["interpreter-needed" QUIT
- . IF $$HASINT(.RTN,IDX) QUIT
- . SET NN=$$EXTN(.RTN,IDX)+1
- . MERGE RTN("entry",IDX,"resource","extension",NN)=@BASE@("extension",NI)
  QUIT
  ;
 HASOLD(RTN,IDX,KIND) ; $$ - 1 when this Patient already has use=old for KIND
@@ -158,13 +152,6 @@ HASOLD(RTN,IDX,KIND) ; $$ - 1 when this Patient already has use=old for KIND
  SET I=0,Y=0
  FOR  SET I=$ORDER(RTN("entry",IDX,"resource",KIND,I)) Q:I<1  DO  Q:Y
  . IF $GET(RTN("entry",IDX,"resource",KIND,I,"use"))="old" SET Y=1
- QUIT Y
- ;
-HASINT(RTN,IDX) ; $$ - 1 when Patient already has interpreter-needed
- NEW I,Y
- SET I=0,Y=0
- FOR  SET I=$ORDER(RTN("entry",IDX,"resource","extension",I)) Q:I<1  DO  Q:Y
- . IF $GET(RTN("entry",IDX,"resource","extension",I,"url"))["interpreter-needed" SET Y=1
  QUIT Y
  ;
 HASTXB(RTN,IDX) ; $$ - 1 when Patient already has tribalAffiliation
@@ -176,6 +163,8 @@ HASTXB(RTN,IDX) ; $$ - 1 when Patient already has tribalAffiliation
  ;
 TRIBSET(RTN,IDX,CODE,DISP) ; One US Core tribalAffiliation extension
  NEW N
+ ; 101 is not in TribalEntityUS 2.0.0 (US Core 6.1). The graph display is a different tribe.
+ IF $GET(CODE)="101" QUIT
  SET N=$$EXTN(.RTN,IDX)+1
  SET RTN("entry",IDX,"resource","extension",N,"url")="http://hl7.org/fhir/us/core/StructureDefinition/us-core-tribal-affiliation"
  SET RTN("entry",IDX,"resource","extension",N,"extension",1,"url")="tribalAffiliation"
@@ -202,7 +191,12 @@ PATCOMM(RTN,IDX,DFN) ; Add language communication from VADPT, defaulting to Engl
  . SET I=+$ORDER(VADM(13,0)),NAME=$PIECE($GET(VADM(13,I)),U,2)
  . IF NAME'="" SET I=$$FIND1^DIC(.85,,"X",NAME),CODE=$$GET1^DIQ(.85,I_",",.02)
  IF CODE="" SET CODE="en",NAME="English"
- IF NAME'="" SET RTN("entry",IDX,"resource","communication",1,"language","text")=NAME
+ SET CODE=$TR(CODE,"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz")
+ IF CODE'="en",CODE'?2L,CODE'?2L1"-"2AN SET CODE="en"
+ IF NAME="" SET NAME="English"
+ SET RTN("entry",IDX,"resource","communication",1,"language","coding",1,"system")="urn:ietf:bcp:47"
+ SET RTN("entry",IDX,"resource","communication",1,"language","coding",1,"code")=CODE
+ SET RTN("entry",IDX,"resource","communication",1,"language","text")=NAME
  QUIT
  ;
 PATEXT(RTN,IDX,DFN,SEX) ; Add US Core demographic extensions

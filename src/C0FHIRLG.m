@@ -726,20 +726,39 @@ PROVONE(RTN,TYPE,RID) ; Provenance whose target is this graph resource
  S RTN("entry",IDX,"resource","id")=PID
  S RTN("entry",IDX,"resource","target",1,"reference")=TYPE_"/"_RID
  S RTN("entry",IDX,"resource","recorded")="2026-10-06T14:00:00Z"
- S RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
- S RTN("entry",IDX,"resource","agent",1,"onBehalfOf","reference")="Organization/org-clinic"
+ D PROVAGT(.RTN,IDX)
  S RTN("entry",IDX,"fullUrl")="Provenance/"_PID
  D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
  Q
  ;
-PROVFIX(RES,RTN) ; Practitioner or Device agent needs onBehalfOf
+PROVAGT(RTN,IDX) ; Author agent, narrative, and profile on a generated Provenance
+ Q:$G(IDX)=""
+ S RTN("entry",IDX,"resource","meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0"
+ S RTN("entry",IDX,"resource","text","status")="generated"
+ S RTN("entry",IDX,"resource","text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Provenance</div>"
+ S RTN("entry",IDX,"resource","agent",1,"type","coding",1,"system")="http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+ S RTN("entry",IDX,"resource","agent",1,"type","coding",1,"version")="2.0.0"
+ S RTN("entry",IDX,"resource","agent",1,"type","coding",1,"code")="author"
+ S RTN("entry",IDX,"resource","agent",1,"type","coding",1,"display")="Author"
+ S RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
+ S RTN("entry",IDX,"resource","agent",1,"onBehalfOf","reference")="Organization/org-clinic"
+ Q
+ ;
+PROVFIX(RES,RTN) ; Practitioner or Device agent needs onBehalfOf and an author type
  N I,REF
  S I=0
  F  S I=$O(RES("agent",I)) Q:'I  D
  . S REF=$G(RES("agent",I,"who","reference"))
  . I REF'["Practitioner/",REF'["Device/" Q
- . Q:$G(RES("agent",I,"onBehalfOf","reference"))'=""
- . S RES("agent",I,"onBehalfOf","reference")="Organization/org-clinic"
+ . I $G(RES("agent",I,"onBehalfOf","reference"))="" S RES("agent",I,"onBehalfOf","reference")="Organization/org-clinic"
+ . I $G(RES("agent",I,"type","coding",1,"code"))="" D
+ . . S RES("agent",I,"type","coding",1,"system")="http://terminology.hl7.org/CodeSystem/provenance-participant-type"
+ . . S RES("agent",I,"type","coding",1,"version")="2.0.0"
+ . . S RES("agent",I,"type","coding",1,"code")="author"
+ . . S RES("agent",I,"type","coding",1,"display")="Author"
+ . I $G(RES("agent",I,"type","coding",1,"system"))["provenance-participant-type",$G(RES("agent",I,"type","coding",1,"version"))="" S RES("agent",I,"type","coding",1,"version")="2.0.0"
+ I $G(RES("text","div"))="" S RES("text","status")="generated",RES("text","div")="<div xmlns=""http://www.w3.org/1999/xhtml"">Provenance</div>"
+ I $G(RES("meta","profile",1))="" S RES("meta","profile",1)="http://hl7.org/fhir/us/core/StructureDefinition/us-core-provenance|6.1.0"
  D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
  Q
  ;
@@ -861,8 +880,7 @@ SRPROV(RTN,RID) ; Provenance whose target is this ServiceRequest
  S RTN("entry",IDX,"resource","id")=PID
  S RTN("entry",IDX,"resource","target",1,"reference")="ServiceRequest/"_RID
  S RTN("entry",IDX,"resource","recorded")="2026-10-06T14:00:00Z"
- S RTN("entry",IDX,"resource","agent",1,"who","reference")="Practitioner/P1"
- S RTN("entry",IDX,"resource","agent",1,"onBehalfOf","reference")="Organization/org-clinic"
+ D PROVAGT(.RTN,IDX)
  S RTN("entry",IDX,"fullUrl")="Provenance/"_PID
  D ADDORG^C0FHIR(.RTN,"org-clinic","Fictitious Clinic","")
  Q

@@ -147,6 +147,8 @@ COMMON(CROOT,SUB,RES,TYPE) ; Add common and resource-specific search facts
  I TYPE="Organization" D ORGIDX(CROOT,SUB,RES)
  I TYPE="Location" D LOCIDX(CROOT,SUB,RES)
  I TYPE="Practitioner" D PRACIDX(CROOT,SUB,RES)
+ I TYPE="RelatedPerson" D PRACIDX(CROOT,SUB,RES)
+ I TYPE="CareTeam" D CTROLE(CROOT,SUB,RES)
  Q
  ;
 PRACROLE(CROOT,SUB,RES) ; PractitionerRole.practitioner, with or without the type prefix
@@ -207,6 +209,11 @@ ADDRIDX(CROOT,SUB,RES) ; Shared name + address facts for Organization/Location
  . D STR(CROOT,SUB,"address-postalcode",$G(@A@("postalCode")))
  Q
  ;
+CTROLE(CROOT,SUB,RES) ; CareTeam.participant.role
+ N I
+ S I=0 F  S I=$O(@RES@("participant",I)) Q:+I<1  D CODEABLE(CROOT,SUB,"role",$NA(@RES@("participant",I,"role")))
+ Q
+ ;
 PRACIDX(CROOT,SUB,RES) ; Practitioner name (non-Patient name indexing)
  N I,NAME,G
  S I=0 F  S I=$O(@RES@("name",I)) Q:+I<1  D
@@ -219,9 +226,11 @@ PRACIDX(CROOT,SUB,RES) ; Practitioner name (non-Patient name indexing)
  . . D STR(CROOT,SUB,"name",$G(@NAME@("given",G)))
  Q
  ;
-PROV(CROOT,SUB,RES) ; Provenance target search parameter
- N I
+PROV(CROOT,SUB,RES) ; Provenance target and patient search parameters
+ N DFN,I
  S I=0 F  S I=$O(@RES@("target",I)) Q:+I<1  D REF(CROOT,SUB,"target",$G(@RES@("target",I,"reference")))
+ S DFN=+$G(@CROOT@("meta","dfn"))
+ I DFN>0 D SET(CROOT,SUB,"patient",DFN),SET(CROOT,SUB,"patient","Patient/"_DFN)
  Q
  ;
 PAT(CROOT,SUB,RES) ; Patient search parameters
@@ -496,6 +505,8 @@ NEWEST(ROOT,IEN,RES) ; $$ - cache id with latest createdAt that indexes RES (or 
  ;
 ALLOWGLOB(RES,FILTER) ; $$ - resource/query may search without a patient id
  I RES="Patient"!(RES="Practitioner")!(RES="Organization")!(RES="Location")!(RES="PractitionerRole") Q 1
+ I RES="CareTeam",$G(FILTER("role"))'="" Q 1
+ I RES="RelatedPerson",$G(FILTER("name"))'=""!($G(FILTER("family"))'="")!($G(FILTER("given"))'="") Q 1
  I $G(FILTER("_id"))'=""!($G(FILTER("id"))'="") Q 1
  I $G(FILTER("identifier"))'="" Q 1
  Q 0
@@ -558,6 +569,7 @@ FINDS(FILTER,CROOT,RES,OUT) ; Evaluate indexed search params and rebuild a Bundl
  D APPLY(.CAND,CROOT,"period",$G(FILTER("period")),"DATE")
  D APPLY(.CAND,CROOT,"class",$G(FILTER("class")),"TOKEN")
  D APPLY(.CAND,CROOT,"location",$G(FILTER("location")),"REF")
+ D APPLY(.CAND,CROOT,"role",$G(FILTER("role")),"TOKEN")
  D APPLY(.CAND,CROOT,"name",$G(FILTER("name")),"STRING")
  D APPLY(.CAND,CROOT,"family",$G(FILTER("family")),"STRING")
  D APPLY(.CAND,CROOT,"given",$G(FILTER("given")),"STRING")
