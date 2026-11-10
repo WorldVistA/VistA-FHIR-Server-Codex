@@ -124,7 +124,48 @@ PATGPH(RTN,IDX,DFN) ; Copy Patient.suffix and tribalAffiliation from the intake 
  . . SET DISP=$GET(@ROOT@(IEN,"json","entry",RIEN,"resource","extension",N,"extension",1,"valueCodeableConcept","coding",1,"display"))
  . . IF CODE="" QUIT
  . . DO TRIBSET(.RTN,IDX,CODE,DISP)
+ . DO PATOLD(.RTN,IDX,ROOT,IEN,RIEN)
  QUIT
+ ;
+PATOLD(RTN,IDX,ROOT,IEN,RIEN) ; use=old name and address, and interpreter-needed
+ NEW BASE,NI,NN,URL,USE
+ SET BASE=$NAME(@ROOT@(IEN,"json","entry",RIEN,"resource"))
+ SET NI=0
+ FOR  SET NI=$ORDER(@BASE@("name",NI)) Q:NI<1  DO
+ . SET USE=$GET(@BASE@("name",NI,"use"))
+ . IF USE'="old" QUIT
+ . IF $$HASOLD(.RTN,IDX,"name") QUIT
+ . SET NN=$ORDER(RTN("entry",IDX,"resource","name",""),-1)+1
+ . MERGE RTN("entry",IDX,"resource","name",NN)=@BASE@("name",NI)
+ SET NI=0
+ FOR  SET NI=$ORDER(@BASE@("address",NI)) Q:NI<1  DO
+ . SET USE=$GET(@BASE@("address",NI,"use"))
+ . IF USE'="old" QUIT
+ . IF $$HASOLD(.RTN,IDX,"address") QUIT
+ . SET NN=$ORDER(RTN("entry",IDX,"resource","address",""),-1)+1
+ . MERGE RTN("entry",IDX,"resource","address",NN)=@BASE@("address",NI)
+ SET NI=0
+ FOR  SET NI=$ORDER(@BASE@("extension",NI)) Q:NI<1  DO
+ . SET URL=$GET(@BASE@("extension",NI,"url"))
+ . IF URL'["interpreter-needed" QUIT
+ . IF $$HASINT(.RTN,IDX) QUIT
+ . SET NN=$$EXTN(.RTN,IDX)+1
+ . MERGE RTN("entry",IDX,"resource","extension",NN)=@BASE@("extension",NI)
+ QUIT
+ ;
+HASOLD(RTN,IDX,KIND) ; $$ - 1 when this Patient already has use=old for KIND
+ NEW I,Y
+ SET I=0,Y=0
+ FOR  SET I=$ORDER(RTN("entry",IDX,"resource",KIND,I)) Q:I<1  DO  Q:Y
+ . IF $GET(RTN("entry",IDX,"resource",KIND,I,"use"))="old" SET Y=1
+ QUIT Y
+ ;
+HASINT(RTN,IDX) ; $$ - 1 when Patient already has interpreter-needed
+ NEW I,Y
+ SET I=0,Y=0
+ FOR  SET I=$ORDER(RTN("entry",IDX,"resource","extension",I)) Q:I<1  DO  Q:Y
+ . IF $GET(RTN("entry",IDX,"resource","extension",I,"url"))["interpreter-needed" SET Y=1
+ QUIT Y
  ;
 HASTXB(RTN,IDX) ; $$ - 1 when Patient already has tribalAffiliation
  NEW I,URL
@@ -400,8 +441,9 @@ ENCCOD(CODE,NAME,TYPE) ; Add encounter coding from OS5/CPT and recovered SNOMED
  . SET TYPE("coding",2,"system")="http://www.ama-assn.org/go/cpt"
  . SET TYPE("coding",2,"code")=CODE
  . SET TYPE("coding",2,"code","\s")=""
- . ; V CPT text for 99202 is the SNOMED encounter name. CPT display must match.
+ . ; V CPT text for these office visits is the SNOMED encounter name. CPT display must match.
  . IF CODE="99202" SET NAME="New patient office or other outpatient visit, 15-29 minutes"
+ . IF CODE="99205" SET NAME="New patient office or other outpatient visit, 60-74 minutes"
  . IF NAME'="" SET TYPE("coding",2,"display")=NAME
  IF NAME="" SET NAME=SDISP
  IF NAME'="" SET TYPE("text")=NAME
