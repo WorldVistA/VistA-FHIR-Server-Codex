@@ -1118,9 +1118,14 @@ EXSCR(RTN,DFN,RID,CAT,CDISP,CODE,DISP) ; Screening-assessment observation
  S RTN("entry",IDX,"resource","category",1,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
  S RTN("entry",IDX,"resource","category",1,"coding",1,"code")="survey"
  S RTN("entry",IDX,"resource","category",1,"coding",1,"display")="Survey"
- S RTN("entry",IDX,"resource","category",2,"coding",1,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-category"
- S RTN("entry",IDX,"resource","category",2,"coding",1,"code")=CAT
- S RTN("entry",IDX,"resource","category",2,"coding",1,"display")=CDISP
+ ; Quality Core binds every category to observation-category. Keep the US Core code beside it.
+ S RTN("entry",IDX,"resource","category",2,"text")=CDISP
+ S RTN("entry",IDX,"resource","category",2,"coding",1,"system")="http://terminology.hl7.org/CodeSystem/observation-category"
+ S RTN("entry",IDX,"resource","category",2,"coding",1,"code")="social-history"
+ S RTN("entry",IDX,"resource","category",2,"coding",1,"display")="Social History"
+ S RTN("entry",IDX,"resource","category",2,"coding",2,"system")="http://hl7.org/fhir/us/core/CodeSystem/us-core-category"
+ S RTN("entry",IDX,"resource","category",2,"coding",2,"code")=CAT
+ S RTN("entry",IDX,"resource","category",2,"coding",2,"display")=CDISP
  S RTN("entry",IDX,"resource","code","coding",1,"system")="http://loinc.org"
  S RTN("entry",IDX,"resource","code","coding",1,"code")=CODE
  S RTN("entry",IDX,"resource","code","coding",1,"display")=DISP

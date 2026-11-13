@@ -129,8 +129,8 @@ PATGPH(RTN,IDX,DFN) ; Copy Patient.suffix and tribalAffiliation from the intake 
  . DO PATOLD(.RTN,IDX,ROOT,IEN,RIEN)
  QUIT
  ;
-PATOLD(RTN,IDX,ROOT,IEN,RIEN) ; use=old name and address
- NEW BASE,NI,NN,USE
+PATOLD(RTN,IDX,ROOT,IEN,RIEN) ; use=old name and address, and interpreter-needed
+ NEW BASE,NI,NN,URL,USE
  SET BASE=$NAME(@ROOT@(IEN,"json","entry",RIEN,"resource"))
  SET NI=0
  FOR  SET NI=$ORDER(@BASE@("name",NI)) Q:NI<1  DO
@@ -146,6 +146,13 @@ PATOLD(RTN,IDX,ROOT,IEN,RIEN) ; use=old name and address
  . IF $$HASOLD(.RTN,IDX,"address") QUIT
  . SET NN=$ORDER(RTN("entry",IDX,"resource","address",""),-1)+1
  . MERGE RTN("entry",IDX,"resource","address",NN)=@BASE@("address",NI)
+ SET NI=0
+ FOR  SET NI=$ORDER(@BASE@("extension",NI)) Q:NI<1  DO
+ . SET URL=$GET(@BASE@("extension",NI,"url"))
+ . IF URL'["interpreter-needed" QUIT
+ . IF $$HASINT(.RTN,IDX) QUIT
+ . SET NN=$$EXTN(.RTN,IDX)+1
+ . MERGE RTN("entry",IDX,"resource","extension",NN)=@BASE@("extension",NI)
  QUIT
  ;
 HASOLD(RTN,IDX,KIND) ; $$ - 1 when this Patient already has use=old for KIND
@@ -153,6 +160,13 @@ HASOLD(RTN,IDX,KIND) ; $$ - 1 when this Patient already has use=old for KIND
  SET I=0,Y=0
  FOR  SET I=$ORDER(RTN("entry",IDX,"resource",KIND,I)) Q:I<1  DO  Q:Y
  . IF $GET(RTN("entry",IDX,"resource",KIND,I,"use"))="old" SET Y=1
+ QUIT Y
+ ;
+HASINT(RTN,IDX) ; $$ - 1 when Patient already has interpreter-needed
+ NEW I,Y
+ SET I=0,Y=0
+ FOR  SET I=$ORDER(RTN("entry",IDX,"resource","extension",I)) Q:I<1  DO  Q:Y
+ . IF $GET(RTN("entry",IDX,"resource","extension",I,"url"))["interpreter-needed" SET Y=1
  QUIT Y
  ;
 HASTXB(RTN,IDX) ; $$ - 1 when Patient already has tribalAffiliation
