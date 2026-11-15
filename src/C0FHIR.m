@@ -777,12 +777,14 @@ SETEDIAG(RTN,IDX,VIEN,DFN) ; USQC Must Support: diagnosis + reasonReference from
  . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"url")="http://fhir.org/guides/onc/us-quality-core/StructureDefinition/us-quality-core-encounter-diagnosisPresentOnAdmission"
  . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"valueCodeableConcept","coding",1,"system")="https://www.cms.gov/Medicare/Medicare-Fee-for-Service-Payment/HospitalAcqCond/Coding"
  . SET RTN("entry",IDX,"resource","diagnosis",N,"extension",1,"valueCodeableConcept","coding",1,"code")="Y"
- . ; reasonReference MS: a problem-list Condition Inferno can validate as US Core.
+ . ; US Core resolves reasonReference against both Condition profiles.
  . IF N=1 DO
- . . SET C0FPROB=+$ORDER(^AUPNPROB("AC",+$GET(DFN),0))
- . . IF C0FPROB>0 SET RTN("entry",IDX,"resource","reasonReference",1,"reference")="Condition/C"_C0FPROB
- . . ELSE  SET RTN("entry",IDX,"resource","reasonReference",1,"reference")="Condition/"_RID
+ . . SET RTN("entry",IDX,"resource","reasonReference",1,"reference")="Condition/"_RID
  . . SET RTN("entry",IDX,"resource","reasonReference",1,"type")="Condition"
+ . . SET C0FPROB=+$ORDER(^AUPNPROB("AC",+$GET(DFN),0))
+ . . IF C0FPROB>0 DO
+ . . . SET RTN("entry",IDX,"resource","reasonReference",2,"reference")="Condition/C"_C0FPROB
+ . . . SET RTN("entry",IDX,"resource","reasonReference",2,"type")="Condition"
  QUIT
  ;
 SETEHOSP(RTN,IDX) ; USQC Must Support: hospitalization.dischargeDisposition
