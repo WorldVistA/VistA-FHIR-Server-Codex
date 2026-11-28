@@ -282,9 +282,32 @@ if [[ ! -f /var/www/rehmp/dist/index.html ]]; then
 HTML
 fi
 chmod -R a+rX /var/www/rehmp
+mkdir -p /var/log/caddy
+if id caddy >/dev/null 2>&1; then
+  chown caddy:caddy /var/log/caddy
+fi
+chmod 750 /var/log/caddy
 cat > /etc/caddy/Caddyfile <<CADDY
 ${DOMAIN} {
 	encode zstd gzip
+
+	# Access log for visitor counts. See ~/ops/docs/DROPLET_MONITORING.md.
+	# Authorization and Cookie are deleted; Caddy also redacts them by default.
+	log {
+		output file /var/log/caddy/access.log {
+			mode 0600
+			roll_size 10MiB
+			roll_keep 60
+			roll_keep_for 336h
+		}
+		format filter {
+			request>headers>Authorization delete
+			request>headers>Cookie delete
+			request>headers>Proxy-Authorization delete
+			resp_headers delete
+			wrap json
+		}
+	}
 
 	# C0X static UI (Caddy). Exact paths only — API stays on @m_api → M.
 	@c0x_ui path /c0x /c0x/ /c0x/index.html /c0x/app.js /c0x/styles.css
@@ -333,6 +356,11 @@ ${DOMAIN} {
 }
 CADDY
 caddy validate --config /etc/caddy/Caddyfile
+# validate runs as root and creates the log file. The service runs as caddy.
+if [[ -f /var/log/caddy/access.log ]]; then
+  chown caddy:caddy /var/log/caddy/access.log
+  chmod 600 /var/log/caddy/access.log
+fi
 systemctl enable --now caddy
 systemctl restart caddy
 sleep 3
